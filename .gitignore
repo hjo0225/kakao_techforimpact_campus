@@ -1,0 +1,19 @@
+# dependencies
+**/node_modules/
+
+# build outputs
+**/dist/
+backend/dist/
+
+# env files
+.env
+.env.*
+!.env.example
+
+# logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
