@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 export default function OAuthCallbackPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const getTeamFor = useAuthStore((s) => s.getTeamFor)
   const ranRef = useRef(false)
 
   useEffect(() => {
@@ -34,13 +35,14 @@ export default function OAuthCallbackPage() {
       })
       .then((data) => {
         setAuth(data.user, data.accessToken)
-        navigate('/', { replace: true })
+        const team = getTeamFor(data.user.id)
+        navigate(team ? '/home' : '/onboarding', { replace: true })
       })
       .catch((err) => {
         console.error('[OAuth callback] failed:', err)
         navigate('/login', { replace: true })
       })
-  }, [navigate, setAuth])
+  }, [navigate, setAuth, getTeamFor])
 
   return (
     <div className="min-h-screen flex items-center justify-center">

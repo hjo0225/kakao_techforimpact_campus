@@ -199,8 +199,8 @@ export function HomeScreen() {
             onClick={() => go('account')}
             aria-label="계정 관리"
             style={{
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               borderRadius: 999,
               border: 'none',
               background: selectedGame ? 'rgba(255,255,255,0.22)' : '#E2FAE9',
@@ -211,7 +211,7 @@ export function HomeScreen() {
               cursor: 'pointer',
             }}
           >
-            <UserCircle size={21} />
+            <UserCircle size={22} />
           </button>
         </div>
 
@@ -237,7 +237,7 @@ export function HomeScreen() {
 
       <div
         className="hide-scroll"
-        style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}
       >
         <Card border="#C0F5D3">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
@@ -548,9 +548,10 @@ export function HomeScreen() {
               style={{
                 width: '100%',
                 marginTop: 10,
+                minHeight: 44,
                 border: 'none',
                 borderRadius: 12,
-                padding: 11,
+                padding: '11px 14px',
                 background: '#E2FAE9',
                 color: '#13923F',
                 fontSize: 12,

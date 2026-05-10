@@ -6,6 +6,7 @@ import {
   getNextGradePoints,
 } from './ecoGrades';
 import { DEFAULT_AVATAR_CONFIG, type AvatarConfig } from './avatar';
+import { useAuthStore } from '../store/authStore';
 
 export interface GameInfo {
   home: string;
@@ -165,7 +166,10 @@ function getTimesaleStatus(game: GameInfo | null) {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(() => {
+    const { user, teamsByUserId } = useAuthStore.getState();
+    return user ? teamsByUserId[user.id] ?? null : null;
+  });
   const [selectedGame, setSelectedGame] = useState<GameInfo | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo>({ section: '', seatNumber: '' });
   const [points, setPoints] = useState(850);

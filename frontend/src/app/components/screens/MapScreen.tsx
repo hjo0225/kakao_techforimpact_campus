@@ -398,7 +398,7 @@ export function MapScreen() {
                   }}
                   style={{
                     minWidth: 52,
-                    height: 32,
+                    height: 44,
                     border: 0,
                     borderRadius: 10,
                     background: isActive ? '#3DDB6D' : 'transparent',
@@ -425,7 +425,8 @@ export function MapScreen() {
             style={{
               border: 0,
               borderRadius: 12,
-              padding: '8px 12px',
+              padding: '8px 14px',
+              minHeight: 44,
               background: showRoute ? '#E8F8EE' : '#EFF5F1',
               color: showRoute ? '#13923F' : '#5F6C66',
               fontSize: 12,
@@ -460,7 +461,8 @@ export function MapScreen() {
                 type="button"
                 onClick={() => handleLayerToggle(layer.key)}
                 style={{
-                  padding: '8px 12px',
+                  padding: '8px 14px',
+                  minHeight: 44,
                   borderRadius: 14,
                   border: active ? `1.5px solid ${layer.color}` : '1.5px solid #E3E5E8',
                   background: active ? `${layer.color}14` : '#fff',
@@ -649,6 +651,7 @@ export function MapScreen() {
         className="hide-scroll"
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: `12px 20px ${showGuide ? 220 : 24}px`,
@@ -684,8 +687,8 @@ export function MapScreen() {
                 borderRadius: 12,
                 background: '#E8F8EE',
                 color: '#13923F',
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -743,7 +746,7 @@ export function MapScreen() {
                 }}
                 style={{
                   minWidth: 104,
-                  height: 34,
+                  height: 44,
                   border: 0,
                   borderRadius: 10,
                   background: active ? '#fff' : 'transparent',
@@ -1039,8 +1042,8 @@ export function MapScreen() {
                 type="button"
                 onClick={() => setShowGuide(false)}
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 44,
+                  height: 44,
                   borderRadius: '50%',
                   border: 0,
                   background: '#fff',
