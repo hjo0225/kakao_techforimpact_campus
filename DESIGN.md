@@ -72,7 +72,7 @@
 ### Gradient
 
 - `--cb-gradient-primary`: `linear-gradient(135deg, var(--cb-primary), var(--cb-primary-strong))` — primary CTA 배경
-- `--cb-gradient-login`: 5-stop 그린 그라데이션 (login 화면 전용 배경)
+- `--cb-gradient-login`: `linear-gradient(135deg, var(--park-800) 0%, var(--park-700) 50%, var(--park-600) 100%)` — 좌상단 → 우하단 그린 그라데이션 (login 화면 전용 배경)
 
 ### Typography
 

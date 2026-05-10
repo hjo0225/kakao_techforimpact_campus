@@ -135,10 +135,11 @@ export function RankingScreen() {
           <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#111827' }}>리그</span>
           <button
             onClick={() => navigate('account')}
+            aria-label="MY"
             title="MY"
             style={{
-              width: 32,
-              height: 32,
+              width: 44,
+              height: 44,
               borderRadius: '50%',
               border: 'none',
               background: 'linear-gradient(135deg, #3DDB6D, #1AB852)',
@@ -150,7 +151,7 @@ export function RankingScreen() {
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>MY</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>MY</span>
           </button>
         </div>
       </div>
@@ -158,6 +159,7 @@ export function RankingScreen() {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '14px 20px 18px',
@@ -325,7 +327,9 @@ export function RankingScreen() {
                 gap: 4,
                 border: 'none',
                 background: 'none',
-                padding: 0,
+                padding: '12px 8px',
+                margin: '-12px -8px',
+                minHeight: 44,
                 color: '#13923F',
                 fontSize: 11,
                 fontWeight: 700,
@@ -391,11 +395,13 @@ export function RankingScreen() {
                   onClick={() => setPeriodTab(tab.key)}
                   style={{
                     borderRadius: 999,
-                    padding: '6px 10px',
+                    padding: '8px 14px',
+                    minHeight: 44,
+                    minWidth: 44,
                     border: periodTab === tab.key ? '1px solid #3DDB6D' : '1px solid #E5E7EB',
                     background: periodTab === tab.key ? '#E8F8EE' : '#fff',
                     color: periodTab === tab.key ? '#13923F' : '#6B7280',
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',
                   }}
@@ -575,30 +581,9 @@ export function RankingScreen() {
             border: '1px solid rgba(0,0,0,0.04)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: '#111827', marginBottom: 3 }}>리워드 상세</p>
-              <p style={{ fontSize: 10, color: '#6B7280' }}>커피트럭 · 사인볼 · 에코 굿즈</p>
-            </div>
-            <button
-              onClick={() => navigate('programs')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                border: 'none',
-                background: 'none',
-                padding: 0,
-                color: '#13923F',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              프로그램 연결
-              <ChevronRight size={14} />
-            </button>
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 14, fontWeight: 800, color: '#111827', marginBottom: 3 }}>리워드 상세</p>
+            <p style={{ fontSize: 10, color: '#6B7280' }}>커피트럭 · 사인볼 · 에코 굿즈</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

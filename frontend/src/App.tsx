@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import MobileFrame from './app/MobileFrame'
 import LoginPage from './pages/LoginPage'
@@ -26,9 +26,6 @@ const RecordScreen = lazy(() =>
 const RankingScreen = lazy(() =>
   import('./app/components/screens/RankingScreen').then((m) => ({ default: m.RankingScreen })),
 )
-const ProgramsScreen = lazy(() =>
-  import('./app/components/screens/ProgramsScreen').then((m) => ({ default: m.ProgramsScreen })),
-)
 const AccountScreen = lazy(() =>
   import('./app/components/screens/AccountScreen').then((m) => ({ default: m.AccountScreen })),
 )
@@ -37,9 +34,6 @@ const AvatarCustomizeScreen = lazy(() =>
     default: m.AvatarCustomizeScreen,
   })),
 )
-const ARScreen = lazy(() =>
-  import('./app/components/screens/ARScreen').then((m) => ({ default: m.ARScreen })),
-)
 
 function ScreenFallback() {
   return <div className="cb-screen-fallback">불러오는 중...</div>
@@ -47,13 +41,27 @@ function ScreenFallback() {
 
 function PrivateLayout() {
   const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const teamsByUserId = useAuthStore((s) => s.teamsByUserId)
+  const location = useLocation()
   if (!token) return <Navigate to="/login" replace />
+  const team = user ? teamsByUserId[user.id] : null
+  if (!team && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />
+  }
+  if (team && location.pathname === '/onboarding') {
+    return <Navigate to="/home" replace />
+  }
   return <Outlet />
 }
 
 function RootRedirect() {
   const token = useAuthStore((s) => s.token)
-  return <Navigate to={token ? '/home' : '/login'} replace />
+  const user = useAuthStore((s) => s.user)
+  const teamsByUserId = useAuthStore((s) => s.teamsByUserId)
+  if (!token) return <Navigate to="/login" replace />
+  const team = user ? teamsByUserId[user.id] : null
+  return <Navigate to={team ? '/home' : '/onboarding'} replace />
 }
 
 export default function App() {
@@ -72,10 +80,8 @@ export default function App() {
             <Route path="/report" element={<ReportScreen />} />
             <Route path="/record" element={<RecordScreen />} />
             <Route path="/ranking" element={<RankingScreen />} />
-            <Route path="/programs" element={<ProgramsScreen />} />
             <Route path="/account" element={<AccountScreen />} />
             <Route path="/avatar" element={<AvatarCustomizeScreen />} />
-            <Route path="/ar" element={<ARScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

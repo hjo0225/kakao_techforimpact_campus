@@ -316,6 +316,7 @@ export function AvatarCustomizeScreen() {
         className="hide-scroll"
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '14px 20px 22px',
@@ -360,7 +361,8 @@ export function AvatarCustomizeScreen() {
                 background: 'rgba(255,255,255,0.1)',
                 color: '#fff',
                 borderRadius: 14,
-                padding: '10px 8px',
+                padding: '10px 14px',
+                minHeight: 44,
                 fontSize: 12,
                 fontWeight: 900,
                 cursor: 'pointer',
@@ -381,7 +383,8 @@ export function AvatarCustomizeScreen() {
                 background: 'rgba(255,255,255,0.1)',
                 color: '#fff',
                 borderRadius: 14,
-                padding: '10px 8px',
+                padding: '10px 14px',
+                minHeight: 44,
                 fontSize: 12,
                 fontWeight: 900,
                 cursor: 'pointer',
@@ -428,7 +431,7 @@ export function AvatarCustomizeScreen() {
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 style={{
-                  minHeight: 34,
+                  minHeight: 44,
                   border: 'none',
                   borderRadius: 12,
                   background: activeTab === tab.key ? '#fff' : 'transparent',

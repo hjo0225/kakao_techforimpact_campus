@@ -6,6 +6,7 @@ import { KBO_TEAMS } from '../../teamBrand';
 import { TeamBadge } from '../TeamBadge';
 import { cx } from '../../classNames';
 import { ActionBar, Button, Screen, ScreenHeader, ScrollArea } from '../design-system';
+import { useAuthStore } from '../../../store/authStore';
 
 const ONBOARDING_SLIDES = [
   {
@@ -31,6 +32,7 @@ const ONBOARDING_SLIDES = [
 export function TeamSelectScreen() {
   const { navigate } = useNavigation();
   const { setSelectedTeam } = useApp();
+  const setTeam = useAuthStore((s) => s.setTeam);
   const [selected, setSelected] = useState<string | null>(null);
   const [step, setStep] = useState<'slides' | 'team' | 'permissions'>('slides');
   const [slideIndex, setSlideIndex] = useState(0);
@@ -40,6 +42,7 @@ export function TeamSelectScreen() {
   const handleStart = () => {
     if (!selected) return;
     setSelectedTeam(selected);
+    setTeam(selected);
     navigate('home');
   };
 
