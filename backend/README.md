@@ -1,98 +1,90 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# cleanballtrio-api (Backend)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS + TypeScript API. 카카오 OAuth 인증, JWT 발급. Cloud Run에 컨테이너로 배포.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Prod URL**: https://cleanballtrio-api-fpvvjohnta-du.a.run.app
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## 개발
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env   # 시크릿 채우기 (아래 참고)
+npm run start:dev      # http://localhost:3001 (watch)
 ```
 
-## Compile and run the project
+### 환경변수 (`.env`)
+
+| 변수 | 용도 | 예시 |
+|---|---|---|
+| `PORT` | 서버 포트 (Cloud Run에선 자동) | `3001` |
+| `KAKAO_REST_API_KEY` | 카카오 디벨로퍼스 REST API 키 | 32자 hex |
+| `KAKAO_CLIENT_SECRET` | 카카오 Client Secret (활성화 시) | 32자 hex |
+| `JWT_SECRET` | JWT 서명 시크릿 | 충분히 긴 random |
+| `CORS_ORIGIN` | 허용 origin (콤마 구분 다중) | `http://localhost:5173,https://cleanballtrio.web.app` |
+
+## 빌드 / 테스트
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run build         # nest build → dist/
+npm run test          # Jest 단위 테스트
+npm run test:e2e      # E2E 테스트
+npm run lint          # eslint --fix
 ```
 
-## Run tests
+## 배포
 
-```bash
-# unit tests
-$ npm run test
+### 자동 (권장)
+`main` 브랜치에 `backend/**` 변경 push 시 GitHub Actions가 자동:
+- 인증: Workload Identity Federation
+- 빌드/배포: `gcloud run deploy --source backend` (Cloud Build가 Dockerfile 기반 이미지 빌드)
+- 시크릿: 기존 Cloud Run env vars 보존 (`--set-env-vars` 안 줌)
 
-# e2e tests
-$ npm run test:e2e
+워크플로: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) 의 `ci-backend` job
 
-# test coverage
-$ npm run test:cov
+### 수동
+
+```powershell
+powershell -File ../scripts/deploy-backend.ps1
 ```
 
-## Deployment
+스크립트가 `backend/.env`에서 시크릿을 읽어 `gcloud run deploy --source backend --set-env-vars=...` 호출. 첫 배포는 ~5분 (Cloud Build 빌드 시간).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### 시크릿 갱신 (단발)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```powershell
+gcloud run services update cleanballtrio-api --region asia-northeast3 `
+  --update-env-vars="^@^CORS_ORIGIN=val1,val2,val3"
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> 콤마가 포함된 값은 `^@^` 커스텀 구분자 필수.
 
-## Resources
+## 컨테이너
 
-Check out a few resources that may come in handy when working with NestJS:
+`Dockerfile`은 multi-stage:
+1. `deps`: prod 의존성만 npm ci
+2. `build`: 전체 의존성 + `nest build`
+3. `runtime`: `node:22-alpine` + `USER node`, EXPOSE 8080
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+`.dockerignore`로 `node_modules`, `dist`, `.env`, 테스트 파일 제외.
 
-## Support
+## 인증 흐름
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+1. 프론트가 카카오 OAuth로 `code` 받음 → `POST /auth/kakao { code, redirectUri }`
+2. 백엔드가 `https://kauth.kakao.com/oauth/token`에 코드 교환 → access token
+3. `https://kapi.kakao.com/v2/user/me`로 카카오 ID 조회
+4. JWT 발급 후 프론트로 반환
 
-## Stay in touch
+상세: [`src/auth/`](src/auth/), 관련 plan: [`docs/plans/active/feat-kakao-login.md`](../docs/plans/active/feat-kakao-login.md)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 디렉토리
 
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```
+backend/
+├── src/
+│   ├── main.ts          ─ bootstrap, CORS_ORIGIN 처리
+│   ├── auth/            ─ Kakao OAuth + JWT 발급
+│   └── ...
+├── test/                ─ E2E 테스트
+├── Dockerfile           ─ multi-stage, node:22-alpine
+└── .dockerignore
+```
