@@ -6,7 +6,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Gift,
   History,
   LogOut,
   Palette,
@@ -92,6 +91,7 @@ export function AccountScreen() {
         <div style={{ display: 'flex', alignItems: 'center', padding: '2px 14px 10px', gap: 8 }}>
           <button
             onClick={() => navigate('home')}
+            aria-label="뒤로 가기"
             style={{
               background: 'none',
               border: 'none',
@@ -131,6 +131,7 @@ export function AccountScreen() {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '14px 20px 18px',
@@ -313,7 +314,8 @@ export function AccountScreen() {
                   background: '#F0FFF6',
                   color: '#13923F',
                   borderRadius: 12,
-                  padding: '9px 12px',
+                  padding: '9px 14px',
+                  minHeight: 44,
                   fontSize: 12,
                   fontWeight: 800,
                   cursor: 'pointer',
@@ -490,6 +492,7 @@ export function AccountScreen() {
               onClick={() => setCardGenerated(true)}
               style={{
                 padding: '12px 10px',
+                minHeight: 44,
                 borderRadius: 14,
                 border: '1.5px solid #C8F2D6',
                 background: '#F0FFF6',
@@ -508,6 +511,7 @@ export function AccountScreen() {
               disabled={!cardGenerated}
               style={{
                 padding: '12px 10px',
+                minHeight: 44,
                 borderRadius: 14,
                 border: 'none',
                 background: cardGenerated ? 'linear-gradient(135deg, #3DDB6D, #1AB852)' : '#D1D5DB',
@@ -564,12 +568,6 @@ export function AccountScreen() {
                 title: '포인트 내역',
                 desc: '직관 · 인증 · 리워드 적립 흐름 확인',
                 action: () => navigate('record'),
-              },
-              {
-                icon: <Gift size={16} color="#13923F" />,
-                title: '굿즈 교환',
-                desc: '에코 굿즈와 교환 프로그램 바로 이동',
-                action: () => navigate('programs'),
               },
             ].map((item) => (
               <button
