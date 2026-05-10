@@ -315,16 +315,17 @@ export function RecordScreen() {
           <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#111827' }}>MY</span>
           <button
             onClick={() => navigate('account')}
+            aria-label="계정 관리"
             title="계정 관리"
             style={{
-              width: 30, height: 30, borderRadius: '50%', border: 'none',
+              width: 44, height: 44, borderRadius: '50%', border: 'none',
               background: 'linear-gradient(135deg, #3DDB6D, #1AB852)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', outline: 'none', flexShrink: 0,
               boxShadow: '0 2px 6px rgba(61,219,109,0.28)',
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>김</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>김</span>
           </button>
         </div>
         {/* Sub tabs */}
@@ -338,7 +339,7 @@ export function RecordScreen() {
               key={tab.key}
               onClick={() => setSubTab(tab.key)}
               style={{
-                flex: 1, padding: '11px 4px',
+                flex: 1, padding: '14px 4px', minHeight: 44,
                 background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: 12, fontWeight: subTab === tab.key ? 700 : 500,
                 color: subTab === tab.key ? '#13923F' : '#9CA3AF',
