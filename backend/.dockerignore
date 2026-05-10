@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.log
+.DS_Store
+test
+**/*.spec.ts
+**/*.test.ts
+README.md
+.eslintrc*
+eslint.config.*
+.prettierrc*
