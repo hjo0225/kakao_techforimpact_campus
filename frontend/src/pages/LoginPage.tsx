@@ -52,20 +52,6 @@ export default function LoginPage() {
           </svg>
           카카오로 시작하기
         </Button>
-
-        <p className="cb-login-fine">
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            이용약관
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            개인정보처리방침
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            1:1 문의
-          </a>
-        </p>
       </div>
     </div>
   )

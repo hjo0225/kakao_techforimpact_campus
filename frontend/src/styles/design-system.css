@@ -32,12 +32,10 @@
   --cb-shadow-primary: 0 4px 12px rgba(61, 219, 109, 0.35);
   --cb-gradient-primary: linear-gradient(135deg, var(--cb-primary), var(--cb-primary-strong));
   --cb-gradient-login: linear-gradient(
-    180deg,
-    #0b4726 0%,
-    #0f6b38 18%,
-    #1db954 42%,
-    #c2f5d8 80%,
-    #ffffff 100%
+    135deg,
+    var(--park-800) 0%,
+    var(--park-700) 50%,
+    var(--park-600) 100%
   );
 }
 
