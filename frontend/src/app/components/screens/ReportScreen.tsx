@@ -252,6 +252,7 @@ export function ReportScreen() {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '14px 16px 18px',
