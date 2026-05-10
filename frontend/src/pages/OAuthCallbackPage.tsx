@@ -1,12 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
 export default function OAuthCallbackPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const ranRef = useRef(false)
 
   useEffect(() => {
+    if (ranRef.current) return
+    ranRef.current = true
+
     const code = new URLSearchParams(window.location.search).get('code')
     if (!code) {
       navigate('/login', { replace: true })
@@ -21,13 +25,22 @@ export default function OAuthCallbackPage() {
         redirectUri: import.meta.env.VITE_KAKAO_REDIRECT_URI,
       }),
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.text().catch(() => '')
+          throw new Error(`auth ${res.status}: ${body}`)
+        }
+        return res.json()
+      })
       .then((data) => {
         setAuth(data.user, data.accessToken)
         navigate('/', { replace: true })
       })
-      .catch(() => navigate('/login', { replace: true }))
-  }, [])
+      .catch((err) => {
+        console.error('[OAuth callback] failed:', err)
+        navigate('/login', { replace: true })
+      })
+  }, [navigate, setAuth])
 
   return (
     <div className="min-h-screen flex items-center justify-center">
