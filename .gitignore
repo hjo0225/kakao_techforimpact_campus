@@ -24,3 +24,6 @@ Thumbs.db
 
 # Claude Code local settings (commands/ 는 공유 가능, settings.local 만 제외)
 .claude/settings.local.json
+
+# AI 에이전트 작업 컨벤션 (로컬 전용)
+CLAUDE.md
