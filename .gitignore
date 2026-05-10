@@ -27,3 +27,6 @@ Thumbs.db
 
 # AI 에이전트 작업 컨벤션 (로컬 전용)
 CLAUDE.md
+
+# Puppeteer UI 인스펙션 산출물
+frontend/inspect-out/
