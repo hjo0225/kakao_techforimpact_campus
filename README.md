@@ -92,14 +92,12 @@ firebase deploy --only hosting
 
 - [`CLAUDE.md`](CLAUDE.md) — AI 에이전트 작업 컨벤션 (워크플로 6단계, 디자인 룰)
 - [`DESIGN.md`](DESIGN.md) — 디자인 토큰 SSOT (UI 작업 시 필독)
+- [`docs/PRD.md`](docs/PRD.md) — 제품 요구사항 (현재 구현 상태 + open questions)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 모듈 경계, 외부 의존성, 데이터 흐름
+- [`docs/api-spec.md`](docs/api-spec.md) — API 엔드포인트 스키마
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — DB 스키마 (예정 entities)
 - [`docs/plans/`](docs/plans/) — 진행 중/완료된 작업 단위 plan
-- [`docs/adr/`](docs/adr/) — 설계 결정 기록
-
-기획/명세 (작성 예정):
-- `docs/PRD.md` — 제품 요구사항
-- `docs/ARCHITECTURE.md` — 모듈 경계, 데이터 흐름
-- `docs/api-spec.md` — API 엔드포인트 스키마
-- `docs/DATA_MODEL.md` — DB 스키마
+- [`docs/adr/`](docs/adr/) — 설계 결정 기록 ([0001](docs/adr/0001-firebase-hosting-and-cloud-run.md): Firebase + Cloud Run)
 
 ## 워크플로 규칙 (요약)
 
