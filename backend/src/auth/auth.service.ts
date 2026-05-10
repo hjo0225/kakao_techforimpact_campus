@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import axios from 'axios'
 
@@ -18,6 +18,8 @@ interface KakaoUserResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name)
+
   constructor(private readonly jwtService: JwtService) {}
 
   async kakaoLogin(code: string, redirectUri: string) {
@@ -42,25 +44,39 @@ export class AuthService {
       redirect_uri: redirectUri,
       code,
     })
+    if (process.env.KAKAO_CLIENT_SECRET) {
+      params.append('client_secret', process.env.KAKAO_CLIENT_SECRET)
+    }
 
-    const { data } = await axios.post<KakaoTokenResponse>(
-      'https://kauth.kakao.com/oauth/token',
-      params.toString(),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-    ).catch(() => {
-      throw new UnauthorizedException('카카오 토큰 교환 실패')
-    })
+    const { data } = await axios
+      .post<KakaoTokenResponse>(
+        'https://kauth.kakao.com/oauth/token',
+        params.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      )
+      .catch((err) => {
+        const detail = axios.isAxiosError(err) ? err.response?.data : err
+        this.logger.error('카카오 토큰 교환 실패', detail)
+        throw new UnauthorizedException(
+          `카카오 토큰 교환 실패: ${JSON.stringify(detail)}`,
+        )
+      })
 
     return data.access_token
   }
 
   private async getKakaoUser(accessToken: string): Promise<KakaoUserResponse> {
-    const { data } = await axios.get<KakaoUserResponse>(
-      'https://kapi.kakao.com/v2/user/me',
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    ).catch(() => {
-      throw new UnauthorizedException('카카오 유저 정보 조회 실패')
-    })
+    const { data } = await axios
+      .get<KakaoUserResponse>('https://kapi.kakao.com/v2/user/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      .catch((err) => {
+        const detail = axios.isAxiosError(err) ? err.response?.data : err
+        this.logger.error('카카오 유저 정보 조회 실패', detail)
+        throw new UnauthorizedException(
+          `카카오 유저 정보 조회 실패: ${JSON.stringify(detail)}`,
+        )
+      })
 
     return data
   }
