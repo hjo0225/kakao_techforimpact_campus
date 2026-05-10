@@ -1,0 +1,26 @@
+# dependencies
+**/node_modules/
+
+# build outputs
+**/dist/
+backend/dist/
+
+# firebase deploy cache
+.firebase/
+
+# env files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings (commands/ 는 공유 가능, settings.local 만 제외)
+.claude/settings.local.json
