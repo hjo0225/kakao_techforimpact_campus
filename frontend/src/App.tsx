@@ -26,9 +26,6 @@ const RecordScreen = lazy(() =>
 const RankingScreen = lazy(() =>
   import('./app/components/screens/RankingScreen').then((m) => ({ default: m.RankingScreen })),
 )
-const ProgramsScreen = lazy(() =>
-  import('./app/components/screens/ProgramsScreen').then((m) => ({ default: m.ProgramsScreen })),
-)
 const AccountScreen = lazy(() =>
   import('./app/components/screens/AccountScreen').then((m) => ({ default: m.AccountScreen })),
 )
@@ -36,9 +33,6 @@ const AvatarCustomizeScreen = lazy(() =>
   import('./app/components/screens/AvatarCustomizeScreen').then((m) => ({
     default: m.AvatarCustomizeScreen,
   })),
-)
-const ARScreen = lazy(() =>
-  import('./app/components/screens/ARScreen').then((m) => ({ default: m.ARScreen })),
 )
 
 function ScreenFallback() {
@@ -86,10 +80,8 @@ export default function App() {
             <Route path="/report" element={<ReportScreen />} />
             <Route path="/record" element={<RecordScreen />} />
             <Route path="/ranking" element={<RankingScreen />} />
-            <Route path="/programs" element={<ProgramsScreen />} />
             <Route path="/account" element={<AccountScreen />} />
             <Route path="/avatar" element={<AvatarCustomizeScreen />} />
-            <Route path="/ar" element={<ARScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
