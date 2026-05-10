@@ -1,6 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common'
-import { AuthService } from './auth.service'
-import { KakaoCallbackDto } from './dto/kakao-callback.dto'
+import { Body, Controller, Post } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { KakaoCallbackDto } from './dto/kakao-callback.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -8,6 +8,6 @@ export class AuthController {
 
   @Post('kakao')
   kakaoLogin(@Body() dto: KakaoCallbackDto) {
-    return this.authService.kakaoLogin(dto.code, dto.redirectUri)
+    return this.authService.kakaoLogin(dto.code, dto.redirectUri);
   }
 }

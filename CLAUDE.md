@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-### Frontend (Web → GCP 배포)
+### Frontend (Web → Firebase Hosting 배포)
 - **Core**: React + Vite + TypeScript
 - **Styling**: Tailwind CSS
 - **Server State**: React Query
@@ -14,7 +14,7 @@
 - **차트**: Recharts
 - **공유 이미지**: html2canvas
 
-### Backend
+### Backend (GCP)
 - **Runtime**: Node.js + NestJS + TypeScript
 - **DB**: PostgreSQL (GCP Cloud SQL)
 - **Cache/Realtime**: Redis (GCP Cloud Memorystore) — 팀 랭킹 실시간 집계
@@ -26,11 +26,11 @@
 - **카카오 로그인**: @react-native-seoul/kakao-login
 - **QR 스캔**: expo-barcode-scanner (브릿지 경유)
 
-### GCP 인프라
-- **백엔드**: Cloud Run (컨테이너, 오토스케일링)
-- **프론트엔드**: Cloud Storage + CDN
-- **DB**: Cloud SQL (PostgreSQL)
-- **Cache**: Cloud Memorystore (Redis)
+### 인프라
+- **프론트엔드**: Firebase Hosting (CDN 자동 포함)
+- **백엔드**: GCP Cloud Run (컨테이너, 오토스케일링)
+- **DB**: GCP Cloud SQL (PostgreSQL)
+- **Cache**: GCP Cloud Memorystore (Redis)
 
 ## Directory Map
 

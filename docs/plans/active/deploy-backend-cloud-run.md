@@ -17,6 +17,14 @@ NestJS backend를 GCP Cloud Run에 배포해서 공개 HTTPS URL 확보. Firebas
 
 ## 📍 현재 진행 상황 (2026-05-10)
 
+### ✅ 배포 완료
+- **Service URL**: `https://cleanballtrio-api-fpvvjohnta-du.a.run.app`
+- **검증**: `/` → 200 "Hello World!" / `/auth/kakao` (dummy) → 401 KOE320 (Kakao API 정상 도달)
+- **CORS_ORIGIN** (현재): `http://localhost:5173,https://cleanballtrio.web.app,https://cleanballtrio.firebaseapp.com` (revision 00002에서 갱신)
+- **새 Cloud Run URL 형식**: `https://cleanballtrio-api-1076044788885.asia-northeast3.run.app` (둘 다 동작 — 프론트는 기존 URL 사용 중)
+- **배포 스크립트**: `scripts/deploy-backend.ps1` (PowerShell 5.1 호환, .env에서 시크릿 자동 로드)
+- **CORS 갱신 시 주의**: `--update-env-vars`에 콤마 다중값 넣을 때 `^@^` 커스텀 구분자 필수 (e.g., `--update-env-vars="^@^CORS_ORIGIN=val1,val2,val3"`)
+
 ### ✅ 완료 — 코드 준비
 - [x] `backend/src/main.ts` — CORS origin을 `CORS_ORIGIN` env에서 읽음 (콤마 구분 다중 허용)
 - [x] `backend/Dockerfile` — multi-stage (deps → build → runtime), node:22-alpine, USER node, EXPOSE 8080
@@ -25,7 +33,14 @@ NestJS backend를 GCP Cloud Run에 배포해서 공개 HTTPS URL 확보. Firebas
 - [x] 로컬 `npm run build` 통과 확인
 - [x] `gcloud --version` = 564.0.0 확인, `jeongoheo0225@gmail.com` 인증 OK
 
-### ⏳ 대기 중 — 사용자 인터랙티브 (auto mode classifier가 차단해서 직접 실행 필요)
+### ✅ 완료 — GCP 셋업
+- [x] 프로젝트 `cleanballtrio` 생성 (project number: 1076044788885)
+- [x] 결제 계정 연결
+- [x] API 활성화: `run.googleapis.com`, `cloudbuild.googleapis.com`, `artifactregistry.googleapis.com`
+- [x] Artifact Registry 저장소 `cloud-run-source-deploy` 자동 생성됨
+- [x] Cloud Run 서비스 `cleanballtrio-api` 배포 (region: asia-northeast3)
+
+### (구) ⏳ 대기 중 — 사용자 인터랙티브 (auto mode classifier가 차단해서 직접 실행 필요)
 
 다음 세션을 시작할 때, **세션 프롬프트에 `!` 접두사로 한 줄씩 실행**:
 
