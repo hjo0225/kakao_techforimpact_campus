@@ -36,14 +36,16 @@ $encodedPassword = [uri]::EscapeDataString($envVars['DB_PASSWORD'])
 $encodedUser = [uri]::EscapeDataString($dbUser)
 $dbUrl = "postgresql://${encodedUser}:${encodedPassword}@/%2Fcloudsql%2F$encodedInstance/$dbName"
 
-# gcloud은 값에 콤마가 있으면 파싱 오류. ^@^ 접두어로 @ 구분자 사용
-$setEnvVars = "^@^" + (@(
+# gcloud은 값에 콤마가 있으면 파싱 오류. 또한 PostgreSQL URL의 `@`(credentials/host 구분자)와
+# 충돌해 env var가 둘로 쪼개지는 사례 확인됨 → 파이프 `|`를 커스텀 구분자로 사용
+# (KAKAO_*/JWT_SECRET/CORS_ORIGIN/DATABASE_URL 어느 값에도 `|`가 나타날 수 없음).
+$setEnvVars = "^|^" + (@(
     "KAKAO_REST_API_KEY=$($envVars['KAKAO_REST_API_KEY'])",
     "KAKAO_CLIENT_SECRET=$($envVars['KAKAO_CLIENT_SECRET'])",
     "JWT_SECRET=$($envVars['JWT_SECRET'])",
     "CORS_ORIGIN=$corsOrigin",
     "DATABASE_URL=$dbUrl"
-) -join '@')
+) -join '|')
 
 Write-Host "Cloud Run 배포 시작 (5~10분 소요)..." -ForegroundColor Cyan
 Write-Host "  Project: cleanballtrio"
