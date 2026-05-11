@@ -1,6 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { api } from '../lib/apiClient'
+import { useAuthStore, type User } from '../store/authStore'
+
+interface KakaoLoginResponse {
+  user: User
+  accessToken: string
+}
 
 export default function OAuthCallbackPage() {
   const navigate = useNavigate()
@@ -18,25 +24,21 @@ export default function OAuthCallbackPage() {
       return
     }
 
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/kakao`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code,
-        redirectUri: import.meta.env.VITE_KAKAO_REDIRECT_URI,
-      }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.text().catch(() => '')
-          throw new Error(`auth ${res.status}: ${body}`)
-        }
-        return res.json()
-      })
+    api
+      .post<KakaoLoginResponse>(
+        '/auth/kakao',
+        {
+          code,
+          redirectUri: import.meta.env.VITE_KAKAO_REDIRECT_URI,
+        },
+        { skipAuth: true },
+      )
       .then((data) => {
         setAuth(data.user, data.accessToken)
-        const team = getTeamFor(data.user.id)
-        navigate(team ? '/home' : '/onboarding', { replace: true })
+        // Prefer backend teamCode (server SSOT). Fall back to local cache for
+        // sessions whose team was selected before the backend column existed.
+        const hasTeam = data.user.teamCode ?? getTeamFor(data.user.id)
+        navigate(hasTeam ? '/home' : '/onboarding', { replace: true })
       })
       .catch((err) => {
         console.error('[OAuth callback] failed:', err)
