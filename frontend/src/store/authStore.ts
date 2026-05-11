@@ -1,19 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-interface User {
-  id: number
+export interface User {
+  id: string                       // backend DB id (BigInt → string)
   nickname: string
   profileImage: string | null
+  teamCode: string | null          // KBO team code (LG, DS, ...) — SSOT: backend
 }
 
 interface AuthStore {
   user: User | null
   token: string | null
-  teamsByUserId: Record<number, string>
+  // legacy local cache of "team selected by user.id" — kept until team-name→code
+  // migration lands. Primary source of truth is `user.teamCode`.
+  teamsByUserId: Record<string, string>
   setAuth: (user: User, token: string) => void
   setTeam: (teamName: string) => void
-  getTeamFor: (userId: number) => string | null
+  getTeamFor: (userId: string) => string | null
   logout: () => void
 }
 
@@ -34,6 +37,17 @@ export const useAuthStore = create<AuthStore>()(
       getTeamFor: (userId) => get().teamsByUserId[userId] ?? null,
       logout: () => set({ user: null, token: null }),
     }),
-    { name: 'auth' },
+    {
+      name: 'auth',
+      // v2: user.id changed from number → string (DB id) and JWT `sub` semantics
+      // changed (kakao_id → DB id). Old tokens are invalid; force re-login.
+      version: 2,
+      migrate: (_persistedState, _version) =>
+        ({
+          user: null,
+          token: null,
+          teamsByUserId: {},
+        }) as unknown as AuthStore,
+    },
   ),
 )

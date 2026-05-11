@@ -1,0 +1,51 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           BigInt   @id @default(autoincrement())
+  kakaoId      BigInt   @unique @map("kakao_id")
+  nickname     String
+  profileImage String?  @map("profile_image")
+  teamCode     String?  @map("team_code")
+  avatarConfig Json?    @map("avatar_config")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  usages Usage[]
+
+  @@index([teamCode], name: "users_team_code_idx")
+  @@map("users")
+}
+
+model Team {
+  code         String @id
+  displayName  String @map("display_name")
+  primaryColor String @map("primary_color")
+
+  @@map("teams")
+}
+
+model Usage {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt   @map("user_id")
+  qrPayload   String   @map("qr_payload")
+  stadiumCode String?  @map("stadium_code")
+  scannedAt   DateTime @default(now()) @map("scanned_at")
+  lat         Float?
+  lng         Float?
+  score       Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, qrPayload])
+  @@index([userId, scannedAt], name: "usages_user_scanned_idx")
+  @@index([scannedAt], name: "usages_scanned_idx")
+  @@map("usages")
+}

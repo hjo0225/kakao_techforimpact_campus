@@ -4,60 +4,68 @@
 
 ## 현재 상태
 
-**DB 미도입.** 백엔드는 stateless로 카카오 인증만 처리, JWT를 stateless 검증 기반으로 사용.
+- **DB**: GCP Cloud SQL (PostgreSQL 16, db-f1-micro, asia-northeast3, 인스턴스 `cleanballtrio-db`, DB명 `cleanballtrio`)
+- **ORM**: Prisma 5.x (`backend/prisma/schema.prisma`)
+- **마이그레이션 도구**: `prisma migrate` (개발: `migrate dev`, prod: `migrate deploy` — Cloud Run 컨테이너 시작 시 자동 실행)
+- **로컬 개발**: Cloud SQL Auth Proxy(추천) 또는 로컬 Docker PostgreSQL. `backend/.env`의 `DATABASE_URL`로 제어.
+- **캐시**: GCP Memorystore (Redis) — **미도입**, 팀 랭킹 sorted set용으로 예정.
 
-**예정 DB**: GCP Cloud SQL (PostgreSQL).
-**캐시**: GCP Memorystore (Redis) — 팀 랭킹 sorted set용.
+`schema.prisma`가 코드 SSOT이며, 본 문서는 의도/근거/마이그레이션 정책을 기록합니다.
 
 ---
 
-## Entities (예정 — 구현 시 plan에서 확정)
+## Entities (현재 적용 — `prisma/migrations/20260511130625_init`)
 
 ### `users`
 
 ```sql
 CREATE TABLE users (
-  id              BIGSERIAL PRIMARY KEY,
-  kakao_id        BIGINT     NOT NULL UNIQUE,
-  nickname        TEXT       NOT NULL,
+  id              BIGSERIAL    PRIMARY KEY,
+  kakao_id        BIGINT       NOT NULL UNIQUE,
+  nickname        TEXT         NOT NULL,
   profile_image   TEXT,
-  team_code       TEXT       REFERENCES teams(code),
-  avatar_config   JSONB      NOT NULL DEFAULT '{}',
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  team_code       TEXT,                                  -- (현재 FK 없음 — 아래 Open Questions 참고)
+  avatar_config   JSONB,
+  created_at      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP(3) NOT NULL
 );
 CREATE INDEX users_team_code_idx ON users (team_code);
 ```
+
+> **참고**: 초기 마이그레이션은 `team_code → teams.code` FK를 생성하지 않습니다. 다음 마이그레이션에서 FK 추가 예정 (teams 시드 후).
 
 ### `teams`
 
 ```sql
 -- 마스터 데이터 (KBO 10개 팀)
 CREATE TABLE teams (
-  code         TEXT PRIMARY KEY,    -- 'doosan', 'lg', 'samsung', ...
-  display_name TEXT NOT NULL,
-  primary_color TEXT NOT NULL,
-  -- frontend src/app/teamBrand.ts와 1:1 매핑
+  code          TEXT PRIMARY KEY,    -- 'LG', 'DS', 'SS', 'HH', 'KT', 'NC', 'OB', 'HB', 'KIA', 'SK'
+  display_name  TEXT NOT NULL,
+  primary_color TEXT NOT NULL
 );
 ```
+
+시드는 `prisma/seed.ts` (`npm run db:seed`로 실행). 프론트엔드 `src/app/teamBrand.ts`와 1:1 매핑되어야 함.
 
 ### `usages` (다회용기 사용 기록)
 
 ```sql
 CREATE TABLE usages (
-  id           BIGSERIAL PRIMARY KEY,
-  user_id      BIGINT      NOT NULL REFERENCES users(id),
-  qr_payload   TEXT        NOT NULL,                    -- 원본 QR 데이터
-  stadium_code TEXT,                                    -- 구장 식별 (TBD)
-  scanned_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  lat          NUMERIC(9,6),
-  lng          NUMERIC(9,6),
-  score        INTEGER     NOT NULL,                    -- 산정 알고리즘 적용 후 점수
-  UNIQUE (user_id, qr_payload)                          -- 같은 QR 중복 스캔 방지
+  id           BIGSERIAL    PRIMARY KEY,
+  user_id      BIGINT       NOT NULL REFERENCES users(id),
+  qr_payload   TEXT         NOT NULL,                    -- 원본 QR 데이터
+  stadium_code TEXT,                                     -- 구장 식별 (TBD)
+  scanned_at   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  lat          DOUBLE PRECISION,
+  lng          DOUBLE PRECISION,
+  score        INTEGER      NOT NULL DEFAULT 0,
+  UNIQUE (user_id, qr_payload)                           -- 같은 QR 중복 스캔 방지
 );
-CREATE INDEX usages_user_scanned_idx ON usages (user_id, scanned_at DESC);
-CREATE INDEX usages_scanned_idx ON usages (scanned_at DESC);
+CREATE INDEX usages_user_scanned_idx ON usages (user_id, scanned_at);
+CREATE INDEX usages_scanned_idx ON usages (scanned_at);
 ```
+
+> `lat/lng`는 PRD 상 NUMERIC(9,6)이었으나 Prisma의 `Float` → `DOUBLE PRECISION`으로 매핑됨. PostGIS 도입 시 재검토.
 
 ### `stadiums` (TBD)
 
@@ -65,7 +73,7 @@ QR payload에서 구장 식별 필요 시 추가.
 
 ---
 
-## Redis Keys (예정)
+## Redis Keys (예정 — 미도입)
 
 | 키 | 타입 | 용도 |
 |---|---|---|
@@ -77,10 +85,11 @@ QR payload에서 구장 식별 필요 시 추가.
 
 ## 마이그레이션 정책
 
-- **도구**: TypeORM migration / Prisma migrate / Knex — 백엔드 ORM 결정 시 확정 (TBD)
-- **이름 규칙**: `YYYYMMDDHHMMSS-<slug>.ts` (timestamp prefix)
-- **롤백**: 각 마이그레이션은 `up` + `down` 짝
-- **prod 적용**: Cloud SQL Proxy 통해 수동 실행 (CI 자동 적용은 안전성 검증 후)
+- **도구**: Prisma Migrate
+- **이름 규칙**: Prisma 자동 생성 (`<timestamp>_<slug>`)
+- **롤백**: Prisma는 down 마이그레이션을 자동 생성하지 않음 — 필요한 경우 수동 SQL 롤백 작성
+- **prod 적용**: Cloud Run 컨테이너 시작 시 `prisma migrate deploy` 자동 실행 (Dockerfile `CMD`). Prisma의 advisory lock으로 다중 인스턴스 동시 시작 시에도 안전.
+- **시드**: `prod 자동 실행 안 함`. Cloud SQL Auth Proxy 통해 `npm run db:seed` 수동 실행 (초기 1회).
 
 ---
 
@@ -93,8 +102,7 @@ QR payload에서 구장 식별 필요 시 추가.
 
 ## Open Questions
 
-- [ ] ORM 선택 (TypeORM / Prisma / Drizzle)
-- [ ] kakao_id를 PK로 쓸지, BIGSERIAL 별도 둘지 (현재 안: 별도 `id` PK + `kakao_id` UNIQUE)
+- [ ] `users.team_code → teams.code` FK 제약 추가 (현재 미설정 — 시드 후 마이그레이션)
 - [ ] 시즌 정의 (1.1~12.31? 또는 KBO 시즌 일정?)
 - [ ] QR payload 포맷 (운영사 협의)
 - [ ] 점수 산정 알고리즘 (PRD F3 연결)
