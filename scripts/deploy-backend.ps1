@@ -4,7 +4,9 @@
 
 $ErrorActionPreference = 'Stop'
 
-$envPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'backend\.env'
+$projectRoot = Split-Path $PSScriptRoot -Parent
+$envPath = Join-Path $projectRoot 'backend\.env'
+$sourceDir = Join-Path $projectRoot 'backend'
 if (-not (Test-Path $envPath)) {
     Write-Error "backend/.env 파일이 없습니다: $envPath"
     exit 1
@@ -17,7 +19,7 @@ Get-Content $envPath | ForEach-Object {
     }
 }
 
-foreach ($key in @('KAKAO_REST_API_KEY', 'KAKAO_CLIENT_SECRET', 'JWT_SECRET', 'DB_PASSWORD')) {
+foreach ($key in @('KAKAO_REST_API_KEY', 'KAKAO_CLIENT_SECRET', 'JWT_SECRET', 'DB_PASSWORD', 'VISION_API_URL')) {
     if (-not $envVars.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envVars[$key])) {
         Write-Error "필수 env 변수 누락: $key (backend/.env 확인)"
         exit 1
@@ -45,7 +47,8 @@ $setEnvVars = "^|^" + (@(
     "KAKAO_CLIENT_SECRET=$($envVars['KAKAO_CLIENT_SECRET'])",
     "JWT_SECRET=$($envVars['JWT_SECRET'])",
     "CORS_ORIGIN=$corsOrigin",
-    "DATABASE_URL=$dbUrl"
+    "DATABASE_URL=$dbUrl",
+    "VISION_API_URL=$($envVars['VISION_API_URL'])"
 ) -join '|')
 
 Write-Host "Cloud Run 배포 시작 (5~10분 소요)..." -ForegroundColor Cyan
@@ -57,7 +60,7 @@ Write-Host ""
 
 gcloud run deploy cleanballtrio-api `
     --project cleanballtrio `
-    --source backend `
+    --source $sourceDir `
     --region asia-northeast3 `
     --platform managed `
     --allow-unauthenticated `
