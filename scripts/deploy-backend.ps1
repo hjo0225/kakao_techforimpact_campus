@@ -29,12 +29,13 @@ $dbUser = if ($envVars.ContainsKey('DB_USER')) { $envVars['DB_USER'] } else { 'p
 $dbName = if ($envVars.ContainsKey('DB_NAME')) { $envVars['DB_NAME'] } else { 'cleanballtrio' }
 
 # Cloud SQL Unix 소켓 연결 (Cloud Run → Cloud SQL)
-# 비밀번호/소켓 경로의 특수문자 URL 인코딩 (Prisma URL 파서 호환)
+# Prisma는 path-form Unix socket URL(`@/%2Fcloudsql%2F...`)을 거부함 (P1013 empty host).
+# 공식 권장 형식: `postgresql://user:pw@localhost/db?host=/cloudsql/INSTANCE_CONNECTION_NAME`
+# https://www.prisma.io/docs/orm/overview/databases/postgresql#configuring-the-connection-url
 $cloudSqlInstance = "cleanballtrio:asia-northeast3:cleanballtrio-db"
-$encodedInstance = $cloudSqlInstance -replace ":", "%3A"
 $encodedPassword = [uri]::EscapeDataString($envVars['DB_PASSWORD'])
 $encodedUser = [uri]::EscapeDataString($dbUser)
-$dbUrl = "postgresql://${encodedUser}:${encodedPassword}@/%2Fcloudsql%2F$encodedInstance/$dbName"
+$dbUrl = "postgresql://${encodedUser}:${encodedPassword}@localhost/${dbName}?host=/cloudsql/${cloudSqlInstance}"
 
 # gcloud은 값에 콤마가 있으면 파싱 오류. 또한 PostgreSQL URL의 `@`(credentials/host 구분자)와
 # 충돌해 env var가 둘로 쪼개지는 사례 확인됨 → 파이프 `|`를 커스텀 구분자로 사용
