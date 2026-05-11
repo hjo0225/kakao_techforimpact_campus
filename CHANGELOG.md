@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+### feat(vision): `/verify/use`·`/verify/return` + usages 적재 + 반납 가드
+
+- 기존 `/verify/reusable` 제거(Breaking) → `POST /verify/use`, `POST /verify/return`으로 분리
+- 검증 통과 시 `usages` row 자동 적재 (USE=50점, RETURN=100점)
+- confidence < 70% 또는 single_use → `400 LOW_CONFIDENCE` / `400 NOT_REUSABLE`
+- RETURN 가드: 같은 사용자의 12시간 내 USE가 없으면 `409 NO_RECENT_USE`
+- 스키마: `usages.kind` enum 추가, `qr_payload` nullable로 완화, `game_id`/`confidence` 컬럼 추가, UNIQUE(user_id, qr_payload) 제거
+- 마이그레이션: `20260511190055_extend_usages_for_vision`
+- 단위 테스트 7건 (`verify.service.spec.ts`) — Prisma + axios mock 기반
+
 ### feat(vision): 다회용기/일회용기 분류 Vision API 도입
 
 - `vision/` 신규 디렉토리 — Python FastAPI · MobileNetV2 (PyTorch), `best_model.pth` 가중치

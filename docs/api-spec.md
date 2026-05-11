@@ -137,33 +137,56 @@ JWT 검증 후 본인 프로필 조회.
 
 ## Verify (Vision AI)
 
-### `POST /verify/reusable`
+다회용기 사용/반납 인증. 내부적으로 Vision Cloud Run(`cleanballtrio-vision`, MobileNetV2)에 forward한 뒤 통과 시 `usages` 테이블에 기록 + 점수 부여.
 
-업로드된 이미지가 **다회용기인지 일회용기인지** 분류. 내부적으로 별도의 Python Cloud Run 서비스(`cleanballtrio-vision`, MobileNetV2)에 forward한다. JWT 필수.
+공통 규칙:
+- JWT 필수
+- `Content-Type: multipart/form-data`
+- 검증 기준: `isReusable === true` **그리고** `confidence ≥ 70` → 통과
+- 통과 시: USE = 50점, RETURN = 100점 (`usages.score`)
 
-**Request** — `multipart/form-data`
+### `POST /verify/use`
+
+**Request fields (multipart)**
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `image` | file | ✅ | JPEG/PNG. 최대 10MB. |
+| `gameId` | string | 선택 | 관람 중인 경기 id (게임 사용 통계용) |
+| `lat` | number | 선택 | 위도 |
+| `lng` | number | 선택 | 경도 |
 
 **Response 200**
 ```json
 {
-  "isReusable": true,
-  "classIndex": 0,
-  "confidence": 96.42
+  "vision": { "isReusable": true, "classIndex": 0, "confidence": 92.5 },
+  "usage": {
+    "id": "12",
+    "kind": "USE",
+    "score": 50,
+    "scannedAt": "2026-05-12T10:00:00.000Z"
+  }
 }
 ```
-- `classIndex`: `0`=`reusable`, `1`=`single_use` (모델 학습 시 폴더명 알파벳순)
-- `confidence`: 0~100 (해당 클래스의 softmax 확률 × 100)
 
-**Errors**
-- `400` — `image` 필드 누락 / 파일 크기 초과 / 이미지 디코딩 실패
-- `401` — JWT 무효
-- `503` — vision 서비스 타임아웃 또는 다운
+### `POST /verify/return`
 
-> 사용 인증과 반납 인증 모두 동일한 분류기를 사용. 비즈니스 단(시간/위치 가드, `usages` 적재 등)은 후속 plan.
+USE와 동일한 요청 스키마. **추가 가드**:
+- 같은 사용자의 가장 최근 USE가 12시간 이내에 있어야 함
+- 없으면 `409 Conflict { code: 'NO_RECENT_USE' }`
+
+응답 형태는 USE와 동일하지만 `usage.kind = "RETURN"`, `usage.score = 100`.
+
+### 공통 에러
+
+| 상태 | code | 의미 |
+|---|---|---|
+| 400 | `NOT_REUSABLE` | 모델이 single_use로 판별 |
+| 400 | `LOW_CONFIDENCE` | confidence < 70% |
+| 400 | (NestJS) | `image` 누락 / 파일 크기 초과 / `gameId`/`lat`/`lng` validation |
+| 401 | — | JWT 무효 |
+| 409 | `NO_RECENT_USE` | RETURN인데 직전 12시간 USE 없음 |
+| 503 | — | Vision 서비스 타임아웃/다운 |
 
 ---
 

@@ -67,23 +67,33 @@ CREATE INDEX games_date_idx ON games (date);
 
 > 시즌 시작 시 `prisma/seed.ts`의 `seedGames()`가 사용자 제공 일정 텍스트를 파싱해 적재. 라이브 스코어 / 우천 취소 / 더블헤더는 향후 plan에서 보완.
 
-### `usages` (다회용기 사용 기록)
+### `usages` (다회용기 사용/반납 기록)
 
 ```sql
+CREATE TYPE "UsageKind" AS ENUM ('USE', 'RETURN');
+
 CREATE TABLE usages (
   id           BIGSERIAL    PRIMARY KEY,
   user_id      BIGINT       NOT NULL REFERENCES users(id),
-  qr_payload   TEXT         NOT NULL,                    -- 원본 QR 데이터
-  stadium_code TEXT,                                     -- 구장 식별 (TBD)
+  kind         "UsageKind"  NOT NULL,
+  qr_payload   TEXT,                                     -- Vision 인증에는 없음 (nullable)
+  game_id      BIGINT       REFERENCES games(id),        -- 어떤 경기에서 (optional)
+  stadium_code TEXT,
   scanned_at   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   lat          DOUBLE PRECISION,
   lng          DOUBLE PRECISION,
   score        INTEGER      NOT NULL DEFAULT 0,
-  UNIQUE (user_id, qr_payload)                           -- 같은 QR 중복 스캔 방지
+  confidence   DOUBLE PRECISION                          -- Vision API confidence (0~100)
 );
 CREATE INDEX usages_user_scanned_idx ON usages (user_id, scanned_at);
 CREATE INDEX usages_scanned_idx ON usages (scanned_at);
+CREATE INDEX usages_user_kind_idx ON usages (user_id, kind);
 ```
+
+- `kind`: `USE`(사용 인증) / `RETURN`(반납 인증)
+- `score`: 검증 통과 시 USE=50, RETURN=100 (`backend/src/verify/verify.service.ts` 상수)
+- `qr_payload`는 향후 QR 스캔 방식 도입 시 사용. 현재는 Vision 인증만 있어 항상 null
+- 멱등성 키는 현재 없음 — 같은 사용자가 같은 이미지를 두 번 인증해도 두 행. UI에서 다운로드/재시도 가드 필요 시 후속 plan
 
 > `lat/lng`는 PRD 상 NUMERIC(9,6)이었으나 Prisma의 `Float` → `DOUBLE PRECISION`으로 매핑됨. PostGIS 도입 시 재검토.
 
