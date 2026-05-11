@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### feat(vision): 다회용기/일회용기 분류 Vision API 도입
+
+- `vision/` 신규 디렉토리 — Python FastAPI · MobileNetV2 (PyTorch), `best_model.pth` 가중치
+- 별도 Cloud Run 서비스 `cleanballtrio-vision`으로 배포 (Dockerfile, deploy-vision.ps1)
+- NestJS `VerifyModule` 추가: `POST /verify/reusable` (JWT 필수) — multipart `image`를 Vision API로 forward, `{isReusable, classIndex, confidence}` 반환
+- 환경 변수 `VISION_API_URL` 추가 (deploy-backend.ps1 필수)
+
 ### feat(api): KBO 경기 일정 DB 이전 + `GET /games`
 
 - 신규 테이블 `games` (PK `id`, FK `away_team_code`/`home_team_code` → `teams.code`, 유니크 `(date, away, home)`)
