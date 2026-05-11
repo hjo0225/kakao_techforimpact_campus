@@ -29,7 +29,29 @@ model Team {
   displayName  String @map("display_name")
   primaryColor String @map("primary_color")
 
+  awayGames Game[] @relation("AwayGames")
+  homeGames Game[] @relation("HomeGames")
+
   @@map("teams")
+}
+
+model Game {
+  id           BigInt   @id @default(autoincrement())
+  date         DateTime @db.Date
+  startTime    String   @map("start_time")     // "HH:MM" KST
+  awayTeamCode String   @map("away_team_code")
+  homeTeamCode String   @map("home_team_code")
+  venue        String                            // 잠실, 광주, ...
+  status       String   @default("-")            // 정적 일정은 "-", 운영 중 라이브 데이터로 갱신 가능
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  awayTeam Team @relation("AwayGames", fields: [awayTeamCode], references: [code])
+  homeTeam Team @relation("HomeGames", fields: [homeTeamCode], references: [code])
+
+  @@unique([date, awayTeamCode, homeTeamCode])
+  @@index([date])
+  @@map("games")
 }
 
 model Usage {
