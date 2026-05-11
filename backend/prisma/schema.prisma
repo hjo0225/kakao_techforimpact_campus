@@ -46,28 +46,38 @@ model Game {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  awayTeam Team @relation("AwayGames", fields: [awayTeamCode], references: [code])
-  homeTeam Team @relation("HomeGames", fields: [homeTeamCode], references: [code])
+  awayTeam Team    @relation("AwayGames", fields: [awayTeamCode], references: [code])
+  homeTeam Team    @relation("HomeGames", fields: [homeTeamCode], references: [code])
+  usages   Usage[]
 
   @@unique([date, awayTeamCode, homeTeamCode])
   @@index([date])
   @@map("games")
 }
 
+enum UsageKind {
+  USE
+  RETURN
+}
+
 model Usage {
-  id          BigInt   @id @default(autoincrement())
-  userId      BigInt   @map("user_id")
-  qrPayload   String   @map("qr_payload")
-  stadiumCode String?  @map("stadium_code")
-  scannedAt   DateTime @default(now()) @map("scanned_at")
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt    @map("user_id")
+  kind        UsageKind
+  qrPayload   String?   @map("qr_payload")
+  gameId      BigInt?   @map("game_id")
+  stadiumCode String?   @map("stadium_code")
+  scannedAt   DateTime  @default(now()) @map("scanned_at")
   lat         Float?
   lng         Float?
-  score       Int      @default(0)
+  score       Int       @default(0)
+  confidence  Float?
 
-  user User @relation(fields: [userId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+  game Game? @relation(fields: [gameId], references: [id])
 
-  @@unique([userId, qrPayload])
   @@index([userId, scannedAt], name: "usages_user_scanned_idx")
   @@index([scannedAt], name: "usages_scanned_idx")
+  @@index([userId, kind], name: "usages_user_kind_idx")
   @@map("usages")
 }
