@@ -29,10 +29,51 @@ const TEAM_NAME_TO_CODE: Record<string, string> = {
   SSG: 'SK',
 }
 
-// 2026 KBO 정규시즌 — 05.20 ~ 05.31 (사용자 제공)
-// 포맷: "MM.DD(요일)?  HH:MM  AwayvsHome  Venue  Status"
-// 날짜는 다음 라인까지 fill-down. 05.25(월) 휴식일.
+// 2026 KBO 정규시즌 — 05.12 ~ 05.31 (사용자 제공, 2회 입력 합본)
+// 두 포맷 혼재:
+//   (간략) "MM.DD?  HH:MM  AwayvsHome  Venue  -"
+//   (프리뷰) "MM.DD?  HH:MM  AwayvsHome  프리뷰  [Caster…]  Venue  -"
+//   캐스터가 두 줄에 걸치는 경우 있음 — preprocess에서 합침.
+//   날짜는 다음 라인까지 fill-down. 05.18(월) / 05.25(월) 휴식일.
 const SCHEDULE_RAW = `
+05.12(화)    18:30    삼성vsLG    프리뷰        SS-T        잠실    -
+18:30    NCvs롯데    프리뷰        KN-T        사직    -
+18:30    SSGvsKT    프리뷰        SPO-T        수원    -
+18:30    두산vsKIA    프리뷰        SPO-2T        광주    -
+18:30    한화vs키움    프리뷰        MS-T        고척    -
+05.13(수)    18:30    삼성vsLG    프리뷰        SS-T        잠실    -
+18:30    NCvs롯데    프리뷰        KN-T        사직    -
+18:30    SSGvsKT    프리뷰        SPO-T        수원    -
+18:30    두산vsKIA    프리뷰        SPO-2T        광주    -
+18:30    한화vs키움    프리뷰        MS-T        고척    -
+05.14(목)    18:30    삼성vsLG    프리뷰        SS-T        잠실    -
+18:30    NCvs롯데    프리뷰        KN-T        사직    -
+18:30    SSGvsKT    프리뷰        SPO-T        수원    -
+18:30    두산vsKIA    프리뷰        SPO-2T        광주    -
+18:30    한화vs키움    프리뷰        MS-T        고척    -
+05.15(금)    18:30    롯데vs두산    프리뷰        MS-T        잠실    -
+18:30    LGvsSSG    프리뷰        SPO-2T        문학    -
+18:30    KIAvs삼성    프리뷰        K-2T        대구    -
+18:30    키움vsNC    프리뷰        KN-T
+SPO-T        창원    -
+18:30    한화vsKT    프리뷰        SS-T        수원    -
+05.16(토)    14:00    한화vsKT    프리뷰        S-T        수원    -
+17:00    롯데vs두산    프리뷰        SS-T        잠실    -
+17:00    LGvsSSG    프리뷰        MS-T        문학    -
+17:00    KIAvs삼성    프리뷰        SPO-2T        대구    -
+17:00    키움vsNC    프리뷰        KN-T
+SPO-T        창원    -
+05.17(일)    14:00    롯데vs두산    프리뷰        MS-T        잠실    -
+14:00    LGvsSSG    프리뷰        M-T        문학    -
+14:00    KIAvs삼성    프리뷰        SPO-2T        대구    -
+14:00    키움vsNC    프리뷰        KN-T
+SPO-T        창원    -
+14:00    한화vsKT    프리뷰        SS-T        수원    -
+05.19(화)    18:30    NCvs두산    프리뷰                잠실    -
+18:30    LGvsKIA    프리뷰                광주    -
+18:30    SSGvs키움    프리뷰                고척    -
+18:30    롯데vs한화    프리뷰                대전    -
+18:30    KTvs삼성    프리뷰                포항    -
 05.20(수)    18:30    NCvs두산                    잠실    -
 18:30    LGvsKIA                    광주    -
 18:30    SSGvs키움                    고척    -
@@ -94,6 +135,10 @@ const SCHEDULE_YEAR = 2026
 const TEAM_TOKEN = Object.keys(TEAM_NAME_TO_CODE).sort((a, b) => b.length - a.length) // 긴 토큰 우선
 const MATCH_PATTERN = new RegExp(`^(${TEAM_TOKEN.join('|')})vs(${TEAM_TOKEN.join('|')})$`)
 
+const VENUES = new Set([
+  '잠실', '광주', '고척', '대전', '포항', '사직', '수원', '문학', '창원', '대구',
+])
+
 interface ParsedGame {
   date: Date
   startTime: string
@@ -102,36 +147,58 @@ interface ParsedGame {
   venue: string
 }
 
+// 캐스터가 다음 줄로 넘어간 경우(`키움vsNC` 류) 이전 줄에 이어붙임.
+// 줄의 첫 토큰이 날짜(MM.DD)도 시각(HH:MM)도 아니면 연속선으로 간주.
+function preprocessLines(raw: string): string[] {
+  const out: string[] = []
+  for (const rawLine of raw.split('\n')) {
+    const t = rawLine.trim()
+    if (!t) continue
+    const first = t.split(/\s+/)[0]
+    const isStart = /^\d{2}\.\d{2}/.test(first) || /^\d{2}:\d{2}/.test(first)
+    if (isStart || out.length === 0) {
+      out.push(t)
+    } else {
+      out[out.length - 1] += ' ' + t
+    }
+  }
+  return out
+}
+
 function parseSchedule(raw: string): ParsedGame[] {
   const games: ParsedGame[] = []
   let currentDate: Date | null = null
 
-  for (const line of raw.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
+  for (const line of preprocessLines(raw)) {
+    const tokens = line.split(/\s+/).filter(Boolean)
+    let offset = 0
 
-    const tokens = trimmed.split(/\s+/).filter(Boolean)
-    let dateLeading = false
     if (/^\d{2}\.\d{2}/.test(tokens[0])) {
       const m = tokens[0].match(/^(\d{2})\.(\d{2})/)
       if (m) {
         const [, mm, dd] = m
         currentDate = new Date(Date.UTC(SCHEDULE_YEAR, Number(mm) - 1, Number(dd)))
-        dateLeading = true
+        offset = 1
       }
     }
 
-    const offset = dateLeading ? 1 : 0
+    if (!currentDate) continue
     const time = tokens[offset]
     const matchup = tokens[offset + 1]
-    const venue = tokens[offset + 2]
+    if (!time || !matchup) continue
 
-    if (!currentDate || !time || !matchup || !venue) continue
+    // venue를 known set으로 스캔 — 포맷 차이(프리뷰/캐스터 컬럼)에 강건
+    let venueIdx = -1
+    for (let i = offset + 2; i < tokens.length; i++) {
+      if (VENUES.has(tokens[i])) { venueIdx = i; break }
+    }
+    if (venueIdx === -1) {
+      throw new Error(`venue를 찾지 못함: "${line}"`)
+    }
+    const venue = tokens[venueIdx]
 
     const m = matchup.match(MATCH_PATTERN)
-    if (!m) {
-      throw new Error(`경기 매치업 파싱 실패: "${matchup}"`)
-    }
+    if (!m) throw new Error(`경기 매치업 파싱 실패: "${matchup}" (line: "${line}")`)
     const [, awayName, homeName] = m
 
     games.push({
