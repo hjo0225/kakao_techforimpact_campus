@@ -47,6 +47,26 @@ CREATE TABLE teams (
 
 시드는 `prisma/seed.ts` (`npm run db:seed`로 실행). 프론트엔드 `src/app/teamBrand.ts`와 1:1 매핑되어야 함.
 
+### `games` (KBO 경기 일정)
+
+```sql
+CREATE TABLE games (
+  id              BIGSERIAL    PRIMARY KEY,
+  date            DATE         NOT NULL,
+  start_time      TEXT         NOT NULL,                  -- "HH:MM" KST
+  away_team_code  TEXT         NOT NULL REFERENCES teams(code),
+  home_team_code  TEXT         NOT NULL REFERENCES teams(code),
+  venue           TEXT         NOT NULL,                  -- 잠실, 광주, 고척, ...
+  status          TEXT         NOT NULL DEFAULT '-',      -- 정적 일정은 '-'. 추후 라이브 스코어/취소 등
+  created_at      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP(3) NOT NULL,
+  UNIQUE (date, away_team_code, home_team_code)
+);
+CREATE INDEX games_date_idx ON games (date);
+```
+
+> 시즌 시작 시 `prisma/seed.ts`의 `seedGames()`가 사용자 제공 일정 텍스트를 파싱해 적재. 라이브 스코어 / 우천 취소 / 더블헤더는 향후 plan에서 보완.
+
 ### `usages` (다회용기 사용 기록)
 
 ```sql
