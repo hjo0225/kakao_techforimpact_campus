@@ -1,6 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import axios from 'axios'
+import { PrismaService } from '../prisma/prisma.service'
 
 interface KakaoTokenResponse {
   access_token: string
@@ -20,21 +21,42 @@ interface KakaoUserResponse {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name)
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async kakaoLogin(code: string, redirectUri: string) {
     const kakaoToken = await this.getKakaoToken(code, redirectUri)
     const kakaoUser = await this.getKakaoUser(kakaoToken)
 
-    const user = {
-      id: kakaoUser.id,
-      nickname: kakaoUser.kakao_account.profile.nickname,
-      profileImage: kakaoUser.kakao_account.profile.profile_image_url ?? null,
+    const user = await this.prisma.user.upsert({
+      where: { kakaoId: BigInt(kakaoUser.id) },
+      create: {
+        kakaoId: BigInt(kakaoUser.id),
+        nickname: kakaoUser.kakao_account.profile.nickname,
+        profileImage: kakaoUser.kakao_account.profile.profile_image_url ?? null,
+      },
+      update: {
+        nickname: kakaoUser.kakao_account.profile.nickname,
+        profileImage: kakaoUser.kakao_account.profile.profile_image_url ?? null,
+      },
+    })
+
+    const accessToken = this.jwtService.sign({
+      sub: user.id.toString(),
+      nickname: user.nickname,
+    })
+
+    return {
+      user: {
+        id: user.id.toString(),
+        nickname: user.nickname,
+        profileImage: user.profileImage,
+        teamCode: user.teamCode,
+      },
+      accessToken,
     }
-
-    const accessToken = this.jwtService.sign({ sub: user.id, nickname: user.nickname })
-
-    return { user, accessToken }
   }
 
   private async getKakaoToken(code: string, redirectUri: string): Promise<string> {
