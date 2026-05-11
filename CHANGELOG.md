@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### feat(api): KBO 경기 일정 DB 이전 + `GET /games`
+
+- 신규 테이블 `games` (PK `id`, FK `away_team_code`/`home_team_code` → `teams.code`, 유니크 `(date, away, home)`)
+- `prisma/seed.ts`의 `seedGames()`가 2026-05-20 ~ 05-31 KBO 정규시즌 55경기를 적재
+- `GET /games?from=YYYY-MM-DD&to=YYYY-MM-DD` — 날짜 범위 조회, team displayName join 포함
+- 프론트엔드 `GameSelectScreen`의 하드코딩 mock 4경기 제거 → API 호출로 대체
+
 ### feat(api): DB 연동 + `/me` 엔드포인트 도입
 
 - `POST /auth/kakao` 응답 변경 (Breaking)

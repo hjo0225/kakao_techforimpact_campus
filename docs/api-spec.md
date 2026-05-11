@@ -135,6 +135,41 @@ JWT 검증 후 본인 프로필 조회.
 
 ---
 
+## Games
+
+### `GET /games`
+
+KBO 경기 일정 조회. 인증 불필요.
+
+**Query parameters**
+
+| 이름 | 형식 | 필수 | 설명 |
+|---|---|---|---|
+| `from` | `YYYY-MM-DD` | 선택 | 시작일 (inclusive) |
+| `to`   | `YYYY-MM-DD` | 선택 | 종료일 (inclusive) |
+
+`from`/`to` 모두 없으면 전체 일정 반환. `date asc, startTime asc` 정렬.
+
+**Response 200**
+```json
+[
+  {
+    "id": "1",
+    "date": "2026-05-20",
+    "startTime": "18:30",
+    "awayTeam": { "code": "NC", "displayName": "NC 다이노스" },
+    "homeTeam": { "code": "DS", "displayName": "두산 베어스" },
+    "venue": "잠실",
+    "status": "-"
+  }
+]
+```
+
+**Errors**
+- `400` — `from`/`to` 형식 부적합
+
+---
+
 ## (예정) 추후 작성 영역
 
 DB 도입 후 작성 — 구현 시 plan에서 이 섹션 갱신:
