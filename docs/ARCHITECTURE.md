@@ -34,10 +34,16 @@
 ┌─────────────────────────────────────┐
 │  Cloud SQL (PostgreSQL 16)           │
 │  cleanballtrio-db / db cleanballtrio │
-│  ─ tables: users, teams, usages      │
+│  ─ tables: users, teams, usages,     │
+│            games                      │
 │                                       │
 │  Memorystore (Redis) — TBD            │
 └─────────────────────────────────────┘
+
+       NestJS ──(multipart, server→server)──▶ Cloud Run [cleanballtrio-vision]
+                                              Python · FastAPI · MobileNetV2
+                                              POST /verify-reusable
+                                              ─ best_model.pth (2-class)
 ```
 
 ## 모듈 경계
@@ -63,6 +69,12 @@
 | `prisma/` | `PrismaService` + `PrismaModule` (`@Global()`) — DB 연결 lifecycle 관리 | Cloud SQL |
 | `auth/` | 카카오 OAuth + JWT 발급/검증 (`AuthController`, `AuthService`, `JwtStrategy`, `JwtAuthGuard`) | `kauth.kakao.com`, `kapi.kakao.com`, `@nestjs/jwt`, `passport-jwt`, `PrismaService` |
 | `users/` | `/me` 프로필 조회/팀 변경/아바타 저장 (`UsersController`, `UsersService`) | `PrismaService`, `JwtAuthGuard` (auth 모듈 의존) |
+| `games/` | `/games` KBO 일정 조회 (`GamesController`, `GamesService`) | `PrismaService` |
+| `verify/` | `/verify/reusable` 이미지 → Vision API forward (`VerifyController`, `VerifyService`) | `axios`, `form-data`, env `VISION_API_URL` |
+
+### Vision (`vision/`, 별도 Cloud Run 서비스)
+
+Python FastAPI · MobileNetV2 (PyTorch). `vision/best_model.pth` 가중치로 2-class 분류 (`reusable` / `single_use`). NestJS만이 내부적으로 호출 (현재 `--allow-unauthenticated` + URL 비공개 의존; 추후 IAM 잠금).
 
 ## 외부 의존성
 
@@ -106,6 +118,7 @@
 | GCP Project | `cleanballtrio` (project number 1076044788885) | Firebase + GCP 통합 |
 | Cloud Run | `cleanballtrio-api` (asia-northeast3) | min-instances=0 (콜드 스타트 ~2s + migrate deploy) |
 | Cloud SQL | `cleanballtrio-db` (PostgreSQL 16, db-f1-micro, asia-northeast3) | DB `cleanballtrio`. Cloud Run에서 Unix socket으로 연결 (`--add-cloudsql-instances`) |
+| Cloud Run (vision) | `cleanballtrio-vision` (asia-northeast3, memory 2Gi, concurrency 4) | PyTorch CPU 추론. 콜드 스타트 ~10s (모델 로드 포함) |
 | Artifact Registry | `cloud-run-source-deploy` (asia-northeast3) | Cloud Build가 자동 push |
 | Firebase Hosting | `cleanballtrio` 사이트 | Spark 플랜 (월 10GB egress) |
 | WIF Pool | `github-actions-pool` (global) | OIDC provider for GitHub Actions |
@@ -119,6 +132,7 @@
 | `KAKAO_CLIENT_SECRET` | **Cloud Run env만** | 카카오 토큰 교환 강화 |
 | `JWT_SECRET` | **Cloud Run env만** | JWT 서명. 누락 시 `ConfigService.getOrThrow`가 부팅 차단 |
 | `DATABASE_URL` | **Cloud Run env만** | Prisma → Cloud SQL Unix socket. `deploy-backend.ps1`이 `backend/.env`의 `DB_PASSWORD`를 URL 인코딩해 조립 |
+| `VISION_API_URL` | **Cloud Run env만** | NestJS → Vision Cloud Run 서비스 URL. `deploy-backend.ps1`이 `backend/.env`에서 주입 |
 | GitHub Actions | `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`, `VITE_KAKAO_REST_API_KEY` | CI 인증 + 빌드 시 주입 |
 
 > **현재**: 평문 env vars (1차). **향후**: Secret Manager로 이전 예정.

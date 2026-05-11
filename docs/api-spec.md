@@ -135,6 +135,38 @@ JWT 검증 후 본인 프로필 조회.
 
 ---
 
+## Verify (Vision AI)
+
+### `POST /verify/reusable`
+
+업로드된 이미지가 **다회용기인지 일회용기인지** 분류. 내부적으로 별도의 Python Cloud Run 서비스(`cleanballtrio-vision`, MobileNetV2)에 forward한다. JWT 필수.
+
+**Request** — `multipart/form-data`
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `image` | file | ✅ | JPEG/PNG. 최대 10MB. |
+
+**Response 200**
+```json
+{
+  "isReusable": true,
+  "classIndex": 0,
+  "confidence": 96.42
+}
+```
+- `classIndex`: `0`=`reusable`, `1`=`single_use` (모델 학습 시 폴더명 알파벳순)
+- `confidence`: 0~100 (해당 클래스의 softmax 확률 × 100)
+
+**Errors**
+- `400` — `image` 필드 누락 / 파일 크기 초과 / 이미지 디코딩 실패
+- `401` — JWT 무효
+- `503` — vision 서비스 타임아웃 또는 다운
+
+> 사용 인증과 반납 인증 모두 동일한 분류기를 사용. 비즈니스 단(시간/위치 가드, `usages` 적재 등)은 후속 plan.
+
+---
+
 ## Games
 
 ### `GET /games`

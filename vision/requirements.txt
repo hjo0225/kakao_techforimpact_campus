@@ -1,0 +1,5 @@
+# torch/torchvision은 Dockerfile에서 CPU 전용 wheel을 별도 설치
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+Pillow==11.0.0
