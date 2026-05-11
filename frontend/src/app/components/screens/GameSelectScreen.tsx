@@ -71,39 +71,65 @@ function mapApiToUi(g: ApiGame): UiGame {
   };
 }
 
-const DATE_TABS = ['오늘', '내일', '일정'] as const;
-type DateTab = (typeof DATE_TABS)[number];
+type DateTab = 'today' | 'tomorrow' | 'all';
+
+function formatShort(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${Number(m)}/${Number(d)}`;
+}
 
 export function GameSelectScreen() {
   const { navigate } = useNavigation();
   const { selectedTeam, setSelectedGame } = useApp();
-  const [activeTab, setActiveTab] = useState<DateTab>('일정');
+  const [activeTab, setActiveTab] = useState<DateTab>('all');
   const [games, setGames] = useState<UiGame[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // `now`를 state로 보관 → 자정마다 갱신해 today/tomorrow가 자동으로 다음 날로 이동
+  const [now, setNow] = useState<Date>(() => new Date());
 
+  const todayIso = toIsoDate(now);
+  const tomorrowIso = toIsoDate(new Date(now.getTime() + 86_400_000));
+
+  // 다음 자정에 now를 다시 찍어서 모든 파생값(라벨/필터/fetch)을 새 날짜로 갱신
   useEffect(() => {
-    const today = toIsoDate(new Date());
+    const next = new Date(now);
+    next.setHours(24, 0, 1, 0); // 00:00:01 of next day (1초 여유)
+    const ms = next.getTime() - Date.now();
+    const t = setTimeout(() => setNow(new Date()), Math.max(ms, 1000));
+    return () => clearTimeout(t);
+  }, [now]);
+
+  // 날짜가 바뀌면 from을 새 today로 다시 가져옴
+  useEffect(() => {
+    let cancelled = false;
+    setGames(null);
+    setError(null);
     api
-      .get<ApiGame[]>(`/games?from=${today}`)
-      .then((data) => setGames(data.map(mapApiToUi)))
+      .get<ApiGame[]>(`/games?from=${todayIso}`)
+      .then((data) => {
+        if (!cancelled) setGames(data.map(mapApiToUi));
+      })
       .catch((err) => {
+        if (cancelled) return;
         const msg = err instanceof ApiError ? `${err.status} ${err.message}` : String(err);
         console.error('[GameSelect] /games 호출 실패:', err);
         setError(msg);
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [todayIso]);
 
-  const todayIso = useMemo(() => toIsoDate(new Date()), []);
-  const tomorrowIso = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return toIsoDate(d);
-  }, []);
+  const tabs: { id: DateTab; label: string }[] = [
+    { id: 'today', label: `오늘 ${formatShort(todayIso)}` },
+    { id: 'tomorrow', label: `내일 ${formatShort(tomorrowIso)}` },
+    { id: 'all', label: '일정' },
+  ];
 
   const filtered = useMemo(() => {
     if (!games) return null;
-    if (activeTab === '오늘') return games.filter((g) => g.date === todayIso);
-    if (activeTab === '내일') return games.filter((g) => g.date === tomorrowIso);
+    if (activeTab === 'today') return games.filter((g) => g.date === todayIso);
+    if (activeTab === 'tomorrow') return games.filter((g) => g.date === tomorrowIso);
     return games;
   }, [games, activeTab, todayIso, tomorrowIso]);
 
@@ -155,16 +181,16 @@ export function GameSelectScreen() {
       />
 
       <div className="cb-chip-row" role="tablist" aria-label="경기 날짜">
-        {DATE_TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
-            key={tab}
+            key={tab.id}
             type="button"
             role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-            className={cx('cb-chip', activeTab === tab && 'is-active')}
+            aria-selected={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cx('cb-chip', activeTab === tab.id && 'is-active')}
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>
