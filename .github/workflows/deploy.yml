@@ -112,6 +112,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Type check
         run: npm run build  # nest build = tsc 컴파일까지 검증
 

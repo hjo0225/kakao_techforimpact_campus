@@ -6,7 +6,9 @@
 - dev: `http://localhost:3001`
 - prod: `https://cleanballtrio-api-fpvvjohnta-du.a.run.app`
 
-**Content-Type**: 모든 POST/PUT body는 `application/json`.
+**Content-Type**: 모든 POST/PUT/PATCH body는 `application/json`.
+
+**Auth**: 보호된 엔드포인트는 `Authorization: Bearer <accessToken>` 헤더 필수. 토큰은 `/auth/kakao`로 발급.
 
 ---
 
@@ -28,7 +30,7 @@ Hello World!
 
 ### `POST /auth/kakao`
 
-카카오 OAuth `code`를 받아 백엔드에서 토큰 교환 + 유저 조회 후 JWT 발급.
+카카오 OAuth `code`를 받아 백엔드에서 토큰 교환 + 카카오 프로필 조회 → DB upsert → JWT 발급.
 
 **Request body**
 ```json
@@ -42,9 +44,10 @@ Hello World!
 ```json
 {
   "user": {
-    "id": 123456789,                                  // kakao_id (number)
+    "id": "1",                                        // 백엔드 DB id (BigInt → string)
     "nickname": "홍길동",
-    "profileImage": "https://k.kakaocdn.net/..."     | null
+    "profileImage": "https://k.kakaocdn.net/..." | null,
+    "teamCode": "LG" | null                          // 사용자가 선택한 응원팀 (없으면 null)
   },
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI..."     // JWT (HS256)
 }
@@ -53,12 +56,14 @@ Hello World!
 **JWT payload**
 ```json
 {
-  "sub": 123456789,           // kakao_id
+  "sub": "1",                 // 백엔드 DB user id (string). ⚠️ 이전 버전에서는 kakao_id였음
   "nickname": "홍길동",
   "iat": 1700000000,
-  "exp": 1700604800           // (기본 NestJS JWT 만료 — TBD: 명시 설정)
+  "exp": 1700604800            // 발급 시점 + 7일 (auth.module의 expiresIn)
 }
 ```
+
+> **Breaking change (2026-05)**: `sub`가 `kakao_id` → `user.id`(DB)로 의미가 바뀌었습니다. 이전 토큰은 모두 무효. 프론트엔드 zustand persist version 2로 강제 재로그인됩니다.
 
 **Errors**
 
@@ -72,11 +77,68 @@ Hello World!
 
 ---
 
+## Me
+
+모두 `Authorization: Bearer <JWT>` 필수. 검증 실패 시 401.
+
+### `GET /me`
+
+JWT 검증 후 본인 프로필 조회.
+
+**Response 200**
+```json
+{
+  "id": "1",
+  "nickname": "홍길동",
+  "profileImage": "https://..." | null,
+  "teamCode": "LG" | null,
+  "avatarConfig": { /* 자유 형식 */ } | null,
+  "createdAt": "2026-05-11T12:00:00.000Z"
+}
+```
+
+**Errors**
+- `401 Unauthorized` — JWT 누락/무효/만료
+- `404 사용자를 찾을 수 없습니다` — DB에서 user.id 매칭 실패 (가입 후 삭제된 계정 등)
+
+### `PATCH /me/team`
+
+응원팀 변경.
+
+**Request body**
+```json
+{ "teamCode": "LG" }   // teams.code FK 값 (LG, DS, SS, HH, KT, NC, OB, HB, KIA, SK)
+```
+
+**Response 200**
+```json
+{ "id": "1", "teamCode": "LG" }
+```
+
+**Errors**
+- `401` — JWT 무효
+- `500` — 존재하지 않는 teamCode (FK 위반) ⚠️ TODO: 입력 검증 추가 후 400으로 변경
+
+### `PATCH /me/avatar`
+
+아바타 설정 저장 (JSON 자유 형식).
+
+**Request body**
+```json
+{ "avatarConfig": { /* 자유 형식 */ } }
+```
+
+**Response 200**
+```json
+{ "id": "1", "avatarConfig": { /* 저장된 값 */ } }
+```
+
+---
+
 ## (예정) 추후 작성 영역
 
 DB 도입 후 작성 — 구현 시 plan에서 이 섹션 갱신:
 
-- `GET /me` — JWT 검증 + 유저 프로필
 - `POST /qr/scan` — 다회용기 사용 인증 (QR payload + lat/lng)
 - `GET /rankings/teams` — 팀별 실시간 랭킹 (Redis)
 - `GET /stats/me` — 사용자 누적 사용량/등급
