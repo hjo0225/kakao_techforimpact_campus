@@ -50,6 +50,9 @@ Venue 매핑:
 - [ ] CI auto-deploy → 컨테이너 시작 시 `migrate deploy`가 prod에 games 테이블 생성
 - [ ] prod에서 `npm run db:seed` 1회 (또는 Cloud SQL Proxy로 데이터 적재)
 
+## 후속 변경
+- (fix) 오늘/내일 탭이 마운트 시점에 고정되던 문제 — `now` state + 자정 setTimeout으로 자동 롤오버. 데이터 fetch도 `todayIso` deps라 자정 이후 새 from으로 재조회. 탭 라벨에 날짜(M/D) 부착.
+
 ## 범위 외
 - 라이브 스코어/이닝 (별도 plan: KBO API 연동 또는 운영자 입력)
 - 팀 코드 정규화 (OB→LT 등) — 별도 plan
