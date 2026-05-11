@@ -29,7 +29,18 @@ export async function apiFetch<T = unknown>(
 
   const headers = new Headers(initHeaders)
   if (token && !skipAuth) headers.set('Authorization', `Bearer ${token}`)
-  if (body !== undefined && !headers.has('Content-Type')) {
+
+  // FormData/Blob 등은 fetch가 알아서 Content-Type(boundary 포함) 설정. 그 외만 JSON.
+  const isMultipart =
+    body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer
+  const serializedBody: BodyInit | undefined =
+    body === undefined
+      ? undefined
+      : isMultipart
+        ? (body as BodyInit)
+        : JSON.stringify(body)
+
+  if (body !== undefined && !isMultipart && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -38,7 +49,7 @@ export async function apiFetch<T = unknown>(
   const response = await fetch(url, {
     ...rest,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: serializedBody,
   })
 
   const text = await response.text()

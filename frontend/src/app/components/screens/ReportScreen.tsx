@@ -5,6 +5,8 @@ import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import { Camera, CheckCircle, Info, RotateCcw, ScanLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ApiError } from '../../../lib/apiClient';
+import { verifyImage } from '../../../lib/verifyApi';
 
 type CertificationMode = 'use' | 'return';
 type AnalysisState = 'idle' | 'captured' | 'classifying' | 'success' | 'failure';
@@ -103,59 +105,6 @@ function formatNowLabel() {
   return `오늘 ${hours}:${minutes}`;
 }
 
-function getSimulatedResult(mode: CertificationMode, attempt: number): SimulatedResult {
-  const scenarios: Record<CertificationMode, SimulatedResult[]> = {
-    use: [
-      {
-        detected: '다회용기',
-        approved: true,
-        statusLabel: 'AI 확인 완료',
-        reason: '다회용기 형태와 사용 흔적이 선명하게 확인됐습니다.',
-        guide: '컵 상단과 로고를 프레임 중앙에 맞춰주세요.',
-      },
-      {
-        detected: '일회용기',
-        approved: false,
-        statusLabel: '재촬영 필요',
-        reason: '일회용 컵으로 보이는 요소가 감지되어 적립을 보류했습니다.',
-        guide: '배경 가림 없이 용기 전체가 보이게 다시 촬영해주세요.',
-      },
-      {
-        detected: '다회용기',
-        approved: true,
-        statusLabel: 'AI 확인 완료',
-        reason: '용기 두께와 각인이 확인되어 인증 처리됐습니다.',
-        guide: '손가락이 컵 입구를 가리지 않게 유지해주세요.',
-      },
-    ],
-    return: [
-      {
-        detected: '다회용기',
-        approved: true,
-        statusLabel: '반납 확인 완료',
-        reason: '반납함과 용기 윤곽이 함께 확인돼 반납 인증에 성공했습니다.',
-        guide: '반납함 안내 스티커와 용기를 함께 담아주세요.',
-      },
-      {
-        detected: '다회용기',
-        approved: false,
-        statusLabel: '촬영 품질 부족',
-        reason: '용기 일부가 가려져 반납 장면을 확실히 확인하기 어렵습니다.',
-        guide: '용기와 반납함 투입구를 더 가깝게 담아주세요.',
-      },
-      {
-        detected: '일회용기',
-        approved: false,
-        statusLabel: '재촬영 필요',
-        reason: '일회용기로 인식돼 포인트 적립이 보류되었습니다.',
-        guide: '스테이션 앞 다회용 용기만 단독으로 다시 촬영해주세요.',
-      },
-    ],
-  };
-
-  return scenarios[mode][(attempt - 1) % scenarios[mode].length];
-}
-
 export function ReportScreen() {
   const {
     selectedGame,
@@ -165,9 +114,10 @@ export function ReportScreen() {
   } = useApp();
   const [mode, setMode] = useState<CertificationMode>('use');
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
-  const [captureCount, setCaptureCount] = useState(0);
   const [activeResult, setActiveResult] = useState<SimulatedResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>(HISTORY_SEED);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timersRef = useRef<number[]>([]);
 
   useEffect(() => () => {
@@ -196,55 +146,132 @@ export function ReportScreen() {
   const handleCapture = () => {
     clearTimers();
     setActiveResult(null);
-    setAnalysisState('captured');
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setAnalysisState('captured');
+    }
+    // 같은 파일을 다시 고를 수 있도록 input value 초기화
+    e.target.value = '';
   };
 
   const handleRetake = () => {
     clearTimers();
     setActiveResult(null);
+    setImageFile(null);
     setAnalysisState('idle');
   };
 
-  const handleAnalyze = () => {
-    if (!canStartAnalysis || isBusy) return;
+  const buildResultFromError = (mode: CertificationMode, err: unknown): SimulatedResult => {
+    if (err instanceof ApiError) {
+      const body = err.body as { code?: string; message?: string } | null;
+      const code = body?.code;
+      if (code === 'NOT_REUSABLE') {
+        return {
+          detected: '일회용기',
+          approved: false,
+          statusLabel: '재촬영 필요',
+          reason: '일회용기로 인식돼 적립이 보류됐습니다.',
+          guide: '다회용 컵만 단독으로 다시 촬영해주세요.',
+        };
+      }
+      if (code === 'LOW_CONFIDENCE') {
+        return {
+          detected: '다회용기',
+          approved: false,
+          statusLabel: '신뢰도 부족',
+          reason: body?.message ?? 'AI 판별 신뢰도가 70% 미만입니다.',
+          guide: '용기 전면이 또렷이 보이도록 다시 촬영해주세요.',
+        };
+      }
+      if (code === 'NO_RECENT_USE') {
+        return {
+          detected: '다회용기',
+          approved: false,
+          statusLabel: '사용 인증 필요',
+          reason: '최근 12시간 내 사용 인증 기록이 없습니다.',
+          guide: mode === 'return' ? '먼저 사용 인증을 완료해주세요.' : '',
+        };
+      }
+      return {
+        detected: '다회용기',
+        approved: false,
+        statusLabel: `오류 ${err.status}`,
+        reason: body?.message ?? err.message,
+        guide: '잠시 후 다시 시도해주세요.',
+      };
+    }
+    return {
+      detected: '다회용기',
+      approved: false,
+      statusLabel: '네트워크 오류',
+      reason: '서버에 연결하지 못했습니다.',
+      guide: '네트워크 상태를 확인하고 다시 시도해주세요.',
+    };
+  };
+
+  const handleAnalyze = async () => {
+    if (!canStartAnalysis || isBusy || !imageFile) return;
 
     clearTimers();
     setAnalysisState('classifying');
 
-    const nextAttempt = captureCount + 1;
-    const result = getSimulatedResult(mode, nextAttempt);
-    const passed = result.detected === '다회용기' && result.approved;
-    const duration = 2200 + (nextAttempt % 3) * 300;
-
-    const timerId = window.setTimeout(() => {
-      setCaptureCount(nextAttempt);
+    try {
+      const apiResult = await verifyImage(mode, imageFile);
+      const result: SimulatedResult = {
+        detected: '다회용기',
+        approved: true,
+        statusLabel: mode === 'use' ? 'AI 확인 완료' : '반납 확인 완료',
+        reason: `confidence ${apiResult.vision.confidence.toFixed(1)}%`,
+        guide: '',
+      };
+      // 백엔드가 usages 적재했으므로 로컬 점수/로그도 동기화
+      addCertification(mode);
       setActiveResult(result);
-
-      const awardedPoints = passed ? addCertification(mode) : 0;
-      const nextHistoryItem: HistoryItem = {
+      const successItem: HistoryItem = {
+        id: apiResult.usage.id,
+        mode,
+        label: mode === 'use' ? '사용 인증' : '반납 인증',
+        time: formatNowLabel(),
+        points: apiResult.usage.score,
+        detected: '다회용기',
+        passed: true,
+      };
+      setHistory((prev) => [successItem, ...prev].slice(0, 6));
+      setAnalysisState('success');
+    } catch (err) {
+      const result = buildResultFromError(mode, err);
+      setActiveResult(result);
+      const failureItem: HistoryItem = {
         id: `${Date.now()}`,
         mode,
         label: mode === 'use' ? '사용 인증' : '반납 인증',
         time: formatNowLabel(),
-        points: awardedPoints,
+        points: 0,
         detected: result.detected,
-        passed,
+        passed: false,
       };
-
-      setHistory((prev) => [nextHistoryItem, ...prev].slice(0, 6));
-
-      if (passed) {
-        setAnalysisState('success');
-      } else {
-        setAnalysisState('failure');
-      }
-    }, duration);
-
-    timersRef.current.push(timerId);
+      setHistory((prev) => [failureItem, ...prev].slice(0, 6));
+      setAnalysisState('failure');
+    }
   };
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F3FBF5' }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        style={srOnlyStyle}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
       <div style={{ background: '#fff', borderBottom: '1px solid rgba(15, 23, 42, 0.08)' }}>
         <StatusBar centerLabel="인증" />
       </div>
