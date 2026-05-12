@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { GamesModule } from './games/games.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RankingsModule } from './rankings/rankings.module';
+import { StatsModule } from './stats/stats.module';
 import { UsersModule } from './users/users.module';
 import { VerifyModule } from './verify/verify.module';
 
@@ -16,6 +18,8 @@ import { VerifyModule } from './verify/verify.module';
     UsersModule,
     GamesModule,
     VerifyModule,
+    StatsModule,
+    RankingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

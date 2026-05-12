@@ -1,9 +1,9 @@
-import { IsString } from 'class-validator'
+import { IsString } from 'class-validator';
 
 export class KakaoCallbackDto {
   @IsString()
-  code!: string
+  code!: string;
 
   @IsString()
-  redirectUri!: string
+  redirectUri!: string;
 }

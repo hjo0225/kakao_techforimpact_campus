@@ -7,14 +7,16 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,           // strip properties not on the DTO
+      whitelist: true, // strip properties not on the DTO
       forbidNonWhitelisted: true, // 400 if extra properties are sent
-      transform: true,            // coerce primitives + instantiate DTO classes
+      transform: true, // coerce primitives + instantiate DTO classes
     }),
   );
 
   const corsOrigin = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.CORS_ORIGIN.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : ['http://localhost:5173'];
   app.enableCors({ origin: corsOrigin });
 
