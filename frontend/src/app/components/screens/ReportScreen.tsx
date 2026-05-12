@@ -230,7 +230,7 @@ export function ReportScreen() {
         guide: '',
       };
       // 백엔드가 usages 적재했으므로 로컬 점수/로그도 동기화
-      addCertification(mode);
+      addCertification(mode, apiResult.usage.score);
       setActiveResult(result);
       const successItem: HistoryItem = {
         id: apiResult.usage.id,

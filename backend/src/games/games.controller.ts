@@ -1,6 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common'
-import { FindGamesDto } from './dto/find-games.dto'
-import { GamesService } from './games.service'
+import { Controller, Get, Query } from '@nestjs/common';
+import { FindGamesDto } from './dto/find-games.dto';
+import { GamesService } from './games.service';
 
 @Controller('games')
 export class GamesController {
@@ -8,6 +8,6 @@ export class GamesController {
 
   @Get()
   find(@Query() query: FindGamesDto) {
-    return this.gamesService.find(query)
+    return this.gamesService.find(query);
   }
 }
