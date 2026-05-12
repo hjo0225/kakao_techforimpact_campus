@@ -190,7 +190,7 @@ export function RecordScreen() {
     selectedTeam, selectedGame, points, ecoGrade,
     visits, ecoImpact, certificationLogs,
     reusableUseCount, reusableReturnCount, todayMission,
-    addPoints, shareCardShared, setShareCardShared,
+    shareCardShared, setShareCardShared,
   } = useApp();
 
   const [subTab, setSubTab] = useState<SubTab>('dashboard');
@@ -282,7 +282,6 @@ export function RecordScreen() {
       }
 
       if (!shareCardShared) {
-        addPoints(3);
         setShareCardShared(true);
       }
     } catch (error) {
@@ -866,18 +865,12 @@ export function RecordScreen() {
               }}
             >
               {isSharing ? <Download size={16} /> : <Share2 size={16} />}
-              {isSharing ? '공유 이미지 생성 중...' : `인스타그램 공유 준비 ${!shareCardShared ? '(+3P)' : ''}`}
+              {isSharing ? '공유 이미지 생성 중...' : '인스타그램 공유 준비'}
             </button>
 
             <p style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', lineHeight: 1.6 }}>
               모바일에서는 공유 시트에서 Instagram을 선택하세요. 미지원 브라우저에서는 PNG 저장으로 대체됩니다.
             </p>
-
-            {shareCardShared && (
-              <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
-                오늘 공유 보상은 이미 적립되었습니다 (일일 1회 한정)
-              </p>
-            )}
 
             {/* Template texts */}
             <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>

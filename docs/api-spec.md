@@ -225,13 +225,77 @@ KBO 경기 일정 조회. 인증 불필요.
 
 ---
 
+## Stats
+
+### `GET /stats/me`
+
+본인 누적 통계 조회. JWT 필수.
+
+**Response 200**
+```json
+{
+  "points": 850,
+  "useCount": 7,
+  "returnCount": 5,
+  "totalCount": 12
+}
+```
+
+- `points`: `usages.score` 누적 합계 (USE=50, RETURN=100 기준)
+- `useCount`: `kind = USE` 인증 횟수
+- `returnCount`: `kind = RETURN` 인증 횟수
+- `totalCount`: useCount + returnCount
+
+**Errors**
+- `401 Unauthorized` — JWT 누락/무효/만료
+
+> 구현은 Prisma `usage.groupBy({ by: ['kind'], _sum: { score }, _count })` 1쿼리. 신규 사용자(인증 0건)는 모두 0 반환.
+
+---
+
+## Rankings
+
+### `GET /rankings/teams`
+
+KBO 팀별 누적 친환경 포인트 조회. **인증 불필요**.
+
+**Response 200**
+```json
+[
+  {
+    "teamCode": "LG",
+    "displayName": "LG 트윈스",
+    "totalPoints": 1800,
+    "memberCount": 12
+  },
+  {
+    "teamCode": "KIA",
+    "displayName": "KIA 타이거즈",
+    "totalPoints": 1500,
+    "memberCount": 9
+  }
+]
+```
+
+- 정렬: `totalPoints DESC, teamCode ASC` (동률이면 코드 알파벳)
+- `teams` 마스터(10개)에서 LEFT JOIN → **점수 0인 팀도 포함**되어 항상 10행 반환
+- `totalPoints`: 해당 팀 응원 사용자(`users.team_code = teams.code`)의 `usages.score` 합계
+- `memberCount`: 해당 팀 응원 사용자 수 (인증 여부 무관)
+
+**Errors**
+- 없음 (조회 실패 시 500)
+
+> MVP에서는 매 요청마다 PostgreSQL aggregate 1쿼리. 사용자/usage 행 수 증가 시 Redis ZSET(`ranking:teams`) 도입 검토.
+
+---
+
 ## (예정) 추후 작성 영역
 
-DB 도입 후 작성 — 구현 시 plan에서 이 섹션 갱신:
+구현 시 plan에서 이 섹션 갱신:
 
 - `POST /qr/scan` — 다회용기 사용 인증 (QR payload + lat/lng)
-- `GET /rankings/teams` — 팀별 실시간 랭킹 (Redis)
-- `GET /stats/me` — 사용자 누적 사용량/등급
+- `GET /usages/me` — 본인 인증 히스토리 (날짜/타임라인용)
+- `GET /rankings/users` — 개인 전체 랭킹 (페이지네이션 필수)
 - `POST /auth/refresh` — 토큰 갱신
 - `POST /auth/logout` — 서버 측 invalidate (현재 클라이언트만 토큰 폐기)
 

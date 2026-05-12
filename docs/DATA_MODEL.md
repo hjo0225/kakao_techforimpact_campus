@@ -105,6 +105,8 @@ QR payload에서 구장 식별 필요 시 추가.
 
 ## Redis Keys (예정 — 미도입)
 
+현재 팀 랭킹(`GET /rankings/teams`)은 PostgreSQL aggregate(`teams LEFT JOIN users LEFT JOIN usages GROUP BY team_code`)로 매 요청 처리. 사용자/usage 행 수가 충분히 커져 응답 지연이 발생하는 시점에 아래 ZSET 도입.
+
 | 키 | 타입 | 용도 |
 |---|---|---|
 | `ranking:teams:season:{year}` | ZSET | 팀별 누적 점수. `ZINCRBY` on usage write |

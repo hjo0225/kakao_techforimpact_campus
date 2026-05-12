@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   Bell,
   Camera,
@@ -17,6 +17,7 @@ import { useNavigation, type Route } from '../../navigation';
 import { TeamBadge } from '../TeamBadge';
 import { BottomNav } from '../BottomNav';
 import { useAuthStore } from '@/store/authStore';
+import { getTeamRankings, type TeamRanking } from '../../../lib/rankingsApi';
 
 const TODAY_GAMES = [
   { teams: 'LG vs 두산', venue: '잠실', time: '18:30' },
@@ -33,12 +34,6 @@ const SECTIONS = [
   '3루 응원석',
   '중앙 테이블석',
   '외야 잔디석',
-];
-
-const TEAM_PREVIEW = [
-  { team: 'LG 트윈스', points: 12450, diff: '+2' },
-  { team: '롯데 자이언츠', points: 11230, diff: '+1' },
-  { team: 'KIA 타이거즈', points: 10870, diff: '-' },
 ];
 
 function Card({ children, border = '#E5E7EB' }: { children: ReactNode; border?: string }) {
@@ -151,6 +146,21 @@ export function HomeScreen() {
   } = useApp();
   const user = useAuthStore((s) => s.user);
   const [seatNumberInput, setSeatNumberInput] = useState(seatInfo.seatNumber);
+  const [topTeams, setTopTeams] = useState<TeamRanking[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTeamRankings()
+      .then((data) => {
+        if (!cancelled) setTopTeams(data.slice(0, 3));
+      })
+      .catch(() => {
+        if (!cancelled) setTopTeams([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const gradeColors = ECO_GRADE_META[ecoGrade] || ECO_GRADE_META['그린팬'];
   const nextGrade = getNextGradeInfo();
@@ -460,24 +470,17 @@ export function HomeScreen() {
         <SectionTitle>팀 환경 리그 TOP 3</SectionTitle>
         <Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {TEAM_PREVIEW.map((item, index) => (
-              <div key={item.team} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {topTeams.length === 0 && (
+              <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', padding: '8px 0' }}>
+                랭킹을 불러오는 중...
+              </p>
+            )}
+            {topTeams.map((item, index) => (
+              <div key={item.teamCode} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ width: 20, fontSize: 13, fontWeight: 900, color: '#13923F' }}>{index + 1}</span>
-                <TeamBadge teamName={item.team} size={28} />
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: '#111827' }}>{item.team}</span>
-                <span style={{ fontSize: 11, color: '#6B7280' }}>{item.points.toLocaleString()}P</span>
-                <span style={{
-                  minWidth: 30,
-                  textAlign: 'center',
-                  fontSize: 10,
-                  fontWeight: 900,
-                  color: item.diff === '-' ? '#9CA3AF' : '#13923F',
-                  background: item.diff === '-' ? '#F3F4F6' : '#E2FAE9',
-                  borderRadius: 999,
-                  padding: '2px 6px',
-                }}>
-                  {item.diff}
-                </span>
+                <TeamBadge teamName={item.displayName} size={28} />
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: '#111827' }}>{item.displayName}</span>
+                <span style={{ fontSize: 11, color: '#6B7280' }}>{item.totalPoints.toLocaleString()}P</span>
               </div>
             ))}
           </div>
