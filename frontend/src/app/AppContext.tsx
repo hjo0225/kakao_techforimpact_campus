@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   type EcoGrade,
   type EcoGradeProgress,
@@ -7,6 +7,7 @@ import {
 } from './ecoGrades';
 import { DEFAULT_AVATAR_CONFIG, type AvatarConfig } from './avatar';
 import { useAuthStore } from '../store/authStore';
+import { getMyStats } from '../lib/statsApi';
 
 export interface GameInfo {
   home: string;
@@ -79,12 +80,12 @@ interface AppState {
   seatInfo: SeatInfo;
   setSeatInfo: (seat: SeatInfo) => void;
   points: number;
-  addPoints: (p: number) => void;
   reportCount: number;
   addReport: () => void;
   reportLogs: ReportLog[];
   certificationLogs: CertificationLog[];
-  addCertification: (type: CertificationType) => number;
+  addCertification: (type: CertificationType, score: number) => number;
+  refreshStats: () => void;
   todayMission: MissionProgress;
   reusableUseCount: number;
   reusableReturnCount: number;
@@ -172,8 +173,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [selectedGame, setSelectedGame] = useState<GameInfo | null>(null);
   const [seatInfo, setSeatInfo] = useState<SeatInfo>({ section: '', seatNumber: '' });
-  const [points, setPoints] = useState(850);
-  const [reportCount, setReportCount] = useState(2);
+  const [points, setPoints] = useState(0);
+  const [reportCount, setReportCount] = useState(0);
+  const token = useAuthStore((s) => s.token);
+
+  const refreshStats = useCallback(() => {
+    if (!token) {
+      setPoints(0);
+      return;
+    }
+    getMyStats()
+      .then((stats) => setPoints(stats.points))
+      .catch(() => setPoints(0));
+  }, [token]);
+
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
   const [reportLogs, setReportLogs] = useState<ReportLog[]>(SAMPLE_REPORT_LOGS);
   const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>(SAMPLE_CERTIFICATION_LOGS);
   const [visits, setVisits] = useState<VisitRecord[]>(SAMPLE_VISITS);
@@ -181,40 +197,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [shareCardShared, setShareCardShared] = useState(false);
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
 
-  const addPoints = useCallback((p: number) => setPoints((prev) => prev + p), []);
   const isTimesaleActive = getTimesaleStatus(selectedGame);
 
-  const addCertification = useCallback((type: CertificationType) => {
+  const addCertification = useCallback((type: CertificationType, score: number) => {
     const bonus = getTimesaleStatus(selectedGame);
-    const awardedPoints = bonus ? 100 : 50;
     const newLog: CertificationLog = {
       id: `cert-${Date.now()}`,
       type,
       label: type === 'use' ? '사용 인증' : '반납 인증',
       time: '방금',
       game: selectedGame ? `${selectedGame.home} vs ${selectedGame.away}` : '오늘 경기',
-      pts: awardedPoints,
+      pts: score,
       bonus,
     };
 
-    setPoints((prev) => prev + awardedPoints);
+    setPoints((prev) => prev + score);
     setCertificationLogs((prev) => [newLog, ...prev]);
     setVisits((prev) =>
       prev.map((v, index) => index === 0 ? { ...v, reusableUsed: true } : v)
     );
+    refreshStats();
 
-    return awardedPoints;
-  }, [selectedGame]);
+    return score;
+  }, [selectedGame, refreshStats]);
 
   const addReport = useCallback(() => {
     setReportCount((prev) => prev + 1);
-    setPoints((prev) => prev + 5);
     const newLog: ReportLog = {
       id: Date.now().toString(),
       location: seatInfo.section ? `${seatInfo.section} 쓰레기통` : '3루 통로 쓰레기통',
       status: '가득 찼어요',
       time: '방금',
-      pts: 5,
+      pts: 0,
     };
     setReportLogs((prev) => [newLog, ...prev]);
     // Update today's visit if exists
@@ -258,9 +272,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectedTeam, setSelectedTeam,
     selectedGame, setSelectedGame,
     seatInfo, setSeatInfo,
-    points, addPoints,
+    points,
     reportCount, addReport, reportLogs,
     certificationLogs, addCertification,
+    refreshStats,
     todayMission,
     reusableUseCount, reusableReturnCount,
     isTimesaleActive,
@@ -272,7 +287,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     avatarConfig, setAvatarConfig,
   }), [
     addCertification,
-    addPoints,
     addReport,
     avatarConfig,
     certificationLogs,
@@ -281,6 +295,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getNextGradeInfo,
     isTimesaleActive,
     points,
+    refreshStats,
     reportCount,
     reportLogs,
     reusableReturnCount,

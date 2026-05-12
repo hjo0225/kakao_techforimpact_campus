@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+### feat(api): `GET /stats/me`, `GET /rankings/teams` — 개인·팀 누적 점수 집계
+
+- `GET /stats/me` (JWT 필수) — `usages.score` SUM-on-read로 `{points, useCount, returnCount, totalCount}` 반환
+- `GET /rankings/teams` (인증 불필요) — `teams LEFT JOIN users LEFT JOIN usages` aggregate. `[{teamCode, displayName, totalPoints, memberCount}]` 점수 desc 정렬. 점수 0인 팀도 포함되어 항상 10행
+- 프론트엔드 하드코딩 제거: `points = 850` 시드, `LEAGUE_RANKING`/`CONTRIBUTION_DATA` mock, `TEAM_PREVIEW` mock, weekly/monthly/season 탭, 개인순위 매직 공식(`2410 - points`, `310 - points/3`), 리워드 카운트다운, "전주 대비 N계단" 류 가짜 메시지, 공유 +3P, 신고 +5P
+- `addCertification(type, score)` 시그니처 변경 — verify 응답의 `usage.score`를 호출자가 전달, 직후 `/stats/me` refetch로 reconcile
+- 신규 단위 테스트 `rankings.service.spec.ts` 4건 (Prisma `$queryRaw` mock)
+- 스키마 변경 없음 (SUM-on-read 방식)
+
 ### feat(vision): `/verify/use`·`/verify/return` + usages 적재 + 반납 가드
 
 - 기존 `/verify/reusable` 제거(Breaking) → `POST /verify/use`, `POST /verify/return`으로 분리
