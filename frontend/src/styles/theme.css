@@ -2,60 +2,73 @@
 
 :root {
   --font-size: 16px;
-  --background: #F2FBF5;
-  --foreground: oklch(0.145 0 0);
+  --background: #FAF5EF;
+  --foreground: #430A21;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #3DDB6D;
+  --card-foreground: #430A21;
+  --popover: #ffffff;
+  --popover-foreground: #430A21;
+  --primary: #C85C77;
   --primary-foreground: #ffffff;
-  --secondary: #E6FFF0;
-  --secondary-foreground: #1A9448;
-  --muted: #E6FFF0;
-  --muted-foreground: #4A8C62;
-  --accent: #C8FAD8;
-  --accent-foreground: #0F7038;
-  --destructive: #E53E3E;
+  --secondary: #FBE6EA;
+  --secondary-foreground: #B5536A;
+  --muted: #F0E8E7;
+  --muted-foreground: #8C6B73;
+  --accent: #F8EAC9;
+  --accent-foreground: #5E1530;
+  --destructive: #C2362C;
   --destructive-foreground: #ffffff;
-  --border: #E3E5E8;
+  --border: #E8DEDE;
   --input: transparent;
-  --input-background: #EBF8F0;
-  --switch-background: #A0EEC0;
+  --input-background: #FFFCF6;
+  --switch-background: #F2A2AD;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #3DDB6D;
-  --chart-1: #3DDB6D;
-  --chart-2: #6AEAA0;
-  --chart-3: #96F2BE;
-  --chart-4: #C0F7D6;
-  --chart-5: #E2FAEC;
-  --radius: 1rem;
+  --ring: #C85C77;
+  --chart-1: #C85C77;
+  --chart-2: #DD7386;
+  --chart-3: #F2A2AD;
+  --chart-4: #F8EAC9;
+  --chart-5: #FBE6EA;
+  --radius: 0.5rem;
 
-  /* Park color palette — base: #3DDB6D */
-  --park-50: #F2FBF5;
-  --park-100: #E2FAE9;
-  --park-200: #C0F5D3;
-  --park-300: #8EEDB0;
-  --park-400: #6AE995;
-  --park-500: #3DDB6D;
-  --park-600: #1AB852;
-  --park-700: #13923F;
-  --park-800: #0D6C2E;
-  --park-900: #07481E;
-  --park-surface: #F2FBF5;
-  --park-surface-2: #E2FAE9;
+  /* Vintage Ballpark palette — base: #C85C77 */
+  --cream-50: #FFFCF6;
+  --cream-100: #FAF5EF;
+  --cream-200: #F8EAC9;
+  --cream-300: #F0E8E7;
+  --rose-100: #FBE6EA;
+  --rose-200: #F2A2AD;
+  --rose-300: #DD7386;
+  --rose-500: #C85C77;
+  --rose-700: #B5536A;
+  --burgundy-700: #5E1530;
+  --burgundy-900: #430A21;
+
+  /* Legacy aliases — kept for transitional code paths. Prefer cream/rose/burgundy tokens. */
+  --park-50: var(--cream-50);
+  --park-100: var(--cream-100);
+  --park-200: var(--rose-100);
+  --park-300: var(--rose-200);
+  --park-400: var(--rose-300);
+  --park-500: var(--rose-500);
+  --park-600: var(--rose-700);
+  --park-700: var(--burgundy-700);
+  --park-800: var(--burgundy-900);
+  --park-900: var(--burgundy-900);
+  --park-surface: var(--cream-100);
+  --park-surface-2: var(--cream-200);
   --park-kakao: #FEE500;
   --park-kakao-text: #3C1E1E;
 
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #3DDB6D;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: #E2FAE9;
-  --sidebar-accent-foreground: #1AB852;
-  --sidebar-border: #C8FAD8;
-  --sidebar-ring: #6AE995;
+  --sidebar: #FFFCF6;
+  --sidebar-foreground: #430A21;
+  --sidebar-primary: #C85C77;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #FBE6EA;
+  --sidebar-accent-foreground: #B5536A;
+  --sidebar-border: #E8DEDE;
+  --sidebar-ring: #DD7386;
 }
 
 .dark {
@@ -145,7 +158,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   }
 
   /* Scrollbar hide utility */

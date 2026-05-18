@@ -1,41 +1,15 @@
-import logoImg from '../imports/image.png'
+import landingBg from '../assets/landing-bg.png'
+import landingLogo from '../assets/landing-logo.svg'
 import { Button } from '../app/components/design-system'
 import { getKakaoLoginUrl } from '../lib/kakaoAuth'
 
 export default function LoginPage() {
   return (
     <div className="cb-login-screen">
-      <div className="cb-login-meta">
-        <span className="cb-login-meta__pill">EST. 2026</span>
-        <span className="cb-login-meta__divider" aria-hidden="true" />
-        <span>Baseball · Eco · Trio</span>
-      </div>
-
-      <div className="cb-login-brand">
-        <div className="cb-login-emblem">
-          <span className="cb-login-halo" aria-hidden="true" />
-          <img src={logoImg} alt="클린볼트리오 로고" className="cb-login-logo" />
-        </div>
-
-        <div className="cb-login-wordmark">
-          <span className="cb-login-supertitle">Baseball Eco League</span>
-          <h1 className="cb-login-title">클린볼트리오</h1>
-          <span className="cb-login-en">Clean · Ball · Trio</span>
-        </div>
-
-        <p className="cb-login-tagline">
-          응원하는 마음으로,
-          <br />
-          야구장을 더 깨끗하게.
-        </p>
-      </div>
+      <img src={landingBg} alt="" aria-hidden="true" className="cb-login-bg" />
+      <img src={landingLogo} alt="용기낼깡" className="cb-login-logo" />
 
       <div className="cb-login-actions">
-        <span className="cb-login-cta-eyebrow">
-          <span className="cb-login-cta-eyebrow__dot" aria-hidden="true" />
-          Play Ball · 시즌 입장
-        </span>
-
         <Button
           onClick={() => {
             window.location.href = getKakaoLoginUrl()
