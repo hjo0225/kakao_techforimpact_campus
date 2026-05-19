@@ -3,12 +3,14 @@ import type { ChangeEvent } from 'react';
 import { useApp } from '../../AppContext';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
-import { Share2, ChevronLeft, ChevronRight, ImagePlus, Download } from 'lucide-react';
+import { Share2, ChevronLeft, ChevronRight, ImagePlus, Download, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigation } from '../../navigation';
+import { useAuthStore } from '@/store/authStore';
+import { getKakaoLogoutUrl } from '@/lib/kakaoAuth';
+import { KBO_TEAMS } from '../../teamBrand';
 import { TeamBadge } from '../TeamBadge';
 
-type SubTab = 'dashboard' | 'calendar' | 'share';
+type SubTab = 'dashboard' | 'calendar' | 'share' | 'settings';
 
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -24,7 +26,7 @@ interface ShareImageInput {
   format: 'story' | 'feed';
   backgroundUrl: string | null;
   visitCount: number;
-  ecoGrade: string;
+  containerCount: number;
   todaySeatCertified: boolean;
   matchName: string;
   score: string;
@@ -82,9 +84,9 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     drawCoverImage(ctx, image, width, height);
   } else {
     const bg = ctx.createLinearGradient(0, 0, width, height);
-    bg.addColorStop(0, '#0D2B1A');
-    bg.addColorStop(0.55, '#1A4A2C');
-    bg.addColorStop(1, '#3DDB6D');
+    bg.addColorStop(0, '#430A21');
+    bg.addColorStop(0.55, '#5E1530');
+    bg.addColorStop(1, '#C85C77');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
   }
@@ -100,14 +102,14 @@ async function createInstagramReadyImage(input: ShareImageInput) {
   const top = input.format === 'story' ? 160 : 92;
   const bottom = height - (input.format === 'story' ? 360 : 300);
 
-  ctx.fillStyle = 'rgba(61, 219, 109, 0.24)';
-  ctx.strokeStyle = 'rgba(61, 219, 109, 0.5)';
+  ctx.fillStyle = 'rgba(200, 92, 119, 0.24)';
+  ctx.strokeStyle = 'rgba(200, 92, 119, 0.5)';
   ctx.lineWidth = 2;
   ctx.roundRect(padding, top, 370, 72, 24);
   ctx.fill();
   ctx.stroke();
 
-  drawText(ctx, '클린업 트리오', padding + 32, top + 19, {
+  drawText(ctx, '용기낼깡', padding + 32, top + 19, {
     font: '800 30px "Noto Sans KR", sans-serif',
     color: '#BFFBD1',
   });
@@ -151,7 +153,7 @@ async function createInstagramReadyImage(input: ShareImageInput) {
   });
   drawText(
     ctx,
-    `${input.todaySeatCertified ? '반납 인증 완료' : '반납 인증 전'} · ${input.ecoGrade}`,
+    `${input.todaySeatCertified ? '반납 인증 완료' : '반납 인증 전'} · 줄인 용기 ${input.containerCount}개`,
     padding + 34,
     height - (input.format === 'story' ? 182 : 132),
     {
@@ -159,7 +161,7 @@ async function createInstagramReadyImage(input: ShareImageInput) {
       color: '#FFFFFF',
     }
   );
-  drawText(ctx, '#클린업트리오 #클린야구', width / 2, height - 78, {
+  drawText(ctx, '#용기낼깡 #클린야구', width / 2, height - 78, {
     font: '700 26px "Noto Sans KR", sans-serif',
     color: 'rgba(255,255,255,0.64)',
     align: 'center',
@@ -172,7 +174,7 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     }, 'image/png');
   });
 
-  return new File([blob], `cleanup-trio-${input.format}.png`, { type: 'image/png' });
+  return new File([blob], `yonggi-naelkkang-${input.format}.png`, { type: 'image/png' });
 }
 
 function downloadFile(file: File) {
@@ -185,13 +187,25 @@ function downloadFile(file: File) {
 }
 
 export function RecordScreen() {
-  const { navigate } = useNavigation();
   const {
-    selectedTeam, selectedGame, points, ecoGrade,
+    selectedGame,
     visits, ecoImpact, certificationLogs,
     reusableUseCount, reusableReturnCount, todayMission,
     shareCardShared, setShareCardShared,
+    selectedTeam, setSelectedTeam,
   } = useApp();
+  const logout = useAuthStore((s) => s.logout);
+  const setTeam = useAuthStore((s) => s.setTeam);
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = getKakaoLogoutUrl();
+  };
+
+  const handleSelectTeam = (teamName: string) => {
+    setSelectedTeam(teamName);
+    setTeam(teamName);
+  };
 
   const [subTab, setSubTab] = useState<SubTab>('dashboard');
   const [currentYear, setCurrentYear] = useState(2026);
@@ -210,6 +224,9 @@ export function RecordScreen() {
   const selectedVisit = selectedDate ? visitMap[selectedDate] : null;
 
   const totalVisits = visits.length;
+  const contributionDisplay = ecoImpact.seoulContributionPct < 0.01
+    ? ecoImpact.seoulContributionPct.toFixed(4)
+    : ecoImpact.seoulContributionPct.toFixed(3);
 
   useEffect(() => () => {
     if (sharePhoto) URL.revokeObjectURL(sharePhoto.url);
@@ -252,15 +269,15 @@ export function RecordScreen() {
         format: shareFormat,
         backgroundUrl: sharePhoto?.url ?? null,
         visitCount: visits.length,
-        ecoGrade,
+        containerCount: ecoImpact.containers,
         todaySeatCertified: todayMission.returnDone,
         matchName,
         score,
       });
       const shareData: ShareData = {
         files: [file],
-        title: '클린업 트리오 직관 카드',
-        text: `오늘 잠실 직관 ${visits.length}번째 · ${ecoGrade} · #클린업트리오 #클린야구`,
+        title: '용기낼깡 직관 카드',
+        text: `오늘 잠실 직관 ${visits.length}번째 · 줄인 용기 ${ecoImpact.containers}개 · #용기낼깡 #클린야구`,
       };
       const canUseNativeShare = typeof navigator.share === 'function'
         && (!navigator.canShare || navigator.canShare(shareData));
@@ -305,62 +322,63 @@ export function RecordScreen() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F2FBF5' }}>
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-        <StatusBar />
-        {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 14px 6px', gap: 8 }}>
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#111827' }}>MY</span>
-          <button
-            onClick={() => navigate('account')}
-            aria-label="계정 관리"
-            title="계정 관리"
-            style={{
-              width: 44, height: 44, borderRadius: '50%', border: 'none',
-              background: 'linear-gradient(135deg, #3DDB6D, #1AB852)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', outline: 'none', flexShrink: 0,
-              boxShadow: '0 2px 6px rgba(61,219,109,0.28)',
-            }}
-          >
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>김</span>
-          </button>
-        </div>
-        {/* Sub tabs */}
-        <div style={{ display: 'flex' }}>
-          {([
-            { key: 'dashboard', label: '환경 타율' },
-            { key: 'calendar', label: '직관 달력' },
-            { key: 'share', label: '직관 카드' },
-          ] as { key: SubTab; label: string }[]).map((tab) => (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+      <StatusBar />
+      <div style={{
+        flexShrink: 0,
+        display: 'flex',
+        gap: 6,
+        padding: '6px 12px 10px',
+        background: 'transparent',
+      }}>
+        {([
+          { key: 'dashboard', label: '감축 기여' },
+          { key: 'calendar', label: '직관 달력' },
+          { key: 'share', label: '직관 카드' },
+          { key: 'settings', label: '설정' },
+        ] as { key: SubTab; label: string }[]).map((tab) => {
+          const active = subTab === tab.key;
+          return (
             <button
               key={tab.key}
               onClick={() => setSubTab(tab.key)}
               style={{
-                flex: 1, padding: '14px 4px', minHeight: 44,
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: subTab === tab.key ? 700 : 500,
-                color: subTab === tab.key ? '#13923F' : '#9CA3AF',
-                borderBottom: `2.5px solid ${subTab === tab.key ? '#3DDB6D' : 'transparent'}`,
-                transition: 'all 0.2s',
+                flex: 1,
+                minHeight: 38,
+                padding: '8px 6px',
+                border: '2px solid #430A21',
+                borderRadius: 'var(--cb-radius-md)',
+                background: active
+                  ? 'linear-gradient(180deg, #F2A2AD 0%, #DD7386 100%)'
+                  : 'var(--cb-surface)',
+                color: active ? '#fff' : '#430A21',
+                fontSize: 12,
+                fontWeight: active ? 900 : 700,
+                cursor: 'pointer',
+                boxShadow: active ? '0 3px 0 0 #430A21' : '0 2px 0 0 #430A21',
+                transform: active ? 'translateY(-1px)' : 'none',
+                transition: 'transform 80ms ease, box-shadow 80ms ease',
               }}
             >
               {tab.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        {/* ── CALENDAR TAB ── */}
         {subTab === 'calendar' && (
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, height: '100%', overflow: 'auto' }} className="hide-scroll">
-            {/* Season counter */}
             <div style={{
-              background: 'linear-gradient(135deg, #3DDB6D, #1AB852)',
-              borderRadius: 16, padding: '12px 16px', color: '#fff',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'var(--cb-primary)',
+              borderRadius: 'var(--cb-radius-lg)',
+              padding: '12px 16px',
+              color: '#fff',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.20)',
             }}>
               <div>
                 <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>2026 시즌</p>
@@ -369,14 +387,12 @@ export function RecordScreen() {
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>환경 점수</p>
-                <p style={{ fontSize: 20, fontWeight: 700 }}>{points.toLocaleString()}P</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>줄인 용기</p>
+                <p style={{ fontSize: 20, fontWeight: 700 }}>{ecoImpact.containers}개</p>
               </div>
             </div>
 
-            {/* Calendar */}
-            <div style={{ background: '#fff', borderRadius: 20, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-              {/* Month nav */}
+            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '16px', border: '2px solid #430A21', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <button onClick={handlePrevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}>
                   <ChevronLeft size={18} color="#6B7280" />
@@ -389,7 +405,6 @@ export function RecordScreen() {
                 </button>
               </div>
 
-              {/* Day headers */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
                 {DAYS.map((d, i) => (
                   <div key={d} style={{
@@ -402,13 +417,10 @@ export function RecordScreen() {
                 ))}
               </div>
 
-              {/* Days grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
-                {/* Empty cells for first day offset */}
                 {Array.from({ length: firstDay }).map((_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
-                {/* Day cells */}
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1;
                   const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -423,22 +435,23 @@ export function RecordScreen() {
                       onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                        padding: '4px 2px', borderRadius: 10,
-                        background: isSelected ? '#E2FAE9' : 'transparent',
-                        border: isSelected ? '1.5px solid #3DDB6D' : '1.5px solid transparent',
+                        padding: '4px 2px',
+                        borderRadius: 'var(--cb-radius-sm)',
+                        background: isSelected ? 'var(--cb-primary-soft)' : 'transparent',
+                        border: isSelected ? '1.5px solid var(--cb-primary)' : '1.5px solid transparent',
                         cursor: 'pointer', outline: 'none',
                       }}
                     >
                       <span style={{
                         fontSize: 13, fontWeight: isToday ? 700 : 400,
-                        color: isSelected ? '#13923F' : dayOfWeek === 0 ? '#EF4444' : dayOfWeek === 6 ? '#3B82F6' : '#374151',
+                        color: isSelected ? 'var(--cb-primary-deep)' : dayOfWeek === 0 ? '#EF4444' : dayOfWeek === 6 ? '#3B82F6' : '#374151',
                       }}>
                         {day}
                       </span>
                       {visit ? (
                         <span style={{ fontSize: 14 }}>⚾</span>
                       ) : isToday ? (
-                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#3DDB6D' }} />
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--cb-primary)' }} />
                       ) : (
                         <div style={{ width: 4, height: 4 }} />
                       )}
@@ -448,9 +461,8 @@ export function RecordScreen() {
               </div>
             </div>
 
-            {/* Selected visit record */}
             {selectedVisit && (
-              <div style={{ background: '#fff', borderRadius: 20, padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.5px solid #C0F5D3' }}>
+              <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '16px', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)', border: '2px solid #430A21' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
@@ -462,53 +474,56 @@ export function RecordScreen() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: 12, fontSize: 22,
-                      background: selectedVisit.result === '승' ? '#E2FAE9' : selectedVisit.result === '패' ? '#FFF3F3' : '#F9FAFB',
+                      width: 40, height: 40,
+                      borderRadius: 'var(--cb-radius-md)',
+                      fontSize: 22,
+                      background: selectedVisit.result === '승' ? 'var(--cb-primary-soft)' : selectedVisit.result === '패' ? '#FFF3F3' : '#F9FAFB',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      border: `1.5px solid ${selectedVisit.result === '승' ? '#C0F5D3' : selectedVisit.result === '패' ? '#FCA5A5' : '#E5E7EB'}`,
+                      border: `2px solid ${selectedVisit.result === '승' ? 'var(--cb-primary-border)' : selectedVisit.result === '패' ? '#FCA5A5' : '#430A21'}`,
+                      boxShadow: '0 2px 0 0 #430A21',
                     }}>
                       {selectedVisit.result === '승' ? '🏆' : selectedVisit.result === '패' ? '😢' : '🤝'}
                     </div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: selectedVisit.result === '승' ? '#13923F' : selectedVisit.result === '패' ? '#E53E3E' : '#6B7280', marginTop: 3 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: selectedVisit.result === '승' ? 'var(--cb-primary-deep)' : selectedVisit.result === '패' ? '#E53E3E' : '#6B7280', marginTop: 3 }}>
                       {selectedVisit.result} {selectedVisit.score}
                     </p>
                   </div>
                 </div>
 
-                {/* Seat */}
-                <div style={{ background: '#F2FBF5', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
+                <div style={{ background: 'var(--cb-bg)', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px', marginBottom: 10, border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
                   <p style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 2 }}>좌석</p>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
                     {selectedVisit.seat.section} {selectedVisit.seat.seatNumber}
                   </p>
                 </div>
 
-                {/* Eco actions */}
                 <div style={{ display: 'flex', gap: 7, marginBottom: 10 }}>
                   {[
-                    { label: `인증 ${selectedVisit.reportCount}건`, active: selectedVisit.reportCount > 0, emoji: '♻️' },
                     { label: '반납 인증', active: selectedVisit.seatCertified, emoji: '📸' },
                     { label: '다회용기', active: selectedVisit.reusableUsed, emoji: '♻️' },
                   ].map((item) => (
                     <div
                       key={item.label}
                       style={{
-                        flex: 1, borderRadius: 10, padding: '8px 6px', textAlign: 'center',
-                        background: item.active ? '#E2FAE9' : '#F9FAFB',
-                        border: `1px solid ${item.active ? '#C0F5D3' : '#E5E7EB'}`,
+                        flex: 1,
+                        borderRadius: 'var(--cb-radius-md)',
+                        padding: '8px 6px',
+                        textAlign: 'center',
+                        background: item.active ? 'var(--cb-primary-soft)' : '#F9FAFB',
+                        border: `2px solid ${item.active ? 'var(--cb-primary-border)' : '#D1D5DB'}`,
+                        boxShadow: item.active ? '0 2px 0 0 var(--cb-primary-border)' : '0 2px 0 0 #D1D5DB',
                       }}
                     >
                       <p style={{ fontSize: 14 }}>{item.emoji}</p>
-                      <p style={{ fontSize: 10, color: item.active ? '#13923F' : '#9CA3AF', fontWeight: item.active ? 600 : 400 }}>
+                      <p style={{ fontSize: 10, color: item.active ? 'var(--cb-primary-deep)' : '#9CA3AF', fontWeight: item.active ? 600 : 400 }}>
                         {item.label}
                       </p>
                     </div>
                   ))}
                 </div>
 
-                {/* Memo */}
                 {selectedVisit.memo ? (
-                  <div style={{ background: '#FFF8E6', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ background: '#FFF8E6', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px', border: '2px solid #B07800', boxShadow: '0 2px 0 0 #B07800' }}>
                     <p style={{ fontSize: 11, color: '#B07800', marginBottom: 2 }}>메모</p>
                     <p style={{ fontSize: 12, color: '#374151' }}>{selectedVisit.memo}</p>
                   </div>
@@ -526,97 +541,47 @@ export function RecordScreen() {
           </div>
         )}
 
-        {/* ── ENVIRONMENT DASHBOARD TAB ── */}
         {subTab === 'dashboard' && (
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, height: '100%', overflow: 'auto' }} className="hide-scroll">
             <div style={{
-              background: 'linear-gradient(135deg, #0F7038, #3DDB6D)',
-              borderRadius: 22,
+              background: 'var(--cb-primary)',
+              borderRadius: 'var(--cb-radius-lg)',
               padding: '18px',
               color: '#fff',
-              boxShadow: '0 10px 24px rgba(19,146,63,0.20)',
+              border: '2px solid #430A21',
+              boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200, 92, 119, 0.30)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <div>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', marginBottom: 3 }}>환경 타율</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', marginBottom: 3 }}>서울 야구장 일회용품 감축</p>
                   <p style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>
-                    .{Math.min(999, 620 + reusableReturnCount * 17)}
+                    {ecoImpact.wasteKg}<span style={{ fontSize: 16, marginLeft: 4 }}>kg</span>
                   </p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', marginTop: 4 }}>줄인 용기 {ecoImpact.containers}개</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', marginBottom: 3 }}>서울 목표 기여도</p>
-                  <p style={{ fontSize: 20, fontWeight: 900 }}>{ecoImpact.seoulContributionPct}%</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', marginBottom: 3 }}>시즌 목표 기여도</p>
+                  <p style={{ fontSize: 20, fontWeight: 900 }}>{contributionDisplay}%</p>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {[
-                  { label: '줄인 용기', value: `${ecoImpact.containers}개` },
-                  { label: '폐기물 감량', value: `${ecoImpact.wasteKg}kg` },
+                  { label: '사용 인증', value: `${reusableUseCount}회` },
+                  { label: '반납 인증', value: `${reusableReturnCount}회` },
                   { label: '탄소 절감', value: `${ecoImpact.carbonKg}kg` },
                 ].map((item) => (
                   <div key={item.label} style={{
-                    background: 'rgba(255,255,255,0.14)',
-                    border: '1px solid rgba(255,255,255,0.18)',
-                    borderRadius: 14,
+                    background: 'rgba(255,255,255,0.22)',
+                    border: '2px solid rgba(255,255,255,0.32)',
+                    borderRadius: 'var(--cb-radius-md)',
                     padding: '10px 6px',
                     textAlign: 'center',
+                    boxShadow: '0 2px 0 0 rgba(67, 10, 33, 0.20)',
                   }}>
                     <p style={{ fontSize: 15, fontWeight: 900 }}>{item.value}</p>
                     <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', marginTop: 2 }}>
                       {item.label}
                     </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{
-              background: '#fff',
-              borderRadius: 20,
-              padding: 16,
-              border: '1.5px solid rgba(0,0,0,0.07)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 900, color: '#111827' }}>야구 아바타</p>
-                  <p style={{ fontSize: 11, color: '#6B7280' }}>포인트로 유니폼과 장비를 해금합니다</p>
-                </div>
-                <div style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: 18,
-                  background: '#E2FAE9',
-                  border: '2px solid #C0F5D3',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <TeamBadge teamName={selectedTeam} size={34} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                {[
-                  { name: '홈 유니폼', unlocked: true, cost: 0 },
-                  { name: '헬멧', unlocked: points >= 500, cost: 500 },
-                  { name: '장갑', unlocked: points >= 800, cost: 800 },
-                  { name: '배트', unlocked: points >= 1200, cost: 1200 },
-                ].map((item) => (
-                  <div
-                    key={item.name}
-                    style={{
-                      borderRadius: 12,
-                      padding: '10px 4px',
-                      textAlign: 'center',
-                      background: item.unlocked ? '#E2FAE9' : '#F3F4F6',
-                      border: `1px solid ${item.unlocked ? '#C0F5D3' : '#E5E7EB'}`,
-                    }}
-                  >
-                    <p style={{ fontSize: 15 }}>{item.unlocked ? '✓' : '🔒'}</p>
-                    <p style={{ fontSize: 9, color: item.unlocked ? '#13923F' : '#6B7280', fontWeight: 800, lineHeight: 1.25 }}>
-                      {item.name}
-                    </p>
-                    <p style={{ fontSize: 8, color: '#9CA3AF', marginTop: 2 }}>{item.cost ? `${item.cost}P` : '기본'}</p>
                   </div>
                 ))}
               </div>
@@ -629,10 +594,10 @@ export function RecordScreen() {
               ].map((item) => (
                 <div key={item.title} style={{
                   background: '#fff',
-                  borderRadius: 18,
+                  borderRadius: 'var(--cb-radius-lg)',
                   padding: 14,
-                  border: '1.5px solid rgba(0,0,0,0.07)',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                  border: '2px solid #430A21',
+                  boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
                 }}>
                   <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 4 }}>{item.title}</p>
                   <p style={{ fontSize: 22, fontWeight: 900, color: '#111827' }}>{item.value}</p>
@@ -641,8 +606,8 @@ export function RecordScreen() {
               ))}
             </div>
 
-            <div style={{ background: '#fff', borderRadius: 20, padding: 16, border: '1.5px solid rgba(0,0,0,0.07)' }}>
-              <p style={{ fontSize: 13, fontWeight: 900, color: '#111827', marginBottom: 10 }}>포인트 내역</p>
+            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: 16, border: '2px solid #430A21', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)' }}>
+              <p style={{ fontSize: 13, fontWeight: 900, color: '#111827', marginBottom: 10 }}>최근 인증</p>
               {certificationLogs.slice(0, 4).map((log) => (
                 <div key={log.id} style={{
                   display: 'flex',
@@ -654,14 +619,15 @@ export function RecordScreen() {
                   <span style={{
                     width: 34,
                     height: 34,
-                    borderRadius: 12,
-                    background: log.type === 'return' ? '#EFF6FF' : '#E2FAE9',
-                    color: log.type === 'return' ? '#2563EB' : '#13923F',
+                    borderRadius: 'var(--cb-radius-sm)',
+                    background: log.type === 'return' ? '#EFF6FF' : 'var(--cb-primary-soft)',
+                    color: log.type === 'return' ? '#2563EB' : 'var(--cb-primary-deep)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 12,
                     fontWeight: 900,
+                    border: `1.5px solid ${log.type === 'return' ? '#2563EB' : 'var(--cb-primary-border)'}`,
                   }}>
                     {log.type === 'return' ? '반납' : '사용'}
                   </span>
@@ -669,32 +635,30 @@ export function RecordScreen() {
                     <p style={{ fontSize: 12, color: '#111827', fontWeight: 800 }}>{log.label}</p>
                     <p style={{ fontSize: 10, color: '#9CA3AF' }}>{log.game} · {log.time}</p>
                   </div>
-                  <span style={{ fontSize: 12, color: '#13923F', fontWeight: 900 }}>+{log.pts}P</span>
+                  {log.bonus && (
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: '#B07800',
+                      background: '#FFF8E6',
+                      borderRadius: 'var(--cb-radius-full)',
+                      padding: '3px 10px',
+                      border: '1.5px solid #B07800',
+                    }}>
+                      조기 반납
+                    </span>
+                  )}
                 </div>
               ))}
+              {certificationLogs.length === 0 && (
+                <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', padding: '12px 0' }}>
+                  아직 인증 내역이 없습니다.
+                </p>
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('ranking')}
-              style={{
-                width: '100%',
-                border: 'none',
-                borderRadius: 16,
-                padding: 14,
-                background: '#E2FAE9',
-                color: '#13923F',
-                fontSize: 13,
-                fontWeight: 900,
-                cursor: 'pointer',
-              }}
-            >
-              굿즈 교환소와 시즌 리워드 보기
-            </button>
           </div>
         )}
 
-        {/* ── SHARE CARD TAB ── */}
         {subTab === 'share' && (
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, height: '100%', overflow: 'auto' }} className="hide-scroll">
             <input
@@ -705,7 +669,7 @@ export function RecordScreen() {
               onChange={handleSharePhotoChange}
               style={{ display: 'none' }}
             />
-            <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: '1.5px solid rgba(0,0,0,0.06)' }}>
+            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '14px 16px', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)', border: '2px solid #430A21' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 3 }}>배경 사진</p>
@@ -717,7 +681,7 @@ export function RecordScreen() {
                   <button
                     type="button"
                     onClick={handleClearSharePhoto}
-                    style={{ background: '#F3F4F6', border: 'none', borderRadius: 10, padding: '7px 10px', fontSize: 11, color: '#6B7280', cursor: 'pointer' }}
+                    style={{ background: '#F3F4F6', border: '1.5px solid #D1D5DB', borderRadius: 'var(--cb-radius-full)', padding: '6px 12px', fontSize: 11, color: '#6B7280', cursor: 'pointer' }}
                   >
                     제거
                   </button>
@@ -728,10 +692,11 @@ export function RecordScreen() {
                 onClick={() => sharePhotoInputRef.current?.click()}
                 style={{
                   width: '100%', marginTop: 12, padding: '12px',
-                  borderRadius: 14, border: '1.5px dashed #8EEDB0',
-                  background: sharePhoto ? '#E2FAE9' : '#F8FFF9',
+                  borderRadius: 'var(--cb-radius-md)',
+                  border: '2px dashed var(--cb-primary-border)',
+                  background: sharePhoto ? 'var(--cb-primary-soft)' : 'var(--cb-bg-soft)',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  color: '#13923F', fontSize: 13, fontWeight: 700,
+                  color: 'var(--cb-primary-deep)', fontSize: 13, fontWeight: 700,
                 }}
               >
                 <ImagePlus size={16} />
@@ -744,19 +709,22 @@ export function RecordScreen() {
               )}
             </div>
 
-            {/* Format selector */}
             <div style={{ display: 'flex', gap: 8 }}>
               {(['story', 'feed'] as const).map((fmt) => (
                 <button
                   key={fmt}
                   onClick={() => setShareFormat(fmt)}
                   style={{
-                    flex: 1, padding: '10px', borderRadius: 12,
-                    border: shareFormat === fmt ? '2px solid #3DDB6D' : '1.5px solid #E3E5E8',
-                    background: shareFormat === fmt ? '#E2FAE9' : '#fff',
+                    flex: 1, padding: '12px',
+                    borderRadius: 'var(--cb-radius-md)',
+                    border: shareFormat === fmt ? '2px solid var(--cb-primary)' : '2px solid #430A21',
+                    background: shareFormat === fmt ? 'var(--cb-primary-soft)' : '#fff',
                     cursor: 'pointer', outline: 'none',
                     fontSize: 13, fontWeight: shareFormat === fmt ? 700 : 500,
-                    color: shareFormat === fmt ? '#13923F' : '#6B7280',
+                    color: shareFormat === fmt ? 'var(--cb-primary-deep)' : '#6B7280',
+                    boxShadow: shareFormat === fmt
+                      ? '0 3px 0 0 var(--cb-primary), 0 4px 6px rgba(200, 92, 119, 0.22)'
+                      : '0 2px 0 0 #430A21',
                   }}
                 >
                   {fmt === 'story' ? '스토리 (9:16)' : '피드 (1:1)'}
@@ -764,105 +732,101 @@ export function RecordScreen() {
               ))}
             </div>
 
-            {/* Share card preview */}
             <div style={{
-              borderRadius: 22,
-              background: '#DDEFE4',
+              borderRadius: 'var(--cb-radius-lg)',
+              background: 'var(--cb-primary-soft)',
               padding: shareFormat === 'story' ? '10px 72px' : '10px 28px',
-              boxShadow: 'inset 0 0 0 1px rgba(19,146,63,0.08)',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21',
             }}>
               <div style={{
                 background: sharePhoto
-                  ? `linear-gradient(180deg, rgba(7,24,14,0.18), rgba(7,24,14,0.42) 46%, rgba(7,24,14,0.78)), url(${sharePhoto.url})`
-                  : 'linear-gradient(160deg, #0D2B1A 0%, #1A4A2C 50%, #3DDB6D 100%)',
+                  ? `url(${sharePhoto.url})`
+                  : 'var(--cb-primary-deep)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                borderRadius: 20,
+                borderRadius: 'var(--cb-radius-md)',
                 padding: shareFormat === 'story' ? '26px 18px' : '20px',
                 aspectRatio: shareFormat === 'story' ? '9/16' : '1/1',
                 display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                border: '2px solid #430A21',
+                boxShadow: '0 3px 0 0 #430A21, 0 6px 12px rgba(0,0,0,0.18)',
                 position: 'relative', overflow: 'hidden',
                 width: '100%',
               }}>
-                {/* Background decoration */}
                 <div style={{
                   position: 'absolute', top: -30, right: -30, width: 120, height: 120,
-                  borderRadius: '50%', background: 'rgba(61,219,109,0.15)',
+                  borderRadius: '50%', background: 'rgba(200, 92, 119, 0.15)',
                 }} />
                 <div style={{
                   position: 'absolute', bottom: 20, left: -20, width: 80, height: 80,
                   borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
                 }} />
 
-                {/* Top section */}
                 <div style={{ zIndex: 1 }}>
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    background: 'rgba(61,219,109,0.25)', borderRadius: 10, padding: '5px 12px',
-                    marginBottom: 12, border: '1px solid rgba(61,219,109,0.4)',
+                    background: 'rgba(200, 92, 119, 0.32)',
+                    borderRadius: 'var(--cb-radius-full)',
+                    padding: '5px 14px',
+                    marginBottom: 12,
+                    border: '1.5px solid rgba(200, 92, 119, 0.7)',
                   }}>
-                    <span style={{ fontSize: 12, color: '#3DDB6D', fontWeight: 700 }}>⚾ 클린업 트리오</span>
+                    <span style={{ fontSize: 12, color: 'var(--cb-primary)', fontWeight: 700 }}>⚾ 용기낼깡</span>
                   </div>
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 3 }}>{SHARE_CARD_DATE} 잠실 야구장</p>
                   <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1.3 }}>
                     오늘 잠실 직관<br />
-                    <span style={{ color: '#3DDB6D' }}>{visits.length}번째</span> 🏟️
+                    <span style={{ color: 'var(--cb-primary)' }}>{visits.length}번째</span> 🏟️
                   </p>
                 </div>
 
-                {/* Middle score */}
                 <div style={{ zIndex: 1, textAlign: 'center' }}>
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
                     {selectedGame ? `${selectedGame.home} vs ${selectedGame.away}` : 'LG vs 두산'}
                   </p>
                   <p style={{ fontSize: 32, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>{selectedGame?.score ?? '5 : 3'}</p>
-                  <p style={{ fontSize: 12, color: '#3DDB6D', fontWeight: 600 }}>🏆 승리!</p>
+                  <p style={{ fontSize: 12, color: 'var(--cb-primary)', fontWeight: 600 }}>🏆 승리!</p>
                 </div>
 
-                {/* Bottom eco summary */}
                 <div style={{ zIndex: 1 }}>
                   <div style={{
-                    background: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: '10px 14px',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.18)',
+                    borderRadius: 'var(--cb-radius-md)',
+                    padding: '10px 14px',
+                    border: '2px solid rgba(255,255,255,0.30)',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>오늘의 환경 행동</span>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                        background: 'rgba(61,219,109,0.3)', color: '#3DDB6D',
-                        border: '1px solid rgba(61,219,109,0.5)',
+                        fontSize: 10, fontWeight: 700, padding: '3px 10px',
+                        borderRadius: 'var(--cb-radius-full)',
+                        background: 'rgba(200, 92, 119, 0.35)', color: 'var(--cb-primary)',
+                        border: '1.5px solid rgba(200, 92, 119, 0.65)',
                       }}>
-                        🌿 {ecoGrade}
+                        🌿 줄인 용기 {ecoImpact.containers}개
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <span style={{ fontSize: 11, color: '#fff' }}>
                         사용 {reusableUseCount}회
                       </span>
-                      <span style={{ fontSize: 11, color: todayMission.returnDone ? '#3DDB6D' : 'rgba(255,255,255,0.5)' }}>
+                      <span style={{ fontSize: 11, color: todayMission.returnDone ? 'var(--cb-primary)' : 'rgba(255,255,255,0.5)' }}>
                         {todayMission.returnDone ? '반납 인증 완료' : '반납 인증 전'}
                       </span>
                     </div>
                   </div>
                   <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 8 }}>
-                    다회용기 반납하고 그린팬 됐음 • #클린업트리오 #클린야구
+                    다회용기로 직관, 일회용기 줄였음 • #용기낼깡 #클린야구
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Share button */}
             <button
               onClick={handleShareCard}
               disabled={isSharing}
-              style={{
-                width: '100%', padding: '15px', borderRadius: 18,
-                background: isSharing ? '#C8CDD4' : 'linear-gradient(135deg, #3DDB6D, #1AB852)',
-                border: 'none', cursor: isSharing ? 'wait' : 'pointer', color: '#fff', fontSize: 15, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: isSharing ? 'none' : '0 4px 12px rgba(61,219,109,0.38)',
-              }}
+              className="cb-button cb-button--primary cb-button--md cb-button--full"
             >
               {isSharing ? <Download size={16} /> : <Share2 size={16} />}
               {isSharing ? '공유 이미지 생성 중...' : '인스타그램 공유 준비'}
@@ -872,16 +836,18 @@ export function RecordScreen() {
               모바일에서는 공유 시트에서 Instagram을 선택하세요. 미지원 브라우저에서는 PNG 저장으로 대체됩니다.
             </p>
 
-            {/* Template texts */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '14px 16px', border: '2px solid #430A21', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)' }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>기본 문구 템플릿</p>
               {[
-                `오늘 잠실 직관 ${visits.length}번째 · 다회용기 반납하고 ${ecoGrade} 됐음`,
-                `#클린업트리오 #클린야구 #${ecoGrade} #KBO`,
+                `오늘 잠실 직관 ${visits.length}번째 · 다회용기로 줄인 용기 ${ecoImpact.containers}개`,
+                `#용기낼깡 #클린야구 #서울감축기여 #KBO`,
               ].map((text, i) => (
                 <div key={i} style={{
-                  background: '#F2FBF5', borderRadius: 10, padding: '10px 12px', marginBottom: 6,
+                  background: 'var(--cb-bg)',
+                  borderRadius: 'var(--cb-radius-md)',
+                  padding: '10px 12px', marginBottom: 6,
                   fontSize: 12, color: '#374151', lineHeight: 1.5,
+                  border: '1.5px solid #E8DEDE',
                 }}>
                   {text}
                 </div>
@@ -889,11 +855,108 @@ export function RecordScreen() {
             </div>
           </div>
         )}
+
+        {subTab === 'settings' && (
+          <div style={{ padding: '16px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflow: 'auto' }} className="hide-scroll">
+            <div style={{
+              background: '#fff',
+              borderRadius: 'var(--cb-radius-lg)',
+              padding: '14px 16px',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--cb-primary-deep)', letterSpacing: '0.04em' }}>응원팀</p>
+                <p style={{ fontSize: 11, color: '#6B7280' }}>
+                  현재: <strong style={{ color: '#430A21' }}>{selectedTeam ?? '미설정'}</strong>
+                </p>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, 1fr)',
+                gap: 8,
+              }}>
+                {KBO_TEAMS.map((team) => {
+                  const isCurrent = selectedTeam === team.name;
+                  return (
+                    <button
+                      key={team.code}
+                      type="button"
+                      onClick={() => handleSelectTeam(team.name)}
+                      title={team.name}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '8px 4px',
+                        background: isCurrent ? 'var(--cb-primary-soft)' : 'var(--cb-bg-soft)',
+                        border: `2px solid ${isCurrent ? 'var(--cb-primary)' : '#430A21'}`,
+                        borderRadius: 'var(--cb-radius-md)',
+                        boxShadow: isCurrent ? '0 3px 0 0 var(--cb-primary-deep)' : '0 2px 0 0 #430A21',
+                        cursor: 'pointer',
+                        transform: isCurrent ? 'translateY(-1px)' : 'none',
+                        transition: 'transform 80ms ease',
+                      }}
+                    >
+                      <TeamBadge teamName={team.name} size={28} />
+                      <span style={{
+                        fontSize: 9,
+                        fontWeight: 800,
+                        color: isCurrent ? 'var(--cb-primary-deep)' : '#430A21',
+                        lineHeight: 1,
+                      }}>
+                        {team.shortName}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fff',
+              borderRadius: 'var(--cb-radius-lg)',
+              padding: '14px 16px',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--cb-primary-deep)', letterSpacing: '0.04em' }}>계정</p>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '12px 14px',
+                  background: '#FFF3F3',
+                  border: '2px solid #430A21',
+                  borderRadius: 'var(--cb-radius-md)',
+                  boxShadow: '0 2px 0 0 #430A21',
+                  color: '#E53E3E',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                <span>로그아웃</span>
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <BottomNav />
 
-      {/* Share success */}
       <AnimatePresence>
         {shareToast && (
           <motion.div
@@ -902,9 +965,12 @@ export function RecordScreen() {
             exit={{ opacity: 0, y: 40 }}
             style={{
               position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 50,
-              background: '#111827', borderRadius: 14, padding: '14px 18px',
+              background: '#111827',
+              borderRadius: 'var(--cb-radius-lg)',
+              padding: '14px 18px',
               display: 'flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+              border: '2px solid #430A21',
+              boxShadow: '0 4px 0 0 #430A21, 0 6px 14px rgba(0,0,0,0.30)',
             }}
           >
             <span style={{ fontSize: 20 }}>

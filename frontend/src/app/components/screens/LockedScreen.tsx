@@ -16,7 +16,7 @@ export function LockedScreen({ tabName }: LockedScreenProps) {
 
       <div className="cb-empty-state">
         <div className="cb-empty-state__icon">
-          <Lock size={30} color="#3DDB6D" strokeWidth={2} />
+          <Lock size={30} color="var(--cb-primary)" strokeWidth={2} />
         </div>
 
         <h3 className="cb-empty-state__title">

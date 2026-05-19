@@ -1,42 +1,87 @@
 :root {
-  --cb-font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-  --cb-bg: #f2fbf5;
-  --cb-bg-soft: #f8fffa;
+  --cb-font-family: 'Galmuri11', 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --cb-font-family-display: 'Galmuri14', 'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif;
+
+  /* Surface / Background — Vintage Cream */
+  --cb-bg: #faf5ef;
+  --cb-bg-soft: #fffcf6;
   --cb-surface: #ffffff;
-  --cb-surface-muted: #f0f5f1;
-  --cb-surface-green: #e2fae9;
-  --cb-text: #111827;
-  --cb-text-soft: #374151;
-  --cb-muted: #6b7280;
-  --cb-muted-2: #9ca3af;
-  --cb-disabled: #c8cdd4;
-  --cb-primary: #3ddb6d;
-  --cb-primary-strong: #1ab852;
-  --cb-primary-deep: #13923f;
-  --cb-primary-soft: #e2fae9;
-  --cb-primary-border: #c0f5d3;
+  --cb-surface-muted: #f0e8e7;
+  --cb-surface-warm: #f8eac9;
+  --cb-surface-green: #f8eac9; /* legacy alias — accent surface */
+
+  /* Text — Burgundy */
+  --cb-text: #430a21;
+  --cb-text-soft: #5e1530;
+  --cb-muted: #8c6b73;
+  --cb-muted-2: #b59ca3;
+  --cb-disabled: #d6cfd0;
+
+  /* Primary — Rose */
+  --cb-primary: #c85c77;
+  --cb-primary-strong: #b5536a;
+  --cb-primary-deep: #5e1530;
+  --cb-primary-soft: #fbe6ea;
+  --cb-primary-border: #f2a2ad;
+
+  /* Semantic */
   --cb-kakao: #fee500;
   --cb-kakao-text: #3c1e1e;
-  --cb-danger: #e53e3e;
-  --cb-warning-bg: #fff8e6;
-  --cb-warning-text: #b07800;
-  --cb-border: rgba(0, 0, 0, 0.07);
-  --cb-border-strong: #e5e7eb;
-  --cb-radius-sm: 10px;
-  --cb-radius-md: 14px;
-  --cb-radius-lg: 18px;
-  --cb-radius-xl: 22px;
-  --cb-shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --cb-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --cb-shadow-md: 0 4px 16px rgba(17, 24, 39, 0.1);
-  --cb-shadow-primary: 0 4px 12px rgba(61, 219, 109, 0.35);
+  --cb-danger: #c2362c;
+  --cb-warning-bg: #fff4d6;
+  --cb-warning-text: #8c5a00;
+  --cb-success: #5e8b5a;
+
+  /* Game-state (baseball UI) — see DESIGN.md 1-1B */
+  --cb-state-out: #430a21;
+  --cb-state-ball: #f8eac9;
+  --cb-state-strike: #c85c77;
+  --cb-state-hit: #5e8b5a;
+  --cb-state-run: #b07800;
+  --cb-score-home: #c85c77;
+  --cb-score-away: #430a21;
+
+  /* Decoration patterns — see DESIGN.md 1-1C */
+  --cb-pattern-stadium-dots: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Crect width='2' height='2' x='2' y='2' fill='%23f2a2ad'/%3E%3Crect width='2' height='2' x='10' y='2' fill='%23f2a2ad'/%3E%3Crect width='2' height='2' x='2' y='10' fill='%23f2a2ad'/%3E%3Crect width='2' height='2' x='10' y='10' fill='%23f2a2ad'/%3E%3C/svg%3E");
+
+  /* Borders */
+  --cb-border: rgba(67, 10, 33, 0.08);
+  --cb-border-strong: #e8dede;
+
+  /* Radius — Cartoon Pixel: 둥근 모서리 */
+  --cb-radius-sm: 6px;
+  --cb-radius-md: 10px;
+  --cb-radius-lg: 14px;
+  --cb-radius-xl: 18px;
+  --cb-radius-full: 9999px;
+
+  /* Border — chunky outline */
+  --cb-border-width: 2px;
+  --cb-border-pixel: 2px solid #430a21;
+  --cb-border-thick: 3px solid #430a21;
+
+  /* Shadows — 3D depth (drop + sharp offset hybrid) */
+  --cb-shadow-xs: 0 2px 0 0 rgba(67, 10, 33, 0.18);
+  --cb-shadow-sm: 0 3px 0 0 #430a21, 0 4px 6px rgba(67, 10, 33, 0.18);
+  --cb-shadow-md: 0 4px 0 0 #430a21, 0 6px 10px rgba(67, 10, 33, 0.22);
+  --cb-shadow-primary: 0 4px 0 0 #430a21, 0 6px 12px rgba(200, 92, 119, 0.32);
+  --cb-shadow-pressed: 0 1px 0 0 #430a21;
+
+  /* Counter (scoreboard) — dark navy + cream pixel text */
+  --cb-counter-bg: #2c2c3c;
+  --cb-counter-bg-light: #3a3a4e;
+  --cb-counter-text: #fffae6;
+  --cb-counter-led-on: #6ee05a;
+  --cb-counter-led-off: #5a5a6e;
+  --cb-counter-led-red: #e85a4c;
+
+  /* Action button — green link (Join Us 스타일) */
+  --cb-action-green: #6cb821;
+  --cb-action-green-deep: #498a14;
+
+  /* Gradients */
   --cb-gradient-primary: linear-gradient(135deg, var(--cb-primary), var(--cb-primary-strong));
-  --cb-gradient-login: linear-gradient(
-    135deg,
-    var(--park-800) 0%,
-    var(--park-700) 50%,
-    var(--park-600) 100%
-  );
+  --cb-gradient-warm: linear-gradient(135deg, var(--cb-bg) 0%, var(--cb-surface-warm) 100%);
 }
 
 html, body, #root {
@@ -60,7 +105,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: linear-gradient(135deg, #eaf1ec 0%, #f0f9f4 50%, #dcf0e3 100%);
+  background: linear-gradient(135deg, var(--cream-50, #fffcf6) 0%, var(--cb-bg) 50%, var(--cb-surface-muted) 100%);
   font-family: var(--cb-font-family);
 }
 
@@ -131,7 +176,74 @@ html, body, #root {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--cb-bg);
+  background: transparent;
+}
+
+/* App background — 로그인 이후 화면 전용 야구장 일러스트
+   PrivateLayout이 자식 화면을 감싸서 적용. 각 화면 outer는 transparent.
+   배경은 fixed로 깔고 cream overlay로 가독성 확보. */
+.cb-app-bg {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--cb-bg);
+  isolation: isolate;
+}
+
+.cb-app-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/app-bg.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 1;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.cb-app-bg > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============================================================
+   App Header — rose gradient + skyline 데코 + chunky title
+   ============================================================ */
+
+.cb-app-header {
+  position: relative;
+  flex-shrink: 0;
+  background: var(--cb-surface);
+  border-bottom: var(--cb-border-pixel);
+  color: var(--cb-text);
+}
+
+.cb-app-header__inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero card — split rose gradient + chunky outline + hard shadow
+   (image 16 Container Team 스타일) */
+.cb-hero-card {
+  position: relative;
+  background: linear-gradient(180deg, #ffe0e5 0%, #f2a2ad 55%, #c85c77 100%);
+  border: 3px solid #430a21;
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 0 #430a21;
+  padding: 16px;
+  color: #430a21;
+}
+
+.cb-hero-card__stat {
+  background: rgba(255, 255, 255, 0.45);
+  border: 2px solid #430a21;
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
 }
 
 .cb-screen-fallback {
@@ -237,31 +349,32 @@ html, body, #root {
 }
 
 .cb-button {
-  border: 0;
-  border-radius: var(--cb-radius-md);
+  position: relative;
+  border: 3px solid #430a21;
+  border-radius: 14px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-family: var(--cb-font-family);
-  font-weight: 800;
-  line-height: 1.2;
-  transition:
-    transform 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  /* Hard offset drop shadow (no blur) — image-13 스타일 */
+  box-shadow: 4px 4px 0 0 #430a21;
+  transition: box-shadow 0.08s linear, transform 0.08s linear;
 }
 
-.cb-button:active {
-  transform: translateY(1px);
+.cb-button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 0 #430a21;
 }
 
 .cb-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-  box-shadow: none;
+  box-shadow: 2px 2px 0 0 #430a21;
   transform: none;
 }
 
@@ -271,48 +384,68 @@ html, body, #root {
 
 .cb-button--md {
   min-height: 48px;
-  padding: 13px 18px;
+  padding: 12px 18px;
   font-size: 14px;
 }
 
 .cb-button--lg {
   min-height: 54px;
   padding: 16px 20px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
+/* Primary — rose gradient, burgundy text */
 .cb-button--primary {
-  background: var(--cb-gradient-primary);
-  color: #ffffff;
-  box-shadow: var(--cb-shadow-primary);
+  background: linear-gradient(180deg, #f2a2ad 0%, #dd7386 55%, #c85c77 100%);
+  color: #430a21;
 }
 
+/* Soft — light pink gradient */
 .cb-button--soft {
-  background: var(--cb-primary-soft);
-  color: var(--cb-primary-strong);
+  background: linear-gradient(180deg, #fff0f3 0%, #fbe6ea 55%, #f2c4ce 100%);
+  color: #5e1530;
 }
 
+/* Secondary — warm cream gradient */
 .cb-button--secondary {
-  background: var(--cb-surface-muted);
-  color: var(--cb-text-soft);
+  background: linear-gradient(180deg, #fffcf6 0%, #f8eac9 100%);
+  color: #5e1530;
 }
 
+/* Ghost — surface white, transparent feel */
 .cb-button--ghost {
-  background: transparent;
-  color: var(--cb-muted-2);
+  background: linear-gradient(180deg, #ffffff 0%, #faf5ef 100%);
+  color: #430a21;
 }
 
+/* Kakao — unchanged (사용자 요청) */
 .cb-button--kakao {
   background: var(--cb-kakao);
   color: var(--cb-kakao-text);
-  box-shadow: 0 4px 20px rgba(254, 229, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Action button — green underlined text link (Join Us 스타일) */
+.cb-button--action {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--cb-action-green);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  padding: 6px 10px;
+  text-shadow: 1px 1px 0 var(--cb-action-green-deep);
+}
+
+.cb-button--action:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .cb-card {
   background: var(--cb-surface);
-  border: 1.5px solid var(--cb-border);
+  border: var(--cb-border-pixel);
   border-radius: var(--cb-radius-lg);
-  box-shadow: var(--cb-shadow-xs);
+  box-shadow: var(--cb-shadow-sm);
 }
 
 .cb-empty-state {
@@ -328,14 +461,15 @@ html, body, #root {
 .cb-empty-state__icon {
   width: 72px;
   height: 72px;
-  border-radius: 999px;
+  border-radius: var(--cb-radius-lg);
+  border: var(--cb-border-pixel);
   background: var(--cb-primary-soft);
   color: var(--cb-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(61, 219, 109, 0.18);
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-empty-state__title {
@@ -367,8 +501,9 @@ html, body, #root {
 .cb-bottom-nav {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  border-top: 1px solid var(--cb-border);
+  border-top: var(--cb-border-pixel);
   background: var(--cb-surface);
+  padding-top: 1cm;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   flex-shrink: 0;
 }
@@ -433,22 +568,25 @@ html, body, #root {
   width: calc(100% - 64px);
   max-width: 320px;
   background: var(--cb-surface);
-  border-radius: 24px;
+  border: var(--cb-border-thick);
+  border-radius: var(--cb-radius-xl);
   padding: 28px 24px 20px;
   z-index: 301;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-modal__icon {
   width: 64px;
   height: 64px;
-  border-radius: 999px;
+  border-radius: var(--cb-radius-lg);
+  border: var(--cb-border-pixel);
   background: var(--cb-primary-soft);
   color: var(--cb-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 20px;
+  box-shadow: var(--cb-shadow-xs);
 }
 
 .cb-modal__title {
@@ -483,18 +621,19 @@ html, body, #root {
 .cb-team-badge__mark {
   width: var(--team-badge-size);
   height: var(--team-badge-size);
-  border-radius: max(8px, calc(var(--team-badge-size) * 0.32));
+  border-radius: 0;
   background: var(--team-primary);
   color: var(--team-foreground);
-  border: 2px solid var(--team-secondary);
+  border: 2px solid var(--burgundy-900, #430a21);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: max(9px, calc(var(--team-badge-size) * 0.32));
-  font-weight: 900;
+  font-weight: 400;
+  font-family: var(--cb-font-family);
   line-height: 1;
   letter-spacing: 0;
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
+  box-shadow: var(--cb-shadow-xs);
   flex-shrink: 0;
 }
 
@@ -504,295 +643,66 @@ html, body, #root {
   font-weight: 800;
 }
 
+/* ============================================================
+   LOGIN — Vintage Ballpark landing (SVG fullscreen + kakao CTA)
+   ============================================================ */
+
 .cb-login-screen {
   height: 100%;
   position: relative;
+  display: block;
+  background: var(--cb-bg);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 72px 32px 40px;
-  background: var(--cb-gradient-login);
 }
 
-.cb-login-brand {
-  z-index: 1;
+.cb-login-bg {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
 }
 
 .cb-login-logo {
-  width: 182px;
-  height: 182px;
+  position: absolute;
+  left: 50%;
+  top: 0.03cm;
+  width: 84%;
+  max-width: none;
+  height: auto;
   object-fit: contain;
-  margin-bottom: 22px;
-  filter:
-    drop-shadow(0 8px 24px rgba(0, 0, 0, 0.22))
-    drop-shadow(0 2px 6px rgba(0, 60, 20, 0.15));
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  animation: cb-login-logo-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms forwards;
 }
 
-.cb-login-title {
-  margin: 0 0 10px;
-  color: #ffffff;
-  font-size: 34px;
-  font-weight: 900;
-  line-height: 1.2;
-  letter-spacing: 0;
-  text-shadow: 0 2px 12px rgba(0, 40, 15, 0.35);
-}
-
-.cb-login-copy {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.7;
-  text-shadow: 0 1px 6px rgba(0, 30, 10, 0.25);
+@keyframes cb-login-logo-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .cb-login-actions {
-  z-index: 1;
-  width: 100%;
-}
-
-/* ============================================================
-   LOGIN — Stadium Twilight extensions
-   ============================================================ */
-
-:root {
-  --cb-display-family: 'Big Shoulders Display', 'Noto Sans KR',
-    -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.cb-login-screen {
-  /* additive: refine padding + add atmosphere */
-  padding: 60px 28px 32px;
-  isolation: isolate;
-}
-
-.cb-login-screen::before {
-  content: '';
   position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 220px 220px;
-  opacity: 0.06;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.cb-login-meta {
-  z-index: 2;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-family: var(--cb-display-family);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.78);
-  opacity: 0;
-  transform: translateY(8px);
-  animation: cb-login-rise 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms forwards;
-}
-
-.cb-login-meta__pill {
-  padding: 5px 11px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 999px;
-  letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.cb-login-meta__divider {
-  width: 22px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.45);
-  flex-shrink: 0;
-}
-
-/* override existing brand layout for richer hierarchy */
-.cb-login-screen .cb-login-brand {
-  gap: 26px;
-}
-
-.cb-login-emblem {
-  position: relative;
-  width: 240px;
-  height: 240px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.92);
-  animation: cb-login-emblem-enter 900ms cubic-bezier(0.22, 0.61, 0.36, 1)
-    250ms forwards;
-}
-
-.cb-login-halo {
-  position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(195, 245, 216, 0.6) 0%,
-    rgba(61, 219, 109, 0.22) 48%,
-    transparent 74%
-  );
-  filter: blur(18px);
-  animation: cb-login-breathe 6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.cb-login-emblem .cb-login-logo {
-  width: 162px;
-  height: 162px;
-  margin-bottom: 0;
-  position: relative;
-  z-index: 2;
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.32))
-    drop-shadow(0 4px 8px rgba(0, 60, 20, 0.22));
-}
-
-.cb-login-wordmark {
+  left: 0.5cm;
+  right: 0.5cm;
+  bottom: calc(2.8cm + env(safe-area-inset-bottom, 0px));
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
+  background: transparent;
   opacity: 0;
   transform: translateY(8px);
-  animation: cb-login-rise 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 500ms forwards;
-}
-
-.cb-login-supertitle {
-  font-family: var(--cb-display-family);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(194, 245, 216, 0.92);
-}
-
-.cb-login-screen .cb-login-title {
-  font-size: 40px;
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: -0.012em;
-  text-shadow: 0 2px 18px rgba(0, 40, 15, 0.45);
-  margin: 0;
-}
-
-.cb-login-en {
-  font-family: var(--cb-display-family);
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.78);
-  position: relative;
-  padding: 0 14px;
-}
-
-.cb-login-en::before,
-.cb-login-en::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.cb-login-en::before {
-  left: 0;
-}
-
-.cb-login-en::after {
-  right: 0;
-}
-
-.cb-login-tagline {
-  margin: 0;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.65;
-  text-shadow: 0 1px 8px rgba(0, 30, 10, 0.3);
-  opacity: 0;
-  transform: translateY(8px);
-  animation: cb-login-rise 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 700ms forwards;
-}
-
-.cb-login-screen .cb-login-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: cb-login-rise 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 1000ms forwards;
-}
-
-.cb-login-cta-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  gap: 9px;
-  font-family: var(--cb-display-family);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.cb-login-cta-eyebrow__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--cb-kakao);
-  box-shadow: 0 0 0 4px rgba(254, 229, 0, 0.18);
-  animation: cb-login-pulse 2.4s ease-in-out infinite;
-}
-
-.cb-login-fine {
-  margin: 4px 0 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.62);
-}
-
-.cb-login-fine a {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.4);
-  padding-bottom: 1px;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-.cb-login-fine a:hover {
-  color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(255, 255, 255, 0.85);
-}
-
-.cb-login-fine span {
-  color: rgba(255, 255, 255, 0.4);
+  animation: cb-login-rise 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 320ms forwards;
 }
 
 @keyframes cb-login-rise {
@@ -806,54 +716,17 @@ html, body, #root {
   }
 }
 
-@keyframes cb-login-emblem-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes cb-login-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 0.75;
-  }
-}
-
-@keyframes cb-login-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 4px rgba(254, 229, 0, 0.18);
-  }
-  50% {
-    opacity: 0.7;
-    box-shadow: 0 0 0 7px rgba(254, 229, 0, 0.08);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .cb-login-meta,
-  .cb-login-emblem,
-  .cb-login-wordmark,
-  .cb-login-tagline,
-  .cb-login-screen .cb-login-actions {
+  .cb-login-logo,
+  .cb-login-actions {
     animation: none;
     opacity: 1;
-    transform: none;
   }
-  .cb-login-halo,
-  .cb-login-cta-eyebrow__dot {
-    animation: none;
+  .cb-login-logo {
+    transform: translate(-50%, 0);
+  }
+  .cb-login-actions {
+    transform: none;
   }
 }
 
@@ -864,20 +737,19 @@ html, body, #root {
 }
 
 .cb-team-card {
-  border: 1.5px solid var(--cb-border-strong);
-  border-radius: var(--cb-radius-md);
+  border: var(--cb-border-pixel);
+  border-radius: var(--cb-radius-lg);
   background: var(--cb-surface);
-  box-shadow: var(--cb-shadow-xs);
+  box-shadow: var(--cb-shadow-sm);
   cursor: pointer;
   padding: 14px 10px;
   text-align: center;
-  transition: all 0.15s ease;
+  transition: none;
 }
 
 .cb-team-card.is-selected {
-  border: 2px solid var(--cb-primary);
   background: var(--cb-primary-soft);
-  box-shadow: 0 2px 8px #a8f0c0;
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-team-card__badge {
@@ -923,8 +795,8 @@ html, body, #root {
 }
 
 .cb-chip {
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  border-radius: 999px;
+  border: var(--cb-border-pixel);
+  border-radius: var(--cb-radius-full);
   background: var(--cb-surface);
   color: var(--cb-muted);
   cursor: pointer;
@@ -933,15 +805,15 @@ html, body, #root {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
-  font-weight: 600;
-  transition: all 0.15s ease;
+  font-weight: 400;
+  box-shadow: var(--cb-shadow-xs);
+  transition: none;
 }
 
 .cb-chip.is-active {
-  border-color: var(--cb-primary);
   background: var(--cb-primary-soft);
   color: var(--cb-primary-deep);
-  font-weight: 800;
+  box-shadow: var(--cb-shadow-sm);
 }
 
 .cb-game-date {
@@ -954,15 +826,14 @@ html, body, #root {
   position: relative;
   overflow: hidden;
   background: var(--cb-surface);
-  border: 1.5px solid var(--cb-border);
-  border-radius: 20px;
-  box-shadow: var(--cb-shadow-xs);
+  border: var(--cb-border-pixel);
+  border-radius: var(--cb-radius-lg);
+  box-shadow: var(--cb-shadow-sm);
   padding: 16px;
 }
 
 .cb-game-card.is-favorite {
-  border: 2px solid var(--cb-primary);
-  box-shadow: 0 4px 16px rgba(61, 219, 109, 0.2);
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-game-card.is-favorite::before {
@@ -971,8 +842,13 @@ html, body, #root {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--cb-primary), #6ae995);
+  height: 4px;
+  background: var(--cb-primary);
+}
+
+.cb-game-card.is-selected {
+  background: var(--cb-primary-soft);
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-game-card__head {
@@ -1009,13 +885,13 @@ html, body, #root {
 }
 
 .cb-badge {
-  border: 1px solid var(--cb-primary-border);
-  border-radius: 6px;
+  border: 2px solid var(--burgundy-900, #430a21);
+  border-radius: var(--cb-radius-full);
   background: var(--cb-primary-soft);
   color: var(--cb-primary-deep);
   padding: 2px 8px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -1029,4 +905,177 @@ html, body, #root {
   color: var(--cb-muted-2);
   font-size: 11px;
   line-height: 1.6;
+}
+
+/* ============================================================
+   Baseball UI — Counter (scoreboard) + Display Title
+   ============================================================ */
+
+/* Display Title — chunky 3D outlined (Header Text style)
+   multi text-shadow로 outline + drop shadow 합성. 한글 글리프에서도 깔끔. */
+.cb-display-title {
+  font-family: var(--cb-font-family-display);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: #fbe6ea;
+  text-shadow:
+    /* outline 8방향 (1px) */
+    -1px -1px 0 #430a21,
+     0 -1px 0 #430a21,
+     1px -1px 0 #430a21,
+    -1px  0   0 #430a21,
+     1px  0   0 #430a21,
+    -1px  1px 0 #430a21,
+     0   1px 0 #430a21,
+     1px  1px 0 #430a21,
+    /* depth shadow (오른쪽 아래로 2px) */
+     2px  2px 0 #b5536a,
+     3px  3px 0 #b5536a,
+     4px  4px 0 #430a21;
+  display: inline-block;
+  margin: 0;
+}
+
+.cb-display-title--lg { font-size: 32px; }
+.cb-display-title--md { font-size: 22px; }
+.cb-display-title--sm { font-size: 16px; }
+
+/* Subheader — Galmuri burgundy, no outline */
+.cb-subheader {
+  font-family: var(--cb-font-family);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cb-text);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Counter — scoreboard LED style */
+.cb-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cb-counter-bg);
+  border: var(--cb-border-thick);
+  border-radius: var(--cb-radius-md);
+  box-shadow: var(--cb-shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  color: var(--cb-counter-text);
+  font-family: var(--cb-font-family-display);
+  padding: 10px 14px;
+}
+
+.cb-counter--score {
+  gap: 10px;
+}
+
+.cb-counter__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 28px;
+  line-height: 1;
+}
+
+.cb-counter__label {
+  font-size: 11px;
+  color: var(--cb-counter-text);
+  opacity: 0.7;
+  margin-bottom: 3px;
+  letter-spacing: 0.06em;
+}
+
+.cb-counter__num {
+  font-size: 24px;
+  color: var(--cb-counter-text);
+}
+
+.cb-counter__vs {
+  font-size: 11px;
+  color: var(--cb-counter-text);
+  opacity: 0.55;
+  letter-spacing: 0.08em;
+}
+
+.cb-counter--inning {
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.cb-counter--out {
+  font-size: 13px;
+  padding: 6px 12px;
+  letter-spacing: 0.06em;
+}
+
+/* B/S/O LED indicator */
+.cb-counter--bso {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.cb-counter__bso-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cb-counter__bso-label {
+  font-size: 11px;
+  width: 12px;
+  color: var(--cb-counter-text);
+}
+
+.cb-counter__led {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--cb-radius-full);
+  background: var(--cb-counter-led-off);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.cb-counter__led--on { background: var(--cb-counter-led-on); box-shadow: 0 0 4px var(--cb-counter-led-on); }
+.cb-counter__led--red { background: var(--cb-counter-led-red); box-shadow: 0 0 4px var(--cb-counter-led-red); }
+
+/* Game-state mini tag (OUT/BALL/STRIKE) — used standalone */
+.cb-game-state-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 4px 10px;
+  border: var(--cb-border-pixel);
+  border-radius: var(--cb-radius-sm);
+  font-family: var(--cb-font-family);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+  box-shadow: var(--cb-shadow-xs);
+}
+
+.cb-game-state-tag--out { background: var(--cb-state-out); }
+.cb-game-state-tag--ball { background: var(--cb-state-ball); color: var(--cb-text); }
+.cb-game-state-tag--strike { background: var(--cb-state-strike); }
+.cb-game-state-tag--hit { background: var(--cb-state-hit); }
+.cb-game-state-tag--run { background: var(--cb-state-run); }
+
+/* Stadium dot pattern utility */
+.cb-bg-stadium-dots {
+  background-image: var(--cb-pattern-stadium-dots);
+  background-size: 16px 16px;
+  background-repeat: repeat;
+}
+
+.cb-mascot {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  pointer-events: none;
 }

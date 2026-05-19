@@ -24,8 +24,8 @@ const FALLBACK_TEAM: TeamBrand = {
   name: '팀 미선택',
   shortName: '팀',
   code: 'CB',
-  primary: '#13923F',
-  secondary: '#3DDB6D',
+  primary: '#C85C77',
+  secondary: '#B5536A',
   foreground: '#FFFFFF',
 };
 

@@ -84,6 +84,7 @@ export function GameSelectScreen() {
   const [activeTab, setActiveTab] = useState<DateTab>('all');
   const [games, setGames] = useState<UiGame[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   // `now`를 state로 보관 → 자정마다 갱신해 today/tomorrow가 자동으로 다음 날로 이동
   const [now, setNow] = useState<Date>(() => new Date());
 
@@ -215,10 +216,22 @@ export function GameSelectScreen() {
             <p className="cb-game-date">{formatDateLabel(date)}</p>
             {items.map((game) => {
               const fav = isFavorite(game);
+              const isPending = pendingId === game.id;
               return (
                 <div
                   key={game.id}
-                  className={cx('cb-game-card', fav && 'is-favorite')}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setPendingId((prev) => (prev === game.id ? null : game.id))}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setPendingId((prev) => (prev === game.id ? null : game.id));
+                    }
+                  }}
+                  className={cx('cb-game-card', fav && 'is-favorite', isPending && 'is-selected')}
+                  style={{ cursor: 'pointer' }}
+                  aria-pressed={isPending}
                 >
                   <div className="cb-game-card__head">
                     <div>
@@ -238,9 +251,13 @@ export function GameSelectScreen() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => handleSelect(game)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleSelect(game);
+                    }}
                     variant={fav ? 'primary' : 'secondary'}
                     fullWidth
+                    disabled={!isPending}
                   >
                     <CheckCircle size={15} />
                     이 경기 선택

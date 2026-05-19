@@ -36,14 +36,16 @@
 │  cleanballtrio-db / db cleanballtrio │
 │  ─ tables: users, teams, usages,     │
 │            games                      │
-│                                       │
-│  Memorystore (Redis) — TBD            │
 └─────────────────────────────────────┘
 
        NestJS ──(multipart, server→server)──▶ Cloud Run [cleanballtrio-vision]
                                               Python · FastAPI · MobileNetV2
                                               POST /verify-reusable
-                                              ─ best_model.pth (2-class)
+                                              ─ best_model.pth (2-class reusable/single_use)
+                                              ─ memory 2Gi, concurrency 4, cold start ~10s
+
+       Memorystore (Redis) — 미도입. /rankings/teams는 현재 PG aggregate.
+       사용자/usage 행 증가 시 ZSET(`ranking:teams:season:{year}`)로 전환 예정.
 ```
 
 ## 모듈 경계
@@ -52,14 +54,21 @@
 
 | 디렉토리 | 책임 | 의존 |
 |---|---|---|
-| `pages/` | 라우트별 화면 (LoginPage, OAuthCallbackPage 등) | `lib/`, `store/`, `app/` |
-| `lib/` | 외부 API/유틸 — `kakaoAuth.ts` (OAuth URL), `apiClient.ts` (백엔드 fetch wrapper, Authorization 헤더 자동 부착) | `store/` (token 읽기) |
+| `pages/` | 라우트별 화면 (`LoginPage`, `OAuthCallbackPage`) | `lib/`, `store/`, `app/` |
+| `lib/` | 외부 API/유틸 — `kakaoAuth.ts` (OAuth URL), `apiClient.ts` (백엔드 fetch wrapper, Authorization 헤더 자동 부착), `verifyApi.ts`, `rankingsApi.ts`, `statsApi.ts`, `gamesApi.ts` | `store/` (token 읽기) |
 | `store/` | Zustand 클라이언트 상태 (`authStore.ts` — JWT/유저). zustand persist version 2 (이전 schema 강제 폐기) | (없음) |
-| `app/` | 화면 공통 컴포넌트, 컨텍스트, 도메인 헬퍼 (avatar, teamBrand, ecoGrades) | `components/` |
-| `imports/` | (cleanballtrio 이전 화면 포팅 작업물) | — |
-| `assets/`, `styles/` | 정적 자산, Tailwind base | — |
+| `app/components/screens/` | 라우트 진입 화면 (`HomeScreen`, `TeamSelectScreen`, `GameSelectScreen`, `MapScreen`, `ReportScreen`, `RecordScreen`, `RankingScreen`, `LockedScreen`) | `app/AppContext`, `lib/` |
+| `app/components/` | 화면 공통 컴포넌트 (`BottomNav`, `TeamBadge`, `GameRequiredModal`, `StatusBar`, `design-system`) | — |
+| `app/` | 라우터(`navigation.tsx`), 컨텍스트(`AppContext.tsx`), 도메인 헬퍼(`teamBrand.ts`) | `components/` |
+| `assets/` | 정적 자산 — `landing-bg.png` (8비트 야구장), `landing-logo.svg` (용기낼깡 로고) 등 | — |
+| `styles/` | `fonts.css` (Galmuri 픽셀 폰트 + Pretendard fallback), `theme.css` (Tailwind base + 토큰), `design-system.css` (NES 스타일 컴포넌트) | — |
 
 **금지 의존**: `app/` → `pages/` (역참조). `lib/kakaoAuth.ts`는 순수 유지 (`apiClient.ts`만 store 의존 허용).
+
+> **변경 (2026-05)**:
+> - `imports/` 디렉터리 폐기 (cleanballtrio 이전 화면 포팅 완료)
+> - `app/avatar.ts`, `app/components/AvatarFigure.tsx`, `app/components/screens/AvatarCustomizeScreen.tsx`, `app/components/screens/AccountScreen.tsx` 모두 제거 — 팀-only 온보딩 ([`refactor-onboarding-team-only.md`](plans/active/refactor-onboarding-team-only.md))
+> - `app/ecoGrades.ts` 제거 — 등급 폐기
 
 ### Backend (`backend/src/`)
 
@@ -67,14 +76,18 @@
 |---|---|---|
 | `app.module.ts` | 루트 모듈, `ConfigModule` (전역 env) | — |
 | `prisma/` | `PrismaService` + `PrismaModule` (`@Global()`) — DB 연결 lifecycle 관리 | Cloud SQL |
-| `auth/` | 카카오 OAuth + JWT 발급/검증 (`AuthController`, `AuthService`, `JwtStrategy`, `JwtAuthGuard`) | `kauth.kakao.com`, `kapi.kakao.com`, `@nestjs/jwt`, `passport-jwt`, `PrismaService` |
-| `users/` | `/me` 프로필 조회/팀 변경/아바타 저장 (`UsersController`, `UsersService`) | `PrismaService`, `JwtAuthGuard` (auth 모듈 의존) |
-| `games/` | `/games` KBO 일정 조회 (`GamesController`, `GamesService`) | `PrismaService` |
-| `verify/` | `/verify/reusable` 이미지 → Vision API forward (`VerifyController`, `VerifyService`) | `axios`, `form-data`, env `VISION_API_URL` |
+| `auth/` | 카카오 OAuth + JWT 발급/검증 (`AuthController`, `AuthService`, `JwtStrategy`, `JwtAuthGuard`). `JwtStrategy.validate`에서 `users.last_seen_at` 5분 throttle 갱신 | `kauth.kakao.com`, `kapi.kakao.com`, `@nestjs/jwt`, `passport-jwt`, `PrismaService` |
+| `users/` | `/me` 프로필 조회 / `/me/team` 응원팀 변경 / `/me/avatar` 아바타 저장 (UI 폐기됐으나 엔드포인트는 유지) | `PrismaService`, `JwtAuthGuard` |
+| `games/` | `/games` KBO 일정 조회 (날짜 범위 필터) | `PrismaService` |
+| `verify/` | `/verify/use`, `/verify/return` — multipart 이미지를 Vision 서비스에 forward → 통과 시 `usages` insert. RETURN은 12h 이내 USE 가드 | `axios`, `form-data`, env `VISION_API_URL`, `PrismaService` |
+| `stats/` | `/stats/me` — 본인 누적 통계 (groupBy 1쿼리) | `PrismaService` |
+| `rankings/` | `/rankings/teams` — 팀별 누적 점수 (PG aggregate, 항상 10팀 반환) | `PrismaService` |
 
 ### Vision (`vision/`, 별도 Cloud Run 서비스)
 
 Python FastAPI · MobileNetV2 (PyTorch). `vision/best_model.pth` 가중치로 2-class 분류 (`reusable` / `single_use`). NestJS만이 내부적으로 호출 (현재 `--allow-unauthenticated` + URL 비공개 의존; 추후 IAM 잠금).
+
+엔드포인트: `POST /verify-reusable` (multipart `image`) → `{ isReusable: bool, classIndex: 0|1, confidence: float(0~100) }`.
 
 ## 외부 의존성
 

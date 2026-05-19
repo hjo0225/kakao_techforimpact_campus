@@ -26,14 +26,6 @@ const RecordScreen = lazy(() =>
 const RankingScreen = lazy(() =>
   import('./app/components/screens/RankingScreen').then((m) => ({ default: m.RankingScreen })),
 )
-const AccountScreen = lazy(() =>
-  import('./app/components/screens/AccountScreen').then((m) => ({ default: m.AccountScreen })),
-)
-const AvatarCustomizeScreen = lazy(() =>
-  import('./app/components/screens/AvatarCustomizeScreen').then((m) => ({
-    default: m.AvatarCustomizeScreen,
-  })),
-)
 
 function ScreenFallback() {
   return <div className="cb-screen-fallback">불러오는 중...</div>
@@ -52,7 +44,11 @@ function PrivateLayout() {
   if (team && location.pathname === '/onboarding') {
     return <Navigate to="/home" replace />
   }
-  return <Outlet />
+  return (
+    <div className="cb-app-bg">
+      <Outlet />
+    </div>
+  )
 }
 
 function RootRedirect() {
@@ -80,8 +76,7 @@ export default function App() {
             <Route path="/report" element={<ReportScreen />} />
             <Route path="/record" element={<RecordScreen />} />
             <Route path="/ranking" element={<RankingScreen />} />
-            <Route path="/account" element={<AccountScreen />} />
-            <Route path="/avatar" element={<AvatarCustomizeScreen />} />
+            <Route path="/account" element={<RecordScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
