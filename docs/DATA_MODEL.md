@@ -14,7 +14,7 @@
 
 ---
 
-## Entities (현재 적용 — `prisma/migrations/20260511130625_init`)
+## Entities (현재 적용 — `prisma/migrations/20260511130625_init` + `20260518081803_add_user_last_seen_at`)
 
 ### `users`
 
@@ -27,10 +27,14 @@ CREATE TABLE users (
   team_code       TEXT,                                  -- (현재 FK 없음 — 아래 Open Questions 참고)
   avatar_config   JSONB,
   created_at      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMP(3) NOT NULL
+  updated_at      TIMESTAMP(3) NOT NULL,
+  last_seen_at    TIMESTAMP(3)                            -- 운영 지표용 (DAU/MAU). JWT 검증 시 5분 throttle로 갱신
 );
 CREATE INDEX users_team_code_idx ON users (team_code);
+CREATE INDEX users_last_seen_at_idx ON users (last_seen_at);
 ```
+
+> `last_seen_at` 운영 쿼리는 [`docs/runbooks/user-metrics.md`](runbooks/user-metrics.md) 참고.
 
 > **참고**: 초기 마이그레이션은 `team_code → teams.code` FK를 생성하지 않습니다. 다음 마이그레이션에서 FK 추가 예정 (teams 시드 후).
 
@@ -136,5 +140,6 @@ QR payload에서 구장 식별 필요 시 추가.
 
 - [ ] `users.team_code → teams.code` FK 제약 추가 (현재 미설정 — 시드 후 마이그레이션)
 - [ ] 시즌 정의 (1.1~12.31? 또는 KBO 시즌 일정?)
-- [ ] QR payload 포맷 (운영사 협의)
-- [ ] 점수 산정 알고리즘 (PRD F3 연결)
+- [ ] 점수 산정 알고리즘 재검토 (PRD F3 연결 — 현재 USE 50 / RETURN 100 고정)
+- [ ] `usages` 멱등성 키 도입 검토 (현재 같은 사진 두 번 인증 시 두 행 적재)
+- [ ] `avatar_config` 컬럼 deprecate 여부 (UI에서 아바타 폐기 — 엔드포인트는 유지 중)

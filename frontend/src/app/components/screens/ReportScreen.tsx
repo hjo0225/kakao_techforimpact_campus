@@ -3,7 +3,7 @@ import { useApp } from '../../AppContext';
 import { LockedScreen } from './LockedScreen';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
-import { Camera, CheckCircle, Info, RotateCcw, ScanLine } from 'lucide-react';
+import { Camera, CheckCircle, RotateCcw, ScanLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ApiError } from '../../../lib/apiClient';
 import { verifyImage } from '../../../lib/verifyApi';
@@ -24,7 +24,6 @@ interface HistoryItem {
   mode: CertificationMode;
   label: string;
   time: string;
-  points: number;
   detected: '다회용기' | '일회용기';
   passed: boolean;
 }
@@ -40,13 +39,13 @@ const CERTIFICATION_MODES: Array<{
     id: 'use',
     title: '사용 인증',
     subtitle: '식음 직후 컵·용기 전면 촬영',
-    tone: '#13923F',
-    tint: '#E9FBEF',
+    tone: 'var(--cb-primary-deep)',
+    tint: 'var(--cb-primary-soft)',
   },
   {
     id: 'return',
     title: '반납 인증',
-    subtitle: '반납함 앞에서 용기와 스테이션 촬영',
+    subtitle: '반납합 앞에서 용기 촬영',
     tone: '#1565C0',
     tint: '#EEF5FF',
   },
@@ -58,7 +57,6 @@ const HISTORY_SEED: HistoryItem[] = [
     mode: 'return',
     label: '반납 인증',
     time: '오늘 18:42',
-    points: 100,
     detected: '다회용기',
     passed: true,
   },
@@ -67,7 +65,6 @@ const HISTORY_SEED: HistoryItem[] = [
     mode: 'use',
     label: '사용 인증',
     time: '오늘 17:55',
-    points: 0,
     detected: '다회용기',
     passed: false,
   },
@@ -76,7 +73,6 @@ const HISTORY_SEED: HistoryItem[] = [
     mode: 'use',
     label: '사용 인증',
     time: '어제 19:08',
-    points: 50,
     detected: '다회용기',
     passed: true,
   },
@@ -110,7 +106,7 @@ export function ReportScreen() {
     selectedGame,
     addCertification,
     certificationLogs,
-    points,
+    ecoImpact,
   } = useApp();
   const [mode, setMode] = useState<CertificationMode>('use');
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
@@ -126,7 +122,6 @@ export function ReportScreen() {
   }, []);
 
   const timeSaleActive = selectedGame ? isTimeSaleInning(selectedGame.inning) : false;
-  const rewardPoints = timeSaleActive ? 100 : 50;
   const successCount = useMemo(
     () => certificationLogs.length,
     [certificationLogs.length]
@@ -155,7 +150,6 @@ export function ReportScreen() {
       setImageFile(file);
       setAnalysisState('captured');
     }
-    // 같은 파일을 다시 고를 수 있도록 input value 초기화
     e.target.value = '';
   };
 
@@ -175,7 +169,7 @@ export function ReportScreen() {
           detected: '일회용기',
           approved: false,
           statusLabel: '재촬영 필요',
-          reason: '일회용기로 인식돼 적립이 보류됐습니다.',
+          reason: '일회용기로 인식돼 인증이 보류됐습니다.',
           guide: '다회용 컵만 단독으로 다시 촬영해주세요.',
         };
       }
@@ -229,15 +223,13 @@ export function ReportScreen() {
         reason: `confidence ${apiResult.vision.confidence.toFixed(1)}%`,
         guide: '',
       };
-      // 백엔드가 usages 적재했으므로 로컬 점수/로그도 동기화
-      addCertification(mode, apiResult.usage.score);
+      addCertification(mode);
       setActiveResult(result);
       const successItem: HistoryItem = {
         id: apiResult.usage.id,
         mode,
         label: mode === 'use' ? '사용 인증' : '반납 인증',
         time: formatNowLabel(),
-        points: apiResult.usage.score,
         detected: '다회용기',
         passed: true,
       };
@@ -251,7 +243,6 @@ export function ReportScreen() {
         mode,
         label: mode === 'use' ? '사용 인증' : '반납 인증',
         time: formatNowLabel(),
-        points: 0,
         detected: result.detected,
         passed: false,
       };
@@ -261,7 +252,7 @@ export function ReportScreen() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F3FBF5' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -272,9 +263,7 @@ export function ReportScreen() {
         aria-hidden="true"
         tabIndex={-1}
       />
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(15, 23, 42, 0.08)' }}>
-        <StatusBar centerLabel="인증" />
-      </div>
+      <StatusBar centerLabel="인증" />
 
       <div
         style={{
@@ -291,22 +280,22 @@ export function ReportScreen() {
         <div
           style={{
             background: '#fff',
-            borderRadius: 20,
+            borderRadius: 'var(--cb-radius-lg)',
             padding: 16,
-            border: '1px solid rgba(19, 146, 63, 0.14)',
-            boxShadow: '0 10px 28px rgba(17, 24, 39, 0.05)',
+            border: '2px solid #430A21',
+            boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#13923F' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--cb-primary-deep)' }}>
                 Vision AI 인증
               </p>
               <p style={{ marginTop: 4, fontSize: 17, fontWeight: 700, color: '#0F172A', lineHeight: 1.35 }}>
-                다회용기 인증 시 즉시 {rewardPoints}P
+                다회용기 인증으로 감축에 기여하세요
               </p>
               <p style={{ marginTop: 5, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
-                사진만 올리면 AI가 용기와 반납 장면을 확인해 바로 적립합니다.
+                사진만 올리면 AI가 용기와 반납 장면을 확인해 서울 감축 지표에 즉시 반영합니다.
               </p>
             </div>
             <div
@@ -314,13 +303,14 @@ export function ReportScreen() {
                 flexShrink: 0,
                 background: timeSaleActive ? '#FFF5D9' : '#F1F5F9',
                 color: timeSaleActive ? '#B45309' : '#64748B',
-                borderRadius: 999,
-                padding: '7px 10px',
+                borderRadius: 'var(--cb-radius-full)',
+                padding: '6px 12px',
                 fontSize: 11,
                 fontWeight: 700,
+                border: `1.5px solid ${timeSaleActive ? '#B45309' : '#94A3B8'}`,
               }}
             >
-              {timeSaleActive ? '7-8회 2x' : '기본 적립'}
+              {timeSaleActive ? '7-8회 조기반납' : '경기 중 인증'}
             </div>
           </div>
 
@@ -333,17 +323,18 @@ export function ReportScreen() {
             }}
           >
             {[
-              { label: '현재 포인트', value: `${points.toLocaleString()}P` },
               { label: '누적 인증', value: `${successCount}건` },
-              { label: '오늘 보상', value: timeSaleActive ? '2배' : '기본' },
+              { label: '줄인 용기', value: `${ecoImpact.containers}개` },
+              { label: '폐기물 감량', value: `${ecoImpact.wasteKg}kg` },
             ].map((item) => (
               <div
                 key={item.label}
                 style={{
-                  borderRadius: 14,
+                  borderRadius: 'var(--cb-radius-md)',
                   background: '#F8FAFC',
-                  border: '1px solid rgba(148, 163, 184, 0.18)',
+                  border: '2px solid #430A21',
                   padding: '10px 8px',
+                  boxShadow: '0 2px 0 0 #430A21',
                 }}
               >
                 <p style={{ fontSize: 10, color: '#64748B' }}>{item.label}</p>
@@ -356,17 +347,18 @@ export function ReportScreen() {
             style={{
               marginTop: 12,
               padding: '11px 12px',
-              borderRadius: 14,
+              borderRadius: 'var(--cb-radius-md)',
               background: timeSaleActive ? '#FFF8E7' : '#EFF6FF',
-              border: `1px solid ${timeSaleActive ? '#FCD34D' : '#BFDBFE'}`,
+              border: `2px solid ${timeSaleActive ? '#B45309' : '#1D4ED8'}`,
+              boxShadow: `0 2px 0 0 ${timeSaleActive ? '#B45309' : '#1D4ED8'}`,
             }}
           >
             <p style={{ fontSize: 11, fontWeight: 700, color: timeSaleActive ? '#B45309' : '#1D4ED8' }}>
-              {selectedGame.venue} · {selectedGame.inning}
+              {selectedGame.inning ? `${selectedGame.venue} ${selectedGame.inning}` : selectedGame.venue}
             </p>
             <p style={{ marginTop: 4, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
               {timeSaleActive
-                ? '타임세일 구간입니다. 이번 인증 성공 시 2배 포인트가 즉시 적립됩니다.'
+                ? '7~8회 조기 반납 시간대입니다. 대기 줄이 짧을 때 반납 인증을 완료해보세요.'
                 : '경기 중 촬영한 실사용 사진만 인정됩니다.'}
             </p>
           </div>
@@ -393,12 +385,13 @@ export function ReportScreen() {
                   }
                 }}
                 style={{
-                  borderRadius: 16,
-                  border: active ? `1.5px solid ${item.tone}` : '1px solid rgba(148, 163, 184, 0.2)',
+                  borderRadius: 'var(--cb-radius-md)',
+                  border: active ? `2px solid ${item.tone}` : '2px solid #430A21',
                   background: active ? item.tint : '#fff',
                   padding: '12px 12px 11px',
                   textAlign: 'left',
                   cursor: 'pointer',
+                  boxShadow: active ? `0 3px 0 0 ${item.tone}` : '0 2px 0 0 #430A21',
                 }}
               >
                 <p style={{ fontSize: 13, fontWeight: 700, color: active ? item.tone : '#0F172A' }}>
@@ -415,10 +408,10 @@ export function ReportScreen() {
         <div
           style={{
             background: '#fff',
-            borderRadius: 22,
+            borderRadius: 'var(--cb-radius-lg)',
             padding: 16,
-            border: '1px solid rgba(15, 23, 42, 0.06)',
-            boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)',
+            border: '2px solid #430A21',
+            boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
           }}
         >
           <div
@@ -440,12 +433,13 @@ export function ReportScreen() {
                 alignItems: 'center',
                 gap: 5,
                 background: '#F8FAFC',
-                borderRadius: 999,
-                padding: '6px 9px',
+                borderRadius: 'var(--cb-radius-full)',
+                padding: '6px 12px',
                 fontSize: 10,
                 color: '#475569',
                 fontWeight: 700,
                 flexShrink: 0,
+                border: '1.5px solid #94A3B8',
               }}
             >
               <ScanLine size={12} color={modeMeta.tone} />
@@ -456,12 +450,14 @@ export function ReportScreen() {
           <div
             style={{
               position: 'relative',
-              borderRadius: 22,
+              borderRadius: 'var(--cb-radius-lg)',
               height: 312,
               overflow: 'hidden',
               background: mode === 'use'
-                ? 'linear-gradient(160deg, #113C27 0%, #1E5631 38%, #3AA867 100%)'
-                : 'linear-gradient(160deg, #0F2F57 0%, #1F5AA6 36%, #5EA5FF 100%)',
+                ? 'var(--cb-primary-deep)'
+                : '#1F5AA6',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21',
             }}
           >
             <div
@@ -484,26 +480,28 @@ export function ReportScreen() {
             >
               <div
                 style={{
-                  background: 'rgba(255,255,255,0.16)',
-                  borderRadius: 999,
-                  padding: '7px 10px',
+                  background: 'rgba(255,255,255,0.20)',
+                  borderRadius: 'var(--cb-radius-full)',
+                  padding: '6px 12px',
                   fontSize: 10,
                   color: '#fff',
                   fontWeight: 700,
                   backdropFilter: 'blur(10px)',
+                  border: '1.5px solid rgba(255,255,255,0.45)',
                 }}
               >
                 {mode === 'use' ? '용기 전면 프레임' : '반납함 + 용기'}
               </div>
               <div
                 style={{
-                  background: 'rgba(255,255,255,0.16)',
-                  borderRadius: 999,
-                  padding: '7px 10px',
+                  background: 'rgba(255,255,255,0.20)',
+                  borderRadius: 'var(--cb-radius-full)',
+                  padding: '6px 12px',
                   fontSize: 10,
                   color: '#fff',
                   fontWeight: 700,
                   backdropFilter: 'blur(10px)',
+                  border: '1.5px solid rgba(255,255,255,0.45)',
                 }}
               >
                 자동 검수
@@ -561,10 +559,10 @@ export function ReportScreen() {
             >
               <div
                 style={{
-                  background: 'rgba(15, 23, 42, 0.28)',
-                  borderRadius: 16,
+                  background: 'rgba(15, 23, 42, 0.32)',
+                  borderRadius: 'var(--cb-radius-md)',
                   padding: '10px 12px',
-                  border: '1px solid rgba(255,255,255,0.18)',
+                  border: '2px solid rgba(255,255,255,0.32)',
                   backdropFilter: 'blur(10px)',
                 }}
               >
@@ -581,21 +579,22 @@ export function ReportScreen() {
                 disabled={isBusy}
                 style={{
                   width: '100%',
-                  borderRadius: 18,
+                  borderRadius: 'var(--cb-radius-md)',
                   padding: '14px 16px',
-                  border: 'none',
+                  border: '2px solid #430A21',
                   cursor: isBusy ? 'wait' : 'pointer',
                   background: isBusy ? 'rgba(255,255,255,0.4)' : '#fff',
-                  color: '#0F172A',
+                  color: '#430A21',
                   fontSize: 14,
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
+                  boxShadow: '0 3px 0 0 #430A21',
                 }}
               >
-                <Camera size={18} color="#13923F" />
+                <Camera size={18} color="var(--cb-primary-deep)" />
                 사진 촬영 / 갤러리 선택
               </button>
             </div>
@@ -622,10 +621,12 @@ export function ReportScreen() {
                     exit={{ y: 10, opacity: 0 }}
                     style={{
                       width: '100%',
-                      borderRadius: 22,
+                      borderRadius: 'var(--cb-radius-lg)',
                       background: '#fff',
                       padding: '22px 18px',
                       textAlign: 'center',
+                      border: '2px solid #430A21',
+                      boxShadow: '0 4px 0 0 #430A21',
                     }}
                   >
                     <motion.div
@@ -639,7 +640,7 @@ export function ReportScreen() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: '#E9FBEF',
+                        background: 'var(--cb-primary-soft)',
                       }}
                     >
                       <ScanLine size={24} color={modeMeta.tone} />
@@ -651,10 +652,11 @@ export function ReportScreen() {
                     <div
                       style={{
                         marginTop: 14,
-                        borderRadius: 999,
-                        height: 7,
+                        borderRadius: 'var(--cb-radius-full)',
+                        height: 8,
                         background: '#E2E8F0',
                         overflow: 'hidden',
+                        border: '1.5px solid #430A21',
                       }}
                     >
                       <motion.div
@@ -663,8 +665,8 @@ export function ReportScreen() {
                         transition={{ duration: 2.6, ease: 'easeInOut' }}
                         style={{
                           height: '100%',
-                          borderRadius: 999,
-                          background: 'linear-gradient(90deg, #3DDB6D, #1AB852)',
+                          borderRadius: 'var(--cb-radius-full)',
+                          background: 'var(--cb-primary)',
                         }}
                       />
                     </div>
@@ -681,8 +683,8 @@ export function ReportScreen() {
               disabled={analysisState === 'idle' || isBusy}
               style={{
                 flex: 1,
-                borderRadius: 16,
-                border: '1px solid rgba(148, 163, 184, 0.3)',
+                borderRadius: 'var(--cb-radius-md)',
+                border: '2px solid #430A21',
                 background: analysisState === 'idle' || isBusy ? '#F8FAFC' : '#fff',
                 color: analysisState === 'idle' || isBusy ? '#94A3B8' : '#334155',
                 padding: '14px 10px',
@@ -693,6 +695,7 @@ export function ReportScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
+                boxShadow: '0 2px 0 0 #430A21',
               }}
             >
               <RotateCcw size={16} />
@@ -700,25 +703,27 @@ export function ReportScreen() {
             </button>
             <button
               type="button"
-              aria-label={`AI 인증 시작 (+${rewardPoints}P)`}
+              aria-label="AI 인증 시작"
               onClick={handleAnalyze}
               disabled={!canStartAnalysis || isBusy}
               style={{
                 flex: 1.25,
-                borderRadius: 16,
-                border: 'none',
+                borderRadius: 'var(--cb-radius-md)',
+                border: '2px solid #430A21',
                 background: !canStartAnalysis || isBusy
                   ? '#CBD5E1'
-                  : 'linear-gradient(135deg, #3DDB6D, #1AB852)',
+                  : 'var(--cb-primary)',
                 color: '#fff',
                 padding: '14px 12px',
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: !canStartAnalysis || isBusy ? 'not-allowed' : 'pointer',
-                boxShadow: !canStartAnalysis || isBusy ? 'none' : '0 10px 24px rgba(26, 184, 82, 0.28)',
+                boxShadow: !canStartAnalysis || isBusy
+                  ? '0 2px 0 0 #430A21'
+                  : '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
               }}
             >
-              {isBusy ? '분석 중...' : `AI 인증 시작 (+${rewardPoints}P)`}
+              {isBusy ? '분석 중...' : 'AI 인증 시작'}
             </button>
           </div>
         </div>
@@ -732,10 +737,12 @@ export function ReportScreen() {
               exit={{ opacity: 0, y: -12 }}
               style={{
                 background: '#fff',
-                borderRadius: 20,
+                borderRadius: 'var(--cb-radius-lg)',
                 padding: 16,
-                border: analysisState === 'success' ? '1px solid rgba(19, 146, 63, 0.18)' : '1px solid rgba(239, 68, 68, 0.14)',
-                boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                border: analysisState === 'success' ? '2px solid #15803D' : '2px solid #E11D48',
+                boxShadow: analysisState === 'success'
+                  ? '0 3px 0 0 #15803D, 0 4px 6px rgba(21, 128, 61, 0.20)'
+                  : '0 3px 0 0 #E11D48, 0 4px 6px rgba(225, 29, 72, 0.20)',
               }}
             >
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -743,15 +750,16 @@ export function ReportScreen() {
                   style={{
                     width: 44,
                     height: 44,
-                    borderRadius: 14,
+                    borderRadius: 'var(--cb-radius-md)',
                     flexShrink: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: analysisState === 'success' ? '#E9FBEF' : '#FFF1F2',
+                    background: analysisState === 'success' ? 'var(--cb-primary-soft)' : '#FFF1F2',
+                    border: `1.5px solid ${analysisState === 'success' ? 'var(--cb-primary-border)' : '#FCA5A5'}`,
                   }}
                 >
-                  <CheckCircle size={22} color={analysisState === 'success' ? '#13923F' : '#E11D48'} />
+                  <CheckCircle size={22} color={analysisState === 'success' ? 'var(--cb-primary-deep)' : '#E11D48'} />
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
@@ -772,11 +780,11 @@ export function ReportScreen() {
                   marginTop: 14,
                 }}
               >
-                <div style={{ borderRadius: 14, background: '#F8FAFC', padding: '10px 11px' }}>
+                <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
                   <p style={{ fontSize: 10, color: '#64748B' }}>확인 결과</p>
                   <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.detected}</p>
                 </div>
-                <div style={{ borderRadius: 14, background: '#F8FAFC', padding: '10px 11px' }}>
+                <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
                   <p style={{ fontSize: 10, color: '#64748B' }}>처리 상태</p>
                   <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.statusLabel}</p>
                 </div>
@@ -785,20 +793,23 @@ export function ReportScreen() {
               <div
                 style={{
                   marginTop: 12,
-                  borderRadius: 14,
+                  borderRadius: 'var(--cb-radius-md)',
                   padding: '11px 12px',
                   background: analysisState === 'success' ? '#F0FDF4' : '#FFF7ED',
-                  border: `1px solid ${analysisState === 'success' ? '#BBF7D0' : '#FED7AA'}`,
+                  border: `2px solid ${analysisState === 'success' ? '#15803D' : '#C2410C'}`,
+                  boxShadow: `0 2px 0 0 ${analysisState === 'success' ? '#15803D' : '#C2410C'}`,
                 }}
               >
                 <p style={{ fontSize: 12, fontWeight: 700, color: analysisState === 'success' ? '#15803D' : '#C2410C' }}>
                   {analysisState === 'success'
-                    ? `즉시 ${rewardPoints}P 적립 완료`
+                    ? '서울 감축 지표에 반영되었습니다'
                     : activeResult.statusLabel}
                 </p>
                 <p style={{ marginTop: 4, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
                   {analysisState === 'success'
-                    ? (timeSaleActive ? '7-8회 타임세일 2배 보너스가 반영되었습니다.' : '기본 인증 포인트가 즉시 반영되었습니다.')
+                    ? (timeSaleActive
+                      ? '7-8회 조기 반납 구간에 인증해 대기 줄이 짧았습니다.'
+                      : '인증한 다회용기는 줄인 일회용기 개수와 폐기물 감량에 합산됩니다.')
                     : activeResult.guide}
                 </p>
               </div>
@@ -809,26 +820,10 @@ export function ReportScreen() {
         <div
           style={{
             background: '#fff',
-            borderRadius: 18,
-            padding: '14px 14px 12px',
-            border: '1px solid rgba(15, 23, 42, 0.06)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <Info size={15} color="#64748B" style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ fontSize: 11, color: '#64748B', lineHeight: 1.6 }}>
-              AI 검수는 백그라운드에서 처리됩니다. 화면에는 필요한 액션만 표시되며, 실패 시 가림 없는 정면 사진으로 바로 다시 촬영할 수 있습니다.
-            </p>
-          </div>
-        </div>
-
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: 20,
+            borderRadius: 'var(--cb-radius-lg)',
             padding: '16px 14px',
-            border: '1px solid rgba(15, 23, 42, 0.06)',
-            boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+            border: '2px solid #430A21',
+            boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
@@ -838,12 +833,13 @@ export function ReportScreen() {
             </div>
             <div
               style={{
-                borderRadius: 999,
-                padding: '6px 10px',
+                borderRadius: 'var(--cb-radius-full)',
+                padding: '5px 12px',
                 fontSize: 10,
                 fontWeight: 700,
                 background: '#F8FAFC',
                 color: '#475569',
+                border: '1.5px solid #94A3B8',
               }}
             >
               총 {history.length}건
@@ -855,10 +851,11 @@ export function ReportScreen() {
               <div
                 key={item.id}
                 style={{
-                  borderRadius: 16,
-                  padding: '12px 12px 11px',
+                  borderRadius: 'var(--cb-radius-md)',
+                  padding: '12px',
                   background: item.passed ? '#F8FFFB' : '#FFF8F5',
-                  border: `1px solid ${item.passed ? 'rgba(19, 146, 63, 0.14)' : 'rgba(249, 115, 22, 0.16)'}`,
+                  border: `2px solid ${item.passed ? '#15803D' : '#C2410C'}`,
+                  boxShadow: `0 2px 0 0 ${item.passed ? '#15803D' : '#C2410C'}`,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
@@ -867,12 +864,13 @@ export function ReportScreen() {
                       <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{item.label}</p>
                       <span
                         style={{
-                          borderRadius: 999,
-                          padding: '3px 8px',
+                          borderRadius: 'var(--cb-radius-full)',
+                          padding: '3px 10px',
                           fontSize: 10,
                           fontWeight: 700,
-                          background: item.mode === 'use' ? '#E9FBEF' : '#EEF5FF',
-                          color: item.mode === 'use' ? '#13923F' : '#1565C0',
+                          background: item.mode === 'use' ? 'var(--cb-primary-soft)' : '#EEF5FF',
+                          color: item.mode === 'use' ? 'var(--cb-primary-deep)' : '#1565C0',
+                          border: `1.5px solid ${item.mode === 'use' ? 'var(--cb-primary-border)' : '#1565C0'}`,
                         }}
                       >
                         {item.mode === 'use' ? '사용' : '반납'}
@@ -884,10 +882,10 @@ export function ReportScreen() {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <p style={{ fontSize: 12, fontWeight: 700, color: item.passed ? '#15803D' : '#C2410C' }}>
-                      {item.passed ? `+${item.points}P` : '재촬영'}
+                      {item.passed ? '인증 완료' : '재촬영'}
                     </p>
                     <p style={{ marginTop: 4, fontSize: 10, color: '#94A3B8' }}>
-                      {item.passed ? '즉시 적립' : '미적립'}
+                      {item.passed ? '감축 지표 반영' : '미반영'}
                     </p>
                   </div>
                 </div>

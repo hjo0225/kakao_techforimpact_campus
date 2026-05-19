@@ -30,7 +30,7 @@
   --chart-3: #F2A2AD;
   --chart-4: #F8EAC9;
   --chart-5: #FBE6EA;
-  --radius: 0.5rem;
+  --radius: 0px;
 
   /* Vintage Ballpark palette — base: #C85C77 */
   --cream-50: #FFFCF6;
@@ -158,7 +158,14 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'Galmuri11', 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+  }
+
+  img, svg {
+    image-rendering: pixelated;
   }
 
   /* Scrollbar hide utility */

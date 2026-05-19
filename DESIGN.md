@@ -2,7 +2,35 @@
 
 > Single Source of Truth. UI 코드 작성 전 반드시 이 문서를 읽고, 여기 정의된 토큰만 사용한다. 새 색상/폰트/간격이 필요하면 코드보다 이 문서를 먼저 갱신.
 >
-> **Vintage Ballpark 리브랜딩 적용 중 (2026-05)** — 기존 green Park 팔레트는 폐기. cream / burgundy / rose 톤으로 통일.
+> **Vintage Ballpark + Pixel Style (2026-05)** — green Park 팔레트 폐기, cream/burgundy/rose 톤. 컴포넌트는 NES.css 스타일(픽셀 폰트 + hard shadow + 2px solid border + 0 radius).
+
+## 0. Pixel Style Rules (필수)
+
+도트(픽셀) 스타일 = 다음 6축을 모두 준수해야 한다. 일부만 적용하면 "어중간한 모던/픽셀" 룩이 되어 톤이 깨진다.
+
+| 축 | 규칙 |
+|---|---|
+| **폰트** | `--cb-font-family` = Galmuri11 (본문) / `--cb-font-family-display` = Galmuri14 (헤딩 20px+). `font-weight: 700`만 사용 (Galmuri는 400/700만 제공) |
+| **모서리** | `border-radius: 0` 절대 원칙. 원형 아바타·점·로딩 스피너만 `9999px` 허용 |
+| **테두리** | `border: var(--cb-border-pixel)` = `2px solid #430a21` 기본. 인라인 스타일에서도 `2px solid` 미만 금지 |
+| **그림자** | hard offset만. `--cb-shadow-xs/sm/md/primary`는 모두 `Xpx Xpx 0 0 #430a21` 형태. blur(`rgba(..., 0.X)` 4th value) 사용 금지 |
+| **그라데이션** | `linear-gradient(...)` 금지. flat color로 대체. 강조가 필요하면 hard shadow + border 조합으로 |
+| **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용) |
+
+활성/누르기 인터랙션:
+- `:active` → `transform: translate(2px, 2px)` + `box-shadow: var(--cb-shadow-pressed)` (눌린 느낌)
+
+## 1-0. Pixel Border / Shadow tokens
+
+| Token | Value | 용도 |
+|---|---|---|
+| `--cb-border-width` | `2px` | 기본 테두리 두께 |
+| `--cb-border-pixel` | `2px solid #430a21` | 프레임 룩 |
+| `--cb-shadow-xs` | `2px 2px 0 0 #430a21` | subtle frame |
+| `--cb-shadow-sm` | `3px 3px 0 0 #430a21` | card |
+| `--cb-shadow-md` | `4px 4px 0 0 #430a21` | elevated |
+| `--cb-shadow-primary` | `4px 4px 0 0 #430a21` | CTA |
+| `--cb-shadow-pressed` | `1px 1px 0 0 #430a21` | :active |
 
 ## 1-1. Color — Brand (Vintage Ballpark)
 
@@ -34,6 +62,30 @@
 | `--burgundy-700` | `#5E1530` | text-soft (보조 본문) |
 | `--burgundy-900` | `#430A21` | **primary text**, 강조 라인 |
 
+## 1-1B. Color — Game-state semantic (baseball UI)
+
+`docs/design-reference/components-library.png` 참고. 야구 game-state(OUT·BALL·STRIKE)는 일반 semantic(danger/warning)과 분리된 도메인 토큰.
+
+| Token | Hex | 용도 |
+|---|---|---|
+| `--cb-state-out` | `#430A21` | OUT — burgundy 강조 (가장 강한 stop) |
+| `--cb-state-ball` | `#F8EAC9` | BALL — warm cream (중립/대기) |
+| `--cb-state-strike` | `#C85C77` | STRIKE — rose (경고) |
+| `--cb-state-hit` | `#5E8B5A` | HIT — vintage olive (긍정) |
+| `--cb-state-run` | `#B07800` | RUN — warm gold (액션) |
+| `--cb-score-home` | `#C85C77` | 홈팀 점수 라벨 |
+| `--cb-score-away` | `#430A21` | 원정팀 점수 라벨 |
+
+사용 컴포넌트: `<ScoreBadge>` / `<InningIndicator>` / `<GameStateTag>` ([Component Primitives](#component-primitives) 섹션 참고).
+
+## 1-1C. Decoration patterns
+
+| Token | Value | 용도 |
+|---|---|---|
+| `--cb-pattern-stadium-dots` | SVG data URL (4×4 grid, rose dots on cream) | EmptyState · 빈 화면 배경 텍스처 |
+
+CSS 사용: `background-image: var(--cb-pattern-stadium-dots);`. `background-size: 16px 16px;`로 반복.
+
 ## 1-2. Color — Surface / Text
 
 | Token | Hex | 용도 |
@@ -62,14 +114,14 @@
 | `--cb-warning-text` | `#8C5A00` | warning text |
 | `--cb-success` | `#5E8B5A` | 친환경/달성 상태 (vintage olive 톤) |
 
-## 1-4. Radius
+## 1-4. Radius (Pixel — 모두 0)
 
 | Token | Value | 용도 |
 |---|---|---|
-| `--cb-radius-md` | `8px` | 모든 둥근 모서리의 기본값 — 버튼, 입력창, 카드, 모달, 칩 |
-| `--cb-radius-full` | `9999px` | 캡슐형 버튼·태그, 원형 아바타 |
+| `--cb-radius-md` | `0px` | 픽셀 룩 — 버튼/입력/카드/모달/칩 모두 사각 |
+| `--cb-radius-full` | `9999px` | **예외**: 원형 아바타·점·로딩 스피너만 |
 
-폐기: `--cb-radius-sm` (10px), `--cb-radius-lg` (18px), `--cb-radius-xl` (22px).
+폐기: `--cb-radius-sm/lg/xl` (모두 `0px`로 alias).
 
 ## 1-5. Spacing
 
@@ -86,9 +138,13 @@
 
 | Token | Value |
 |---|---|
-| `--cb-font-family` | `'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` |
+| `--cb-font-family` | `'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif` |
+| `--cb-font-family-display` | `'Galmuri14', 'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif` |
 
-디스플레이 전용 패밀리 제거. 모든 텍스트는 단일 패밀리.
+- **Galmuri**: 한글 픽셀 폰트 (OFL, [github.com/quiple/galmuri](https://github.com/quiple/galmuri)). jsDelivr로 self-host
+- Galmuri11(본문) / Galmuri14(헤딩 20px+) / Galmuri9(소형 라벨, 옵션)
+- **사이즈 규칙**: Galmuri는 11/14/9 픽셀 그리드 최적. 11px, 22px, 33px 또는 14px, 28px 사용 권장. 그 외 사이즈는 브라우저 스케일링으로 약간 블러 가능
+- Pretendard fallback: Galmuri에 없는 글리프나 입력 필드에서 사용
 
 ### Font size
 

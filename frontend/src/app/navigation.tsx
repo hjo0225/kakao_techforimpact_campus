@@ -11,8 +11,7 @@ export type Route =
   | 'report'
   | 'record'
   | 'ranking'
-  | 'account'
-  | 'avatar';
+  | 'account';
 
 interface NavigationState {
   currentRoute: Route;
@@ -31,7 +30,6 @@ export const ROUTE_PATHS: Record<Route, string> = {
   record: '/record',
   ranking: '/ranking',
   account: '/account',
-  avatar: '/avatar',
 };
 
 const PATH_ROUTES = Object.entries(ROUTE_PATHS).reduce<Record<string, Route>>((acc, [route, path]) => {

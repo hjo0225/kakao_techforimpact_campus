@@ -50,12 +50,12 @@ export function BottomNav() {
             >
               <span className="cb-bottom-nav__icon">
                 <Icon
-                  size={19}
-                  strokeWidth={isActive ? 2.5 : 2}
+                  size={22}
+                  strokeWidth={isActive ? 3 : 2.75}
                 />
                 {isLocked && (
                   <Lock
-                    size={8}
+                    size={10}
                     fill="currentColor"
                     className="cb-bottom-nav__lock"
                   />

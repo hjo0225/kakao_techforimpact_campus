@@ -1,4 +1,4 @@
-"""CleanBallTrio Vision API — 다회용기/일회용기 분류.
+"""용기낼깡 Vision API — 다회용기/일회용기 분류.
 
 업스트림 NestJS 백엔드가 호출하는 단일 책임 서비스.
 - POST /verify-reusable  이미지 업로드 → {isReusable, classIndex, confidence}
@@ -14,7 +14,7 @@ from PIL import Image
 
 from model import get_model
 
-app = FastAPI(title="CleanBallTrio Vision API", version="1.0")
+app = FastAPI(title="용기낼깡 Vision API", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
