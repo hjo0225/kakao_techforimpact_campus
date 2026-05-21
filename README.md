@@ -1,5 +1,6 @@
 # 용기낼깡 (카카오\_환경많이된다)
 <img width="341" height="763" alt="image" src="https://github.com/user-attachments/assets/19edbfa8-5018-4913-8fed-ed70fe4631df" />
+
 [![Deploy](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml)
 
 > **야구장 일회용기 쓰레기 문제를, 응원 팀 경쟁으로 푼다.**
