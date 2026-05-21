@@ -257,7 +257,6 @@ export function GameSelectScreen() {
                     }}
                     variant={fav ? 'primary' : 'secondary'}
                     fullWidth
-                    disabled={!isPending}
                   >
                     <CheckCircle size={15} />
                     이 경기 선택
