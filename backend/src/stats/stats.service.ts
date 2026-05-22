@@ -9,6 +9,17 @@ export interface MyStats {
   totalCount: number;
 }
 
+export interface MyUsageLog {
+  id: string;
+  kind: UsageKind;
+  score: number;
+  gameLabel: string | null;
+  scannedAt: string;
+}
+
+const DEFAULT_LOG_LIMIT = 20;
+const MAX_LOG_LIMIT = 100;
+
 @Injectable()
 export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -37,5 +48,36 @@ export class StatsService {
       returnCount,
       totalCount: useCount + returnCount,
     };
+  }
+
+  async getMyLogs(userId: string, limit?: number): Promise<MyUsageLog[]> {
+    const take = Math.min(
+      Math.max(1, Math.trunc(limit ?? DEFAULT_LOG_LIMIT)),
+      MAX_LOG_LIMIT,
+    );
+
+    const usages = await this.prisma.usage.findMany({
+      where: { userId: BigInt(userId) },
+      orderBy: { scannedAt: 'desc' },
+      take,
+      include: {
+        game: {
+          select: {
+            homeTeam: { select: { displayName: true } },
+            awayTeam: { select: { displayName: true } },
+          },
+        },
+      },
+    });
+
+    return usages.map((u) => ({
+      id: u.id.toString(),
+      kind: u.kind,
+      score: u.score,
+      gameLabel: u.game
+        ? `${u.game.homeTeam.displayName} vs ${u.game.awayTeam.displayName}`
+        : null,
+      scannedAt: u.scannedAt.toISOString(),
+    }));
   }
 }

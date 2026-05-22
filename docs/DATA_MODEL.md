@@ -101,6 +101,25 @@ CREATE INDEX usages_user_kind_idx ON usages (user_id, kind);
 
 > `lat/lng`는 PRD 상 NUMERIC(9,6)이었으나 Prisma의 `Float` → `DOUBLE PRECISION`으로 매핑됨. PostGIS 도입 시 재검토.
 
+### `attendances` (경기 선택 = 직관 의향)
+
+```sql
+CREATE TABLE attendances (
+  id           BIGSERIAL    PRIMARY KEY,
+  user_id      BIGINT       NOT NULL REFERENCES users(id),
+  game_id      BIGINT       NOT NULL REFERENCES games(id),
+  selected_at  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  canceled_at  TIMESTAMP(3)                                  -- NULL이면 활성 선택
+);
+CREATE UNIQUE INDEX attendances_user_id_game_id_key ON attendances (user_id, game_id);
+CREATE INDEX attendances_user_canceled_idx ON attendances (user_id, canceled_at);
+```
+
+- 사용자가 경기를 선택하면 `(user_id, game_id)` upsert (활성 = `canceled_at IS NULL`). 새 선택 시 아직 안 지난 다른 활성 선택은 자동 취소 → **현재 선택은 1개만 유지**
+- **직관 확정 규칙**: 별도 상태 컬럼 없이 **읽는 시점**에 판정 — `canceled_at IS NULL AND game.date < 오늘(KST)` 이면 직관 방문으로 확정. `game.date >= 오늘`이면 '현재 선택'
+- 즉 "경기 선택 후 그날(경기 날짜)이 지나도록 취소하지 않으면 직관으로 인정". 크론/배치 불필요
+- 마이그레이션: `20260522000000_add_attendances`
+
 ### `stadiums` (TBD)
 
 QR payload에서 구장 식별 필요 시 추가.

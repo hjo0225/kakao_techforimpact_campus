@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../AppContext';
 import { LockedScreen } from './LockedScreen';
 import { BottomNav } from '../BottomNav';
@@ -105,7 +105,7 @@ export function ReportScreen() {
   const {
     selectedGame,
     addCertification,
-    certificationLogs,
+    totalCertCount,
     ecoImpact,
   } = useApp();
   const [mode, setMode] = useState<CertificationMode>('use');
@@ -122,10 +122,7 @@ export function ReportScreen() {
   }, []);
 
   const timeSaleActive = selectedGame ? isTimeSaleInning(selectedGame.inning) : false;
-  const successCount = useMemo(
-    () => certificationLogs.length,
-    [certificationLogs.length]
-  );
+  const successCount = totalCertCount;
 
   const modeMeta = CERTIFICATION_MODES.find((item) => item.id === mode) ?? CERTIFICATION_MODES[0];
   const canStartAnalysis = analysisState === 'captured' || analysisState === 'failure';

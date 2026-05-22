@@ -16,23 +16,10 @@ import { useNavigation, type Route } from '../../navigation';
 import { TeamBadge } from '../TeamBadge';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
-import { ScoreCounter, InningCounter, BSOCounter } from '../design-system';
 import { getTeamRankings, type TeamRanking } from '../../../lib/rankingsApi';
 
 function normalizeTeam(team: string | null | undefined) {
   return (team ?? '').split(' ')[0];
-}
-
-function parseScore(score: string): { home: number; away: number } {
-  // "5 : 3" / "5:3" / "5 - 3" 모두 허용
-  const m = score.match(/(\d+)\s*[:\-vs]+\s*(\d+)/i);
-  if (!m) return { home: 0, away: 0 };
-  return { home: Number(m[1]), away: Number(m[2]) };
-}
-
-function parseInning(inning: string): number {
-  const m = inning.match(/(\d+)/);
-  return m ? Number(m[1]) : 1;
 }
 
 const TODAY_GAMES = [
@@ -160,11 +147,12 @@ export function HomeScreen() {
   const {
     selectedTeam,
     selectedGame,
-    setSelectedGame,
+    cancelSelectedGame,
     seatInfo,
     setSeatInfo,
     todayMission,
     certificationLogs,
+    totalCertCount,
     isTimesaleActive,
     ecoImpact,
     reusableUseCount,
@@ -210,31 +198,6 @@ export function HomeScreen() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <StatusBar />
-
-      {selectedGame && (() => {
-        const { home, away } = parseScore(selectedGame.score);
-        const inningNum = parseInning(selectedGame.inning);
-        const half = selectedGame.inning.includes('말') ? 'bottom' : 'top';
-        return (
-          <div style={{
-            padding: '10px 20px 14px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            background: 'var(--cb-surface)',
-            borderBottom: 'var(--cb-border-pixel)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-              <ScoreCounter home={home} away={away} homeLabel={selectedGame.home} awayLabel={selectedGame.away} />
-              <InningCounter inning={inningNum} half={half} />
-              <BSOCounter balls={2} strikes={1} outs={1} />
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--cb-text-soft)', fontWeight: 700 }}>
-              {selectedGame.venue}
-            </p>
-          </div>
-        );
-      })()}
 
       <div
         className="hide-scroll"
@@ -341,7 +304,7 @@ export function HomeScreen() {
             <p style={{ fontSize: 36, fontWeight: 900, lineHeight: 1, color: '#430A21' }}>{ecoImpact.containers}</p>
             <p style={{ fontSize: 13, fontWeight: 800, color: '#5E1530' }}>개 줄임</p>
             <span style={{ fontSize: 11, color: '#5E1530', marginLeft: 'auto', fontWeight: 700 }}>
-              누적 인증 {certificationLogs.length}건
+              누적 인증 {totalCertCount}건
             </span>
           </div>
 
@@ -573,7 +536,7 @@ export function HomeScreen() {
             </div>
             <button
               type="button"
-              onClick={() => setSelectedGame(null)}
+              onClick={() => cancelSelectedGame()}
               style={{
                 width: '100%',
                 marginTop: 12,

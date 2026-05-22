@@ -8,6 +8,22 @@
 
 ## [Unreleased]
 
+### feat(api): `attendances` — 경기 선택 후 그날 지나면 직관 자동 확정 (계정별)
+
+- 신규 테이블 `attendances` + 마이그레이션 `20260522000000_add_attendances`
+- `GET /attendance/me` — `{ current, visits }`. 활성 선택 중 `game.date >= 오늘(KST)` = current, `< 오늘` = 직관 확정 visits (최신순). 확정은 별도 상태 없이 on-read 계산(크론 불필요)
+- `POST /attendance {gameId}` — 경기 선택. 아직 안 지난 다른 활성 선택 자동 취소(현재 1개 유지). 없는 게임은 `404`
+- `DELETE /attendance/:gameId` — 선택 취소(멱등), `204`
+- 프론트: `selectedGame`을 백엔드에 영속화 → 새로고침/재로그인해도 복원. 홈 "경기 변경/해제" = `DELETE`, 경기선택 = `POST`. RecordScreen 방문 기록(`visits`)이 직관 확정분으로 채워짐
+- 단위 테스트 `attendance.service.spec.ts` 5건
+
+### feat(api): `GET /stats/me/logs` — 본인 인증 로그 타임라인 (계정별)
+
+- `GET /stats/me/logs?limit=` (JWT 필수) — `usages.findMany`(최신순, game join)로 `[{id, kind, score, gameLabel, scannedAt}]` 반환. `limit` 기본 20, 1~100 클램프
+- 스키마 변경 없음 — 기존 `usages` 테이블에서 직접 조회
+- 프론트: 홈/기록/리포트의 인증 로그·누적 집계가 공유 mock(`SAMPLE_CERTIFICATION_LOGS`/`SAMPLE_VISITS`) 대신 계정별 서버 데이터로 동작. 홈 점수판(하드코딩 BSO) 제거
+- 단위 테스트 `stats.service.spec.ts`에 `getMyLogs` 3건 추가
+
 ### feat(api): `GET /stats/me`, `GET /rankings/teams` — 개인·팀 누적 점수 집계
 
 - `GET /stats/me` (JWT 필수) — `usages.score` SUM-on-read로 `{points, useCount, returnCount, totalCount}` 반환
