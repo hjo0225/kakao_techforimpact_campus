@@ -214,9 +214,6 @@ export function HomeScreen() {
             }
           }}
           style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 5,
             background: 'var(--cb-surface)',
             border: '2px solid #430A21',
             borderRadius: 'var(--cb-radius-lg)',
