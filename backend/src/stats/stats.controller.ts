@@ -1,4 +1,11 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  ParseIntPipe,
+  Query,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StatsService } from './stats.service';
 
@@ -14,5 +21,13 @@ export class StatsController {
   @Get('me')
   getMe(@Request() req: AuthedRequest) {
     return this.statsService.getMyStats(req.user.userId);
+  }
+
+  @Get('me/logs')
+  getMyLogs(
+    @Request() req: AuthedRequest,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    return this.statsService.getMyLogs(req.user.userId, limit);
   }
 }

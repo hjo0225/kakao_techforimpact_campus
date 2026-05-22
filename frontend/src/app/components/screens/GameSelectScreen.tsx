@@ -80,7 +80,7 @@ function formatShort(iso: string): string {
 
 export function GameSelectScreen() {
   const { navigate } = useNavigation();
-  const { selectedTeam, setSelectedGame } = useApp();
+  const { selectedTeam, selectGame } = useApp();
   const [activeTab, setActiveTab] = useState<DateTab>('all');
   const [games, setGames] = useState<UiGame[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +142,9 @@ export function GameSelectScreen() {
   };
 
   const handleSelect = (game: UiGame) => {
-    setSelectedGame({
+    selectGame({
+      gameId: game.id,
+      date: game.date,
       home: game.home,
       away: game.away,
       venue: game.venue,
@@ -269,7 +271,7 @@ export function GameSelectScreen() {
       </ScrollArea>
 
       <div className="cb-footer-note">
-        <p>선택한 경기는 종료 1시간 후 자동으로 해제됩니다</p>
+        <p>선택한 경기는 그날이 지나면 직관 기록으로 확정됩니다 (그 전에 취소 가능)</p>
       </div>
     </Screen>
   );

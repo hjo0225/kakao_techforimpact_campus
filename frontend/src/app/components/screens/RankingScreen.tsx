@@ -15,7 +15,7 @@ function normalizeTeam(team: string | null | undefined) {
 }
 
 export function RankingScreen() {
-  const { selectedTeam, ecoImpact, certificationLogs } = useApp();
+  const { selectedTeam, ecoImpact, totalCertCount } = useApp();
   const [teams, setTeams] = useState<TeamRanking[]>([]);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export function RankingScreen() {
             >
               <p style={{ fontSize: 10, color: '#5E1530', marginBottom: 4 }}>내 시즌 인증</p>
               <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 3, color: '#430A21' }}>
-                {certificationLogs.length}<span style={{ fontSize: 11, marginLeft: 2 }}>건</span>
+                {totalCertCount}<span style={{ fontSize: 11, marginLeft: 2 }}>건</span>
               </p>
               <p style={{ fontSize: 10, color: '#5E1530' }}>
                 줄인 용기 {ecoImpact.containers}개

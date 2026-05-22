@@ -1,6 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { getMyStats } from '../lib/statsApi';
+import { getMyStats, getMyLogs, type MyStats, type MyUsageLog } from '../lib/statsApi';
+import {
+  getMyAttendance,
+  selectAttendance,
+  cancelAttendance,
+} from '../lib/attendanceApi';
+import { summaryToGameInfo, type GameSummary } from '../lib/gameSummary';
 
 export interface GameInfo {
   home: string;
@@ -9,6 +15,8 @@ export interface GameInfo {
   time: string;
   inning: string;
   score: string;
+  gameId?: string; // 백엔드 games.id — 직관(attendance) 영속화에 사용
+  date?: string;   // YYYY-MM-DD — '그날'이 지났는지 판정에 사용
 }
 
 export interface SeatInfo {
@@ -60,6 +68,9 @@ interface AppState {
   setSelectedTeam: (team: string | null) => void;
   selectedGame: GameInfo | null;
   setSelectedGame: (game: GameInfo | null) => void;
+  // 경기 선택/해제 (백엔드 attendance에 영속) — 그날이 지나도록 해제 안 하면 직관으로 확정
+  selectGame: (game: GameInfo) => void;
+  cancelSelectedGame: () => void;
   seatInfo: SeatInfo;
   setSeatInfo: (seat: SeatInfo) => void;
   certificationLogs: CertificationLog[];
@@ -68,6 +79,7 @@ interface AppState {
   todayMission: MissionProgress;
   reusableUseCount: number;
   reusableReturnCount: number;
+  totalCertCount: number;
   isTimesaleActive: boolean;
   ecoImpact: EcoImpact;
   visits: VisitRecord[];
@@ -79,54 +91,38 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-const SAMPLE_VISITS: VisitRecord[] = [
-  {
-    date: '2026-04-21',
-    game: { home: 'LG', away: '두산', venue: '잠실 야구장', time: '18:30', inning: '7회말', score: '5 : 3' },
-    seat: { section: '1루 외야', seatNumber: 'A-12' },
-    result: '승', score: '5 : 3',
-    seatCertified: false, reusableUsed: true,
-    memo: '오늘 치킨이 맛있었음',
-    shareCardCreated: false,
-  },
-  {
-    date: '2026-04-15',
-    game: { home: 'LG', away: 'SSG', venue: '잠실 야구장', time: '18:30', inning: '9회', score: '3 : 1' },
-    seat: { section: '3루 응원석', seatNumber: 'B-5' },
-    result: '승', score: '3 : 1',
-    seatCertified: true, reusableUsed: false,
-    memo: '',
-    shareCardCreated: true,
-  },
-  {
-    date: '2026-04-08',
-    game: { home: '두산', away: 'LG', venue: '잠실 야구장', time: '18:30', inning: '9회', score: '2 : 4' },
-    seat: { section: '1루 내야', seatNumber: 'C-22' },
-    result: '패', score: '2 : 4',
-    seatCertified: true, reusableUsed: true,
-    memo: '비 와서 힘들었지만 좋았음',
-    shareCardCreated: true,
-  },
-];
+const EMPTY_STATS: MyStats = { points: 0, useCount: 0, returnCount: 0, totalCount: 0 };
 
-const SAMPLE_CERTIFICATION_LOGS: CertificationLog[] = [
-  {
-    id: 'cert-1',
-    type: 'use',
-    label: '사용 인증',
-    time: '18:42',
-    game: 'LG vs 두산',
+function mapUsageLog(log: MyUsageLog): CertificationLog {
+  return {
+    id: log.id,
+    type: log.kind === 'USE' ? 'use' : 'return',
+    label: log.kind === 'USE' ? '사용 인증' : '반납 인증',
+    time: new Date(log.scannedAt).toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }),
+    game: log.gameLabel ?? '오늘 경기',
     bonus: false,
-  },
-  {
-    id: 'cert-2',
-    type: 'return',
-    label: '반납 인증',
-    time: '20:18',
-    game: 'LG vs 두산',
-    bonus: true,
-  },
-];
+  };
+}
+
+// 직관 확정된 경기 요약 → 방문 기록. 좌석/메모/승패는 캡처 흐름이 없어 기본값.
+function summaryToVisit(summary: GameSummary): VisitRecord {
+  const game = summaryToGameInfo(summary);
+  return {
+    date: summary.date,
+    game,
+    seat: { section: '', seatNumber: '' },
+    result: '미정',
+    score: '',
+    seatCertified: false,
+    reusableUsed: false,
+    memo: '',
+    shareCardCreated: false,
+  };
+}
 
 function getTimesaleStatus(game: GameInfo | null) {
   if (!game) return false;
@@ -142,19 +138,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [seatInfo, setSeatInfo] = useState<SeatInfo>({ section: '', seatNumber: '' });
   const token = useAuthStore((s) => s.token);
 
+  // 계정별 집계/타임라인의 단일 소스 — /stats/me, /stats/me/logs (JWT 기준 서버 데이터)
+  const [stats, setStats] = useState<MyStats>(EMPTY_STATS);
+  const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>([]);
+
   const refreshStats = useCallback(() => {
-    if (!token) return;
-    getMyStats().catch(() => {});
+    if (!token) {
+      setStats(EMPTY_STATS);
+      setCertificationLogs([]);
+      return;
+    }
+    getMyStats()
+      .then(setStats)
+      .catch(() => {});
+    getMyLogs()
+      .then((logs) => setCertificationLogs(logs.map(mapUsageLog)))
+      .catch(() => {});
   }, [token]);
 
+  // 토큰(계정) 변경 시 이전 계정 데이터가 남지 않도록 초기화 후 재조회
   useEffect(() => {
+    setStats(EMPTY_STATS);
+    setCertificationLogs([]);
     refreshStats();
   }, [refreshStats]);
 
-  const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>(SAMPLE_CERTIFICATION_LOGS);
-  const [visits, setVisits] = useState<VisitRecord[]>(SAMPLE_VISITS);
+  const [visits, setVisits] = useState<VisitRecord[]>([]);
   const [todaySeatCertified, setTodaySeatCertified] = useState(false);
   const [shareCardShared, setShareCardShared] = useState(false);
+
+  // 계정별 직관(attendance) — 현재 선택 복원 + 직관 확정 방문 목록
+  const refreshAttendance = useCallback(() => {
+    if (!token) {
+      setSelectedGame(null);
+      setVisits([]);
+      return;
+    }
+    getMyAttendance()
+      .then((data) => {
+        setSelectedGame(data.current ? summaryToGameInfo(data.current) : null);
+        setVisits(data.visits.map(summaryToVisit));
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // 로그인/계정 변경 시 서버에서 현재 선택과 방문 기록 복원
+  useEffect(() => {
+    refreshAttendance();
+  }, [refreshAttendance]);
+
+  // 경기 선택 — 즉시 로컬 반영 후 백엔드 영속화
+  const selectGame = useCallback((game: GameInfo) => {
+    setSelectedGame(game);
+    if (game.gameId) {
+      selectAttendance(game.gameId).catch(() => {});
+    }
+  }, []);
+
+  // 선택 해제 — 직관 미인정
+  const cancelSelectedGame = useCallback(() => {
+    const gameId = selectedGame?.gameId;
+    setSelectedGame(null);
+    if (gameId) {
+      cancelAttendance(gameId).catch(() => {});
+    }
+  }, [selectedGame]);
 
   const isTimesaleActive = getTimesaleStatus(selectedGame);
 
@@ -173,11 +221,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVisits((prev) =>
       prev.map((v, index) => index === 0 ? { ...v, reusableUsed: true } : v)
     );
+    // 서버 재조회 전까지 즉시 반영 (refreshStats가 서버 값으로 정합화)
+    setStats((prev) => ({
+      ...prev,
+      useCount: prev.useCount + (type === 'use' ? 1 : 0),
+      returnCount: prev.returnCount + (type === 'return' ? 1 : 0),
+      totalCount: prev.totalCount + 1,
+    }));
     refreshStats();
   }, [selectedGame, refreshStats]);
 
-  const reusableUseCount = certificationLogs.filter((log) => log.type === 'use').length;
-  const reusableReturnCount = certificationLogs.filter((log) => log.type === 'return').length;
+  const reusableUseCount = stats.useCount;
+  const reusableReturnCount = stats.returnCount;
+  const totalCertCount = stats.totalCount;
   const todayMission = useMemo<MissionProgress>(() => {
     const useDone = certificationLogs.some((log) => log.type === 'use');
     const returnDone = certificationLogs.some((log) => log.type === 'return');
@@ -208,11 +264,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppState>(() => ({
     selectedTeam, setSelectedTeam,
     selectedGame, setSelectedGame,
+    selectGame, cancelSelectedGame,
     seatInfo, setSeatInfo,
     certificationLogs, addCertification,
     refreshStats,
     todayMission,
     reusableUseCount, reusableReturnCount,
+    totalCertCount,
     isTimesaleActive,
     ecoImpact,
     visits,
@@ -220,12 +278,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     shareCardShared, setShareCardShared,
   }), [
     addCertification,
+    cancelSelectedGame,
     certificationLogs,
     ecoImpact,
     isTimesaleActive,
     refreshStats,
     reusableReturnCount,
     reusableUseCount,
+    selectGame,
+    totalCertCount,
     seatInfo,
     selectedGame,
     selectedTeam,

@@ -251,6 +251,105 @@ KBO 경기 일정 조회. 인증 불필요.
 
 > 구현은 Prisma `usage.groupBy({ by: ['kind'], _sum: { score }, _count })` 1쿼리. 신규 사용자(인증 0건)는 모두 0 반환.
 
+### `GET /stats/me/logs`
+
+본인 인증 로그 타임라인(최근순) 조회. JWT 필수.
+
+**Query**
+- `limit` (optional, int) — 반환 개수. 기본 `20`, 1~100으로 클램프.
+
+**Response 200**
+```json
+[
+  {
+    "id": "2",
+    "kind": "RETURN",
+    "score": 100,
+    "gameLabel": "LG 트윈스 vs 두산 베어스",
+    "scannedAt": "2026-05-22T11:18:00.000Z"
+  },
+  {
+    "id": "1",
+    "kind": "USE",
+    "score": 50,
+    "gameLabel": null,
+    "scannedAt": "2026-05-22T09:42:00.000Z"
+  }
+]
+```
+
+- `kind`: `USE` | `RETURN`
+- `gameLabel`: 연결된 경기의 `"{홈팀} vs {원정팀}"`. `gameId` 없으면 `null`
+- `scannedAt`: ISO 8601 UTC
+
+**Errors**
+- `401 Unauthorized` — JWT 누락/무효/만료
+
+> 구현은 `usage.findMany({ where: { userId }, orderBy: { scannedAt: 'desc' }, take, include: { game } })`. 별도 테이블 없이 `usages`에서 직접 조회.
+
+---
+
+## Attendance (경기 선택 / 직관)
+
+경기를 선택해두면 **경기 날짜가 지나도록 취소하지 않을 경우 직관 방문으로 확정**됩니다. 확정은 별도 상태 없이 읽는 시점에 `game.date < 오늘(KST)` 로 계산합니다.
+
+### `GET /attendance/me`
+
+본인의 현재 선택 + 직관 확정 방문 조회. JWT 필수.
+
+**Response 200**
+```json
+{
+  "current": {
+    "gameId": "12",
+    "date": "2026-05-23",
+    "startTime": "18:30",
+    "venue": "잠실",
+    "homeTeam": { "code": "LG", "displayName": "LG 트윈스" },
+    "awayTeam": { "code": "OB", "displayName": "두산 베어스" }
+  },
+  "visits": [
+    {
+      "gameId": "8",
+      "date": "2026-05-20",
+      "startTime": "18:30",
+      "venue": "잠실",
+      "homeTeam": { "code": "LG", "displayName": "LG 트윈스" },
+      "awayTeam": { "code": "SSG", "displayName": "SSG 랜더스" }
+    }
+  ]
+}
+```
+
+- `current`: 활성 선택 중 `date >= 오늘(KST)` 인 경기. 없으면 `null`
+- `visits`: 활성 선택 중 `date < 오늘(KST)` 인 경기 (직관 확정), 최신순
+
+### `POST /attendance`
+
+경기 선택. JWT 필수. 아직 안 지난 다른 활성 선택은 자동 취소(현재 선택 1개 유지).
+
+**Request body**
+```json
+{ "gameId": "12" }
+```
+
+**Response 200** — 선택된 경기 요약 (`current`와 동일 shape)
+
+**Errors**
+- `404 Not Found` — 존재하지 않는 `gameId`
+- `401 Unauthorized`
+
+### `DELETE /attendance/:gameId`
+
+현재 선택 취소(직관 미인정). 이미 취소/없는 경우에도 멱등.
+
+**Response 204** — 본문 없음
+
+**Errors**
+- `401 Unauthorized`
+
+> 구현은 `attendances` 테이블 upsert/updateMany. `(user_id, game_id)` UNIQUE. 확정 판정은 on-read.
+
 ---
 
 ## Rankings
