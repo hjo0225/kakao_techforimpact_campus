@@ -112,12 +112,17 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     align: 'left',
   });
 
-  // 우상단 — 경기 정보 카드 (선택된 경기가 있을 때만)
+  // 우상단 — 경기 정보 카드 (선택된 경기가 있을 때만) — 가로 1줄
   if (input.gameLabel) {
+    const label = `${input.gameLabel.home} vs ${input.gameLabel.away}`;
+    ctx.font = '900 32px "Galmuri11", "Noto Sans KR", sans-serif';
+    const textWidth = ctx.measureText(label).width;
+    const padX = 24;
+    const padY = 18;
+    const boxWidth = textWidth + padX * 2;
+    const boxHeight = 68;
     const boxRight = width - 60;
     const boxTop = 70;
-    const boxWidth = 360;
-    const boxHeight = 160;
     const boxLeft = boxRight - boxWidth;
     // 반투명 흰색 + burgundy border
     ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
@@ -126,18 +131,8 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     ctx.lineWidth = 4;
     ctx.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
 
-    drawText(ctx, input.gameLabel.home, boxLeft + boxWidth / 2, boxTop + 18, {
-      font: '900 36px "Galmuri11", "Noto Sans KR", sans-serif',
-      color: '#430A21',
-      align: 'center',
-    });
-    drawText(ctx, 'vs', boxLeft + boxWidth / 2, boxTop + 64, {
-      font: '700 24px "Galmuri11", "Noto Sans KR", sans-serif',
-      color: '#C85C77',
-      align: 'center',
-    });
-    drawText(ctx, input.gameLabel.away, boxLeft + boxWidth / 2, boxTop + 100, {
-      font: '900 36px "Galmuri11", "Noto Sans KR", sans-serif',
+    drawText(ctx, label, boxLeft + boxWidth / 2, boxTop + padY, {
+      font: '900 32px "Galmuri11", "Noto Sans KR", sans-serif',
       color: '#430A21',
       align: 'center',
     });
@@ -729,24 +724,20 @@ export function RecordScreen() {
                 </p>
               </div>
 
-              {/* 우상 — 경기 정보 카드 */}
+              {/* 우상 — 경기 정보 카드 (가로 1줄) */}
               {selectedGame && (
                 <div style={{
                   position: 'absolute', top: 12, right: 12,
                   background: 'rgba(255,255,255,0.92)',
                   border: '2px solid #430A21',
                   borderRadius: 'var(--cb-radius-sm)',
-                  padding: '6px 10px',
-                  minWidth: 92,
+                  padding: '6px 12px',
                   textAlign: 'center',
+                  whiteSpace: 'nowrap',
                   boxShadow: '0 2px 0 0 #430A21',
                 }}>
-                  <p style={{ fontSize: 12, fontWeight: 900, color: '#430A21', margin: 0, lineHeight: 1.15 }}>
-                    {selectedGame.home}
-                  </p>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: '#C85C77', margin: '2px 0' }}>vs</p>
-                  <p style={{ fontSize: 12, fontWeight: 900, color: '#430A21', margin: 0, lineHeight: 1.15 }}>
-                    {selectedGame.away}
+                  <p style={{ fontSize: 12, fontWeight: 900, color: '#430A21', margin: 0, lineHeight: 1.2 }}>
+                    {selectedGame.home} <span style={{ color: '#C85C77', fontWeight: 700, margin: '0 2px' }}>vs</span> {selectedGame.away}
                   </p>
                 </div>
               )}
