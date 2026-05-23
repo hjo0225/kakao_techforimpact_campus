@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### fix(api): `/stats/me`의 `totalCount` 의미 변경 — `min(use, return)` (실제 회수된 컵 수)
+
+- 기존: `useCount + returnCount` (같은 컵을 2회로 부풀림)
+- 변경: `Math.min(useCount, returnCount)` — 사용·반납이 모두 인증된 컵 수
+- **의미 변경(Breaking)**이지만 현재 외부 컨슈머 없고 프론트는 이미 `Math.min`으로 화면 표시 중이라 사용자 영향 없음
+- 단위 테스트 보강 (use 2/return 1 → 1, use 3/return 3 → 3 등)
+
 ### feat(api): `attendances` — 경기 선택 후 그날 지나면 직관 자동 확정 (계정별)
 
 - 신규 테이블 `attendances` + 마이그레이션 `20260522000000_add_attendances`

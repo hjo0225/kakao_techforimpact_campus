@@ -46,7 +46,9 @@ export class StatsService {
       points,
       useCount,
       returnCount,
-      totalCount: useCount + returnCount,
+      // 사용·반납 양쪽 인증이 모두 있을 때 실제 회수된 다회용기 1개로 카운트.
+      // 단순 합산은 같은 컵을 2회로 부풀린다.
+      totalCount: Math.min(useCount, returnCount),
     };
   }
 
