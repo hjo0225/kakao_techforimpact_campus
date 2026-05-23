@@ -9,12 +9,15 @@ import { useAuthStore } from '@/store/authStore';
 import { getKakaoLogoutUrl } from '@/lib/kakaoAuth';
 import { KBO_TEAMS } from '../../teamBrand';
 import { TeamBadge } from '../TeamBadge';
+import winMascot from '../../../assets/share-win.png';
+import loseMascot from '../../../assets/share-lose.png';
 
 type SubTab = 'dashboard' | 'calendar' | 'share' | 'settings';
+type GameResult = 'win' | 'lose';
 
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const SHARE_CARD_DATE = '2026.04.21';
+const MASCOT: Record<GameResult, string> = { win: winMascot, lose: loseMascot };
 
 function getCalendarDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -23,13 +26,9 @@ function getCalendarDays(year: number, month: number) {
 }
 
 interface ShareImageInput {
-  format: 'story' | 'feed';
-  backgroundUrl: string | null;
-  visitCount: number;
-  containerCount: number;
-  todaySeatCertified: boolean;
-  matchName: string;
-  score: string;
+  photoUrl: string | null; // 사용자가 찍은/올린 셀카
+  result: GameResult;      // 승리/패배 — 합성할 마스코트 선택
+  visitN: number;          // 이번 시즌 잠실 직관 N번째
 }
 
 function loadImage(src: string) {
@@ -68,22 +67,25 @@ function drawText(
   });
 }
 
+// 셀카(배경) 위에 승리/패배 마스코트를 함께 세우고, 상단에 "이번 시즌 잠실 직관 N번째"만 합성.
+// 스토리 9:16 (1080×1920) 고정.
 async function createInstagramReadyImage(input: ShareImageInput) {
   await document.fonts?.ready;
 
   const width = 1080;
-  const height = input.format === 'story' ? 1920 : 1080;
+  const height = 1920;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is not available.');
 
-  if (input.backgroundUrl) {
-    const image = await loadImage(input.backgroundUrl);
-    drawCoverImage(ctx, image, width, height);
+  // 배경 — 셀카 cover, 없으면 그라데이션
+  if (input.photoUrl) {
+    const photo = await loadImage(input.photoUrl);
+    drawCoverImage(ctx, photo, width, height);
   } else {
-    const bg = ctx.createLinearGradient(0, 0, width, height);
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
     bg.addColorStop(0, '#430A21');
     bg.addColorStop(0.55, '#5E1530');
     bg.addColorStop(1, '#C85C77');
@@ -91,81 +93,29 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     ctx.fillRect(0, 0, width, height);
   }
 
-  const shade = ctx.createLinearGradient(0, 0, 0, height);
-  shade.addColorStop(0, 'rgba(6, 18, 12, 0.25)');
-  shade.addColorStop(0.45, 'rgba(6, 18, 12, 0.35)');
-  shade.addColorStop(1, 'rgba(6, 18, 12, 0.82)');
-  ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, width, height);
+  // 상단 텍스트 가독성용 그라데이션
+  const topShade = ctx.createLinearGradient(0, 0, 0, 480);
+  topShade.addColorStop(0, 'rgba(67, 10, 33, 0.62)');
+  topShade.addColorStop(1, 'rgba(67, 10, 33, 0)');
+  ctx.fillStyle = topShade;
+  ctx.fillRect(0, 0, width, 480);
 
-  const padding = input.format === 'story' ? 92 : 72;
-  const top = input.format === 'story' ? 160 : 92;
-  const bottom = height - (input.format === 'story' ? 360 : 300);
-
-  ctx.fillStyle = 'rgba(200, 92, 119, 0.24)';
-  ctx.strokeStyle = 'rgba(200, 92, 119, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.roundRect(padding, top, 370, 72, 24);
-  ctx.fill();
-  ctx.stroke();
-
-  drawText(ctx, '용기낼깡', padding + 32, top + 19, {
-    font: '800 30px "Noto Sans KR", sans-serif',
-    color: '#BFFBD1',
-  });
-  drawText(ctx, `${SHARE_CARD_DATE} 잠실 야구장`, padding, top + 118, {
-    font: '600 30px "Noto Sans KR", sans-serif',
-    color: 'rgba(255,255,255,0.78)',
-  });
-  drawText(ctx, `오늘 잠실 직관\n${input.visitCount}번째`, padding, top + 170, {
-    font: '900 72px "Noto Sans KR", sans-serif',
-    color: '#FFFFFF',
-    lineHeight: 1.25,
-  });
-
-  ctx.textAlign = 'center';
-  drawText(ctx, input.matchName, width / 2, bottom - 120, {
-    font: '700 34px "Noto Sans KR", sans-serif',
-    color: 'rgba(255,255,255,0.76)',
-    align: 'center',
-  });
-  drawText(ctx, input.score, width / 2, bottom - 70, {
-    font: '900 96px "Noto Sans KR", sans-serif',
+  drawText(ctx, '이번 시즌 잠실 직관', width / 2, 120, {
+    font: '800 50px "Galmuri11", "Noto Sans KR", sans-serif',
     color: '#FFFFFF',
     align: 'center',
   });
-  drawText(ctx, '승리!', width / 2, bottom + 50, {
-    font: '800 38px "Noto Sans KR", sans-serif',
-    color: '#BFFBD1',
+  drawText(ctx, `${input.visitN}번째`, width / 2, 190, {
+    font: '900 132px "Galmuri11", "Noto Sans KR", sans-serif',
+    color: '#FFFAE6',
     align: 'center',
   });
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-  ctx.lineWidth = 2;
-  ctx.roundRect(padding, height - (input.format === 'story' ? 260 : 210), width - padding * 2, 132, 28);
-  ctx.fill();
-  ctx.stroke();
-
-  drawText(ctx, '오늘의 환경 행동', padding + 34, height - (input.format === 'story' ? 232 : 182), {
-    font: '700 28px "Noto Sans KR", sans-serif',
-    color: 'rgba(255,255,255,0.78)',
-  });
-  drawText(
-    ctx,
-    `${input.todaySeatCertified ? '반납 인증 완료' : '반납 인증 전'} · 줄인 용기 ${input.containerCount}개`,
-    padding + 34,
-    height - (input.format === 'story' ? 182 : 132),
-    {
-      font: '800 34px "Noto Sans KR", sans-serif',
-      color: '#FFFFFF',
-    }
-  );
-  drawText(ctx, '#용기낼깡 #클린야구', width / 2, height - 78, {
-    font: '700 26px "Noto Sans KR", sans-serif',
-    color: 'rgba(255,255,255,0.64)',
-    align: 'center',
-  });
+  // 마스코트 — 하단 우측에 셀카와 함께
+  const mascot = await loadImage(MASCOT[input.result]);
+  const mascotHeight = height * 0.5;
+  const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
+  ctx.drawImage(mascot, width - mascotWidth - 36, height - mascotHeight - 36, mascotWidth, mascotHeight);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((result) => {
@@ -174,7 +124,7 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     }, 'image/png');
   });
 
-  return new File([blob], `yonggi-naelkkang-${input.format}.png`, { type: 'image/png' });
+  return new File([blob], `jamsil-jikgwan-${input.visitN}.png`, { type: 'image/png' });
 }
 
 function downloadFile(file: File) {
@@ -190,7 +140,7 @@ export function RecordScreen() {
   const {
     selectedGame,
     visits, ecoImpact, certificationLogs,
-    reusableUseCount, reusableReturnCount, todayMission,
+    reusableUseCount, reusableReturnCount,
     shareCardShared, setShareCardShared,
     selectedTeam, setSelectedTeam,
   } = useApp();
@@ -211,8 +161,9 @@ export function RecordScreen() {
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(3); // April (0-indexed)
   const [selectedDate, setSelectedDate] = useState<string | null>('2026-04-21');
-  const [shareFormat, setShareFormat] = useState<'story' | 'feed'>('story');
+  const [gameResult, setGameResult] = useState<GameResult>('win');
   const [sharePhoto, setSharePhoto] = useState<{ file: File; url: string } | null>(null);
+  const [shareFile, setShareFile] = useState<File | null>(null);
   const [shareToast, setShareToast] = useState<{ title: string; body: string; icon: 'success' | 'info' | 'error' } | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const sharePhotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -228,9 +179,28 @@ export function RecordScreen() {
     ? ecoImpact.seoulContributionPct.toFixed(4)
     : ecoImpact.seoulContributionPct.toFixed(3);
 
+  // 이번 시즌(2026) 잠실 직관 N번째 — 직관 달력(attendance visits) 기준 + 오늘 선택분 포함
+  const isJamsilSeasonVisit = (date?: string, venue?: string) =>
+    !!date && date.startsWith('2026') && (venue ?? '').includes('잠실');
+  const confirmedJamsil = visits.filter((v) => isJamsilSeasonVisit(v.date, v.game.venue)).length;
+  const todayCountsAsNew =
+    !!selectedGame &&
+    isJamsilSeasonVisit(selectedGame.date, selectedGame.venue) &&
+    !visits.some((v) => v.date === selectedGame.date);
+  const visitN = Math.max(confirmedJamsil + (todayCountsAsNew ? 1 : 0), 1);
+
   useEffect(() => () => {
     if (sharePhoto) URL.revokeObjectURL(sharePhoto.url);
   }, [sharePhoto]);
+
+  // 공유 이미지를 미리 생성해 둠 → 버튼 클릭 시 user-gesture 안에서 동기로 share() 호출 (모바일 공유/저장 안정화)
+  useEffect(() => {
+    let cancelled = false;
+    createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN })
+      .then((file) => { if (!cancelled) setShareFile(file); })
+      .catch(() => { if (!cancelled) setShareFile(null); });
+    return () => { cancelled = true; };
+  }, [sharePhoto, gameResult, visitN]);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
@@ -260,40 +230,33 @@ export function RecordScreen() {
   };
 
   const handleShareCard = async () => {
+    if (!shareFile || isSharing) return;
     setIsSharing(true);
 
-    try {
-      const matchName = selectedGame ? `${selectedGame.home} vs ${selectedGame.away}` : 'LG vs 두산';
-      const score = selectedGame?.score ?? '5 : 3';
-      const file = await createInstagramReadyImage({
-        format: shareFormat,
-        backgroundUrl: sharePhoto?.url ?? null,
-        visitCount: visits.length,
-        containerCount: ecoImpact.containers,
-        todaySeatCertified: todayMission.returnDone,
-        matchName,
-        score,
-      });
-      const shareData: ShareData = {
-        files: [file],
-        title: '용기낼깡 직관 카드',
-        text: `오늘 잠실 직관 ${visits.length}번째 · 줄인 용기 ${ecoImpact.containers}개 · #용기낼깡 #클린야구`,
-      };
-      const canUseNativeShare = typeof navigator.share === 'function'
-        && (!navigator.canShare || navigator.canShare(shareData));
+    const shareData: ShareData = {
+      files: [shareFile],
+      title: '용기낼깡 직관 카드',
+      text: `이번 시즌 잠실 직관 ${visitN}번째 · #용기낼깡 #클린야구`,
+    };
 
-      if (canUseNativeShare) {
+    try {
+      // user-gesture 안에서 share()를 먼저 호출 (이미지는 미리 생성됨 → 모바일 activation 유지)
+      if (typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare(shareData))) {
         await navigator.share(shareData);
         setShareToast({
           title: '공유 시트를 열었습니다',
-          body: 'Instagram을 선택한 뒤 스토리 또는 피드로 업로드해주세요.',
+          body: 'Instagram 또는 사진 앱을 선택해 저장/업로드하세요.',
           icon: 'success',
         });
       } else {
-        downloadFile(file);
+        // 미지원(주로 데스크톱/일부 브라우저) → 이미지를 새 탭에 띄워 길게 눌러 저장
+        const url = URL.createObjectURL(shareFile);
+        const opened = window.open(url, '_blank');
+        if (!opened) downloadFile(shareFile);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
         setShareToast({
-          title: '이미지를 저장했습니다',
-          body: '저장된 PNG를 Instagram 앱에서 스토리 또는 피드로 선택해주세요.',
+          title: '이미지를 열었습니다',
+          body: '이미지를 길게 눌러 사진에 저장한 뒤 인스타그램에 올려주세요.',
           icon: 'info',
         });
       }
@@ -310,8 +273,8 @@ export function RecordScreen() {
         });
       } else {
         setShareToast({
-          title: '공유 이미지 생성 실패',
-          body: '사진 파일을 바꾸거나 브라우저 권한을 확인한 뒤 다시 시도해주세요.',
+          title: '공유 실패',
+          body: '사진을 바꾸거나 브라우저 권한을 확인한 뒤 다시 시도해주세요.',
           icon: 'error',
         });
       }
@@ -669,190 +632,113 @@ export function RecordScreen() {
               onChange={handleSharePhotoChange}
               style={{ display: 'none' }}
             />
-            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '14px 16px', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)', border: '2px solid #430A21' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 3 }}>배경 사진</p>
-                  <p style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.5 }}>
-                    스토리/피드 카드 배경으로 쓸 사진을 선택하거나 촬영하세요.
-                  </p>
-                </div>
-                {sharePhoto && (
-                  <button
-                    type="button"
-                    onClick={handleClearSharePhoto}
-                    style={{ background: '#F3F4F6', border: '1.5px solid #D1D5DB', borderRadius: 'var(--cb-radius-full)', padding: '6px 12px', fontSize: 11, color: '#6B7280', cursor: 'pointer' }}
-                  >
-                    제거
-                  </button>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => sharePhotoInputRef.current?.click()}
-                style={{
-                  width: '100%', marginTop: 12, padding: '12px',
-                  borderRadius: 'var(--cb-radius-md)',
-                  border: '2px dashed var(--cb-primary-border)',
-                  background: sharePhoto ? 'var(--cb-primary-soft)' : 'var(--cb-bg-soft)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  color: 'var(--cb-primary-deep)', fontSize: 13, fontWeight: 700,
-                }}
-              >
-                <ImagePlus size={16} />
-                {sharePhoto ? '다른 사진 선택 / 촬영' : '사진 선택 / 카메라 촬영'}
-              </button>
-              {sharePhoto && (
-                <p style={{ fontSize: 10, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>
-                  {sharePhoto.file.name}
+
+            <p style={{ fontSize: 12, color: '#6B7280', textAlign: 'center', lineHeight: 1.6 }}>
+              내 사진 위에 마스코트를 함께 세워 직관 인증샷을 만들어요.
+            </p>
+
+            {/* 미리보기 — 셀카 + 마스코트 + "이번 시즌 잠실 직관 N번째" (스토리 9:16) */}
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: 300,
+              margin: '0 auto',
+              aspectRatio: '9 / 16',
+              borderRadius: 'var(--cb-radius-lg)',
+              overflow: 'hidden',
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
+              background: sharePhoto
+                ? `center / cover no-repeat url(${sharePhoto.url})`
+                : 'linear-gradient(180deg, #430A21 0%, #5E1530 55%, #C85C77 100%)',
+            }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0,
+                padding: '16px 14px 30px', textAlign: 'center',
+                background: 'linear-gradient(180deg, rgba(67,10,33,0.62) 0%, rgba(67,10,33,0) 100%)',
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}>
+                  이번 시즌 잠실 직관
                 </p>
+                <p style={{ fontSize: 34, fontWeight: 900, color: '#FFFAE6', margin: '2px 0 0', textShadow: '0 2px 4px rgba(0,0,0,0.45)' }}>
+                  {visitN}번째
+                </p>
+              </div>
+              <img
+                src={MASCOT[gameResult]}
+                alt={gameResult === 'win' ? '승리 마스코트' : '패배 마스코트'}
+                style={{ position: 'absolute', right: 6, bottom: 6, height: '50%', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}
+              />
+              {!sharePhoto && (
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: '12%', textAlign: 'center', color: 'rgba(255,255,255,0.72)', fontSize: 12 }}>
+                  사진을 추가하면 함께 합성됩니다
+                </div>
               )}
             </div>
 
+            {/* 승리 / 패배 토글 — 프레임 하단 버튼 */}
             <div style={{ display: 'flex', gap: 8 }}>
-              {(['story', 'feed'] as const).map((fmt) => (
+              {([['win', '🏆 승리'], ['lose', '😢 패배']] as [GameResult, string][]).map(([key, label]) => (
                 <button
-                  key={fmt}
-                  onClick={() => setShareFormat(fmt)}
+                  key={key}
+                  type="button"
+                  onClick={() => setGameResult(key)}
                   style={{
                     flex: 1, padding: '12px',
                     borderRadius: 'var(--cb-radius-md)',
-                    border: shareFormat === fmt ? '2px solid var(--cb-primary)' : '2px solid #430A21',
-                    background: shareFormat === fmt ? 'var(--cb-primary-soft)' : '#fff',
+                    border: gameResult === key ? '2px solid var(--cb-primary)' : '2px solid #430A21',
+                    background: gameResult === key ? 'var(--cb-primary-soft)' : '#fff',
                     cursor: 'pointer', outline: 'none',
-                    fontSize: 13, fontWeight: shareFormat === fmt ? 700 : 500,
-                    color: shareFormat === fmt ? 'var(--cb-primary-deep)' : '#6B7280',
-                    boxShadow: shareFormat === fmt
+                    fontSize: 14, fontWeight: gameResult === key ? 800 : 600,
+                    color: gameResult === key ? 'var(--cb-primary-deep)' : '#6B7280',
+                    boxShadow: gameResult === key
                       ? '0 3px 0 0 var(--cb-primary), 0 4px 6px rgba(200, 92, 119, 0.22)'
                       : '0 2px 0 0 #430A21',
                   }}
                 >
-                  {fmt === 'story' ? '스토리 (9:16)' : '피드 (1:1)'}
+                  {label}
                 </button>
               ))}
             </div>
 
-            <div style={{
-              borderRadius: 'var(--cb-radius-lg)',
-              background: 'var(--cb-primary-soft)',
-              padding: shareFormat === 'story' ? '10px 72px' : '10px 28px',
-              border: '2px solid #430A21',
-              boxShadow: '0 3px 0 0 #430A21',
-            }}>
-              <div style={{
-                background: sharePhoto
-                  ? `url(${sharePhoto.url})`
-                  : 'var(--cb-primary-deep)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+            {/* 사진 선택 / 촬영 */}
+            <button
+              type="button"
+              onClick={() => sharePhotoInputRef.current?.click()}
+              style={{
+                width: '100%', padding: '12px',
                 borderRadius: 'var(--cb-radius-md)',
-                padding: shareFormat === 'story' ? '26px 18px' : '20px',
-                aspectRatio: shareFormat === 'story' ? '9/16' : '1/1',
-                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                border: '2px solid #430A21',
-                boxShadow: '0 3px 0 0 #430A21, 0 6px 12px rgba(0,0,0,0.18)',
-                position: 'relative', overflow: 'hidden',
-                width: '100%',
-              }}>
-                <div style={{
-                  position: 'absolute', top: -30, right: -30, width: 120, height: 120,
-                  borderRadius: '50%', background: 'rgba(200, 92, 119, 0.15)',
-                }} />
-                <div style={{
-                  position: 'absolute', bottom: 20, left: -20, width: 80, height: 80,
-                  borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
-                }} />
-
-                <div style={{ zIndex: 1 }}>
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    background: 'rgba(200, 92, 119, 0.32)',
-                    borderRadius: 'var(--cb-radius-full)',
-                    padding: '5px 14px',
-                    marginBottom: 12,
-                    border: '1.5px solid rgba(200, 92, 119, 0.7)',
-                  }}>
-                    <span style={{ fontSize: 12, color: 'var(--cb-primary)', fontWeight: 700 }}>⚾ 용기낼깡</span>
-                  </div>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 3 }}>{SHARE_CARD_DATE} 잠실 야구장</p>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1.3 }}>
-                    오늘 잠실 직관<br />
-                    <span style={{ color: 'var(--cb-primary)' }}>{visits.length}번째</span> 🏟️
-                  </p>
-                </div>
-
-                <div style={{ zIndex: 1, textAlign: 'center' }}>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
-                    {selectedGame ? `${selectedGame.home} vs ${selectedGame.away}` : 'LG vs 두산'}
-                  </p>
-                  <p style={{ fontSize: 32, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>{selectedGame?.score ?? '5 : 3'}</p>
-                  <p style={{ fontSize: 12, color: 'var(--cb-primary)', fontWeight: 600 }}>🏆 승리!</p>
-                </div>
-
-                <div style={{ zIndex: 1 }}>
-                  <div style={{
-                    background: 'rgba(255,255,255,0.18)',
-                    borderRadius: 'var(--cb-radius-md)',
-                    padding: '10px 14px',
-                    border: '2px solid rgba(255,255,255,0.30)',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>오늘의 환경 행동</span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 10px',
-                        borderRadius: 'var(--cb-radius-full)',
-                        background: 'rgba(200, 92, 119, 0.35)', color: 'var(--cb-primary)',
-                        border: '1.5px solid rgba(200, 92, 119, 0.65)',
-                      }}>
-                        🌿 줄인 용기 {ecoImpact.containers}개
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 11, color: '#fff' }}>
-                        사용 {reusableUseCount}회
-                      </span>
-                      <span style={{ fontSize: 11, color: todayMission.returnDone ? 'var(--cb-primary)' : 'rgba(255,255,255,0.5)' }}>
-                        {todayMission.returnDone ? '반납 인증 완료' : '반납 인증 전'}
-                      </span>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 8 }}>
-                    다회용기로 직관, 일회용기 줄였음 • #용기낼깡 #클린야구
-                  </p>
-                </div>
-              </div>
-            </div>
+                border: '2px dashed var(--cb-primary-border)',
+                background: sharePhoto ? 'var(--cb-primary-soft)' : 'var(--cb-bg-soft)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                color: 'var(--cb-primary-deep)', fontSize: 13, fontWeight: 700,
+              }}
+            >
+              <ImagePlus size={16} />
+              {sharePhoto ? '다른 사진 선택 / 촬영' : '사진 선택 / 카메라 촬영'}
+            </button>
+            {sharePhoto && (
+              <button
+                type="button"
+                onClick={handleClearSharePhoto}
+                style={{ alignSelf: 'center', background: '#F3F4F6', border: '1.5px solid #D1D5DB', borderRadius: 'var(--cb-radius-full)', padding: '6px 14px', fontSize: 11, color: '#6B7280', cursor: 'pointer' }}
+              >
+                사진 제거
+              </button>
+            )}
 
             <button
               onClick={handleShareCard}
-              disabled={isSharing}
+              disabled={isSharing || !shareFile}
               className="cb-button cb-button--primary cb-button--md cb-button--full"
             >
               {isSharing ? <Download size={16} /> : <Share2 size={16} />}
-              {isSharing ? '공유 이미지 생성 중...' : '인스타그램 공유 준비'}
+              {isSharing ? '공유 중...' : '공유하기'}
             </button>
 
             <p style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', lineHeight: 1.6 }}>
-              모바일에서는 공유 시트에서 Instagram을 선택하세요. 미지원 브라우저에서는 PNG 저장으로 대체됩니다.
+              모바일은 공유 시트에서 인스타그램/사진을 선택하세요. 미지원 시 이미지가 새 탭에 열리며 길게 눌러 저장할 수 있어요.
             </p>
-
-            <div style={{ background: '#fff', borderRadius: 'var(--cb-radius-lg)', padding: '14px 16px', border: '2px solid #430A21', boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)' }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>기본 문구 템플릿</p>
-              {[
-                `오늘 잠실 직관 ${visits.length}번째 · 다회용기로 줄인 용기 ${ecoImpact.containers}개`,
-                `#용기낼깡 #클린야구 #서울감축기여 #KBO`,
-              ].map((text, i) => (
-                <div key={i} style={{
-                  background: 'var(--cb-bg)',
-                  borderRadius: 'var(--cb-radius-md)',
-                  padding: '10px 12px', marginBottom: 6,
-                  fontSize: 12, color: '#374151', lineHeight: 1.5,
-                  border: '1.5px solid #E8DEDE',
-                }}>
-                  {text}
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
