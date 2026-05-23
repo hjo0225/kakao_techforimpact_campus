@@ -93,16 +93,38 @@ const AppContext = createContext<AppState | null>(null);
 
 const EMPTY_STATS: MyStats = { points: 0, useCount: 0, returnCount: 0, totalCount: 0 };
 
+function formatRelativeTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+
+  const sameDay = date.toDateString() === now.toDateString();
+  if (sameDay) return `${Math.floor(diffMin / 60)}시간 전`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    const t = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `어제 ${t}`;
+  }
+
+  const diffDays = Math.floor(diffMs / 86_400_000);
+  if (diffDays < 7) return `${diffDays}일 전`;
+
+  const sameYear = date.getFullYear() === now.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return sameYear ? `${m}.${d}` : `${date.getFullYear()}.${m}.${d}`;
+}
+
 function mapUsageLog(log: MyUsageLog): CertificationLog {
   return {
     id: log.id,
     type: log.kind === 'USE' ? 'use' : 'return',
     label: log.kind === 'USE' ? '사용 인증' : '반납 인증',
-    time: new Date(log.scannedAt).toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }),
+    time: formatRelativeTime(log.scannedAt),
     game: log.gameLabel ?? '오늘 경기',
     bonus: false,
   };
