@@ -96,7 +96,7 @@ CREATE INDEX usages_user_kind_idx ON usages (user_id, kind);
 
 - `kind`: `USE`(사용 인증) / `RETURN`(반납 인증)
 - `score`: 검증 통과 시 USE=50, RETURN=100 (`backend/src/verify/verify.service.ts` 상수)
-- `qr_payload`는 향후 QR 스캔 방식 도입 시 사용. 현재는 Vision 인증만 있어 항상 null
+- `qr_payload`: Vision API 피벗 후 미사용. 초기 schema(QR 기반) 호환을 위해 nullable로 보존. 신규 인증 흐름에서는 항상 null. 컬럼 drop은 별도 plan에서 검토
 - 멱등성 키는 현재 없음 — 같은 사용자가 같은 이미지를 두 번 인증해도 두 행. UI에서 다운로드/재시도 가드 필요 시 후속 plan
 
 > `lat/lng`는 PRD 상 NUMERIC(9,6)이었으나 Prisma의 `Float` → `DOUBLE PRECISION`으로 매핑됨. PostGIS 도입 시 재검토.
@@ -122,7 +122,7 @@ CREATE INDEX attendances_user_canceled_idx ON attendances (user_id, canceled_at)
 
 ### `stadiums` (TBD)
 
-QR payload에서 구장 식별 필요 시 추가.
+현재 구장 식별은 `usages.stadium_code` TEXT 컬럼으로 충분(잠실/고척 등). 매장/메뉴/좌석 등 구장 메타데이터를 정규화할 필요가 생기면 마스터 테이블로 추가.
 
 ---
 

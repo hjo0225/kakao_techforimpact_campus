@@ -392,11 +392,12 @@ KBO 팀별 누적 친환경 포인트 조회. **인증 불필요**.
 
 구현 시 plan에서 이 섹션 갱신:
 
-- `POST /qr/scan` — 다회용기 사용 인증 (QR payload + lat/lng)
-- `GET /usages/me` — 본인 인증 히스토리 (날짜/타임라인용)
+- `GET /usages/me` — 본인 인증 히스토리 (날짜/타임라인용) — 현재 `GET /stats/me/logs`로 부분 제공 중
 - `GET /rankings/users` — 개인 전체 랭킹 (페이지네이션 필수)
 - `POST /auth/refresh` — 토큰 갱신
 - `POST /auth/logout` — 서버 측 invalidate (현재 클라이언트만 토큰 폐기)
+
+> QR 기반 인증(`POST /qr/scan`)은 Vision API 피벗으로 폐기됨 — `POST /verify/use`·`POST /verify/return` 참고.
 
 ---
 
