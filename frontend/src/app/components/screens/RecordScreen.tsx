@@ -26,9 +26,10 @@ function getCalendarDays(year: number, month: number) {
 }
 
 interface ShareImageInput {
-  photoUrl: string | null; // 사용자가 찍은/올린 셀카
+  photoUrl: string | null; // 사용자가 찍은/올린 셀카 — 배경 cover
   result: GameResult;      // 승리/패배 — 합성할 마스코트 선택
   visitN: number;          // 이번 시즌 잠실 직관 N번째
+  gameLabel: { home: string; away: string } | null; // 선택한 경기 (우상단)
 }
 
 function loadImage(src: string) {
@@ -67,13 +68,12 @@ function drawText(
   });
 }
 
-// 셀카(배경) 위에 승리/패배 마스코트를 함께 세우고, 상단에 "이번 시즌 잠실 직관 N번째"만 합성.
-// 스토리 9:16 (1080×1920) 고정.
+// 1:1 (1080×1080) — 셀카가 배경 cover, 좌하단 마스코트, 우상단 경기 정보, 좌상단 시즌 카운터.
 async function createInstagramReadyImage(input: ShareImageInput) {
   await document.fonts?.ready;
 
   const width = 1080;
-  const height = 1920;
+  const height = 1080;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -93,29 +93,61 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 상단 텍스트 가독성용 그라데이션
-  const topShade = ctx.createLinearGradient(0, 0, 0, 480);
+  // 상단 텍스트 가독성용 그라데이션 (1:1 비율에서는 두께 축소)
+  const topShade = ctx.createLinearGradient(0, 0, 0, 320);
   topShade.addColorStop(0, 'rgba(67, 10, 33, 0.62)');
   topShade.addColorStop(1, 'rgba(67, 10, 33, 0)');
   ctx.fillStyle = topShade;
-  ctx.fillRect(0, 0, width, 480);
+  ctx.fillRect(0, 0, width, 320);
 
-  drawText(ctx, '이번 시즌 잠실 직관', width / 2, 120, {
-    font: '800 50px "Galmuri11", "Noto Sans KR", sans-serif',
+  // 좌상단 — 시즌 카운터
+  drawText(ctx, '이번 시즌 잠실 직관', 60, 70, {
+    font: '800 34px "Galmuri11", "Noto Sans KR", sans-serif',
     color: '#FFFFFF',
-    align: 'center',
+    align: 'left',
   });
-  drawText(ctx, `${input.visitN}번째`, width / 2, 190, {
-    font: '900 132px "Galmuri11", "Noto Sans KR", sans-serif',
+  drawText(ctx, `${input.visitN}번째`, 60, 122, {
+    font: '900 84px "Galmuri11", "Noto Sans KR", sans-serif',
     color: '#FFFAE6',
-    align: 'center',
+    align: 'left',
   });
 
-  // 마스코트 — 하단 우측에 셀카와 함께
+  // 우상단 — 경기 정보 카드 (선택된 경기가 있을 때만)
+  if (input.gameLabel) {
+    const boxRight = width - 60;
+    const boxTop = 70;
+    const boxWidth = 360;
+    const boxHeight = 160;
+    const boxLeft = boxRight - boxWidth;
+    // 반투명 흰색 + burgundy border
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
+    ctx.strokeStyle = '#430A21';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
+
+    drawText(ctx, input.gameLabel.home, boxLeft + boxWidth / 2, boxTop + 18, {
+      font: '900 36px "Galmuri11", "Noto Sans KR", sans-serif',
+      color: '#430A21',
+      align: 'center',
+    });
+    drawText(ctx, 'vs', boxLeft + boxWidth / 2, boxTop + 64, {
+      font: '700 24px "Galmuri11", "Noto Sans KR", sans-serif',
+      color: '#C85C77',
+      align: 'center',
+    });
+    drawText(ctx, input.gameLabel.away, boxLeft + boxWidth / 2, boxTop + 100, {
+      font: '900 36px "Galmuri11", "Noto Sans KR", sans-serif',
+      color: '#430A21',
+      align: 'center',
+    });
+  }
+
+  // 좌측 하단 — 마스코트
   const mascot = await loadImage(MASCOT[input.result]);
   const mascotHeight = height * 0.5;
   const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
-  ctx.drawImage(mascot, width - mascotWidth - 36, height - mascotHeight - 36, mascotWidth, mascotHeight);
+  ctx.drawImage(mascot, 36, height - mascotHeight - 36, mascotWidth, mascotHeight);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((result) => {
@@ -124,7 +156,7 @@ async function createInstagramReadyImage(input: ShareImageInput) {
     }, 'image/png');
   });
 
-  return new File([blob], `jamsil-jikgwan-${input.visitN}.png`, { type: 'image/png' });
+  return new File([blob], `yonggi-naelkkang-jikgwan-${input.visitN}.png`, { type: 'image/png' });
 }
 
 function downloadFile(file: File) {
@@ -193,14 +225,19 @@ export function RecordScreen() {
     if (sharePhoto) URL.revokeObjectURL(sharePhoto.url);
   }, [sharePhoto]);
 
+  // 공유 이미지 입력 — 의존성 변경 시 재생성
+  const gameLabel = selectedGame
+    ? { home: selectedGame.home, away: selectedGame.away }
+    : null;
+
   // 공유 이미지를 미리 생성해 둠 → 버튼 클릭 시 user-gesture 안에서 동기로 share() 호출 (모바일 공유/저장 안정화)
   useEffect(() => {
     let cancelled = false;
-    createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN })
+    createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN, gameLabel })
       .then((file) => { if (!cancelled) setShareFile(file); })
       .catch(() => { if (!cancelled) setShareFile(null); });
     return () => { cancelled = true; };
-  }, [sharePhoto, gameResult, visitN]);
+  }, [sharePhoto, gameResult, visitN, gameLabel?.home, gameLabel?.away]);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
@@ -230,11 +267,30 @@ export function RecordScreen() {
   };
 
   const handleShareCard = async () => {
-    if (!shareFile || isSharing) return;
+    if (isSharing) return;
     setIsSharing(true);
 
+    // 미리 생성된 파일이 없으면 클릭 시점에 동기 생성 (preflight 실패한 경우 폴백).
+    // 가능하면 사전 생성된 shareFile을 우선 사용해야 모바일 user-gesture가 유지됨.
+    let file = shareFile;
+    if (!file) {
+      try {
+        file = await createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN, gameLabel });
+        setShareFile(file);
+      } catch {
+        setShareToast({
+          title: '이미지 생성 실패',
+          body: '사진을 바꾸거나 잠시 후 다시 시도해주세요.',
+          icon: 'error',
+        });
+        setIsSharing(false);
+        setTimeout(() => setShareToast(null), 2600);
+        return;
+      }
+    }
+
     const shareData: ShareData = {
-      files: [shareFile],
+      files: [file],
       title: '용기낼깡 직관 카드',
       text: `이번 시즌 잠실 직관 ${visitN}번째 · #용기낼깡 #클린야구`,
     };
@@ -250,9 +306,9 @@ export function RecordScreen() {
         });
       } else {
         // 미지원(주로 데스크톱/일부 브라우저) → 이미지를 새 탭에 띄워 길게 눌러 저장
-        const url = URL.createObjectURL(shareFile);
+        const url = URL.createObjectURL(file);
         const opened = window.open(url, '_blank');
-        if (!opened) downloadFile(shareFile);
+        if (!opened) downloadFile(file);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
         setShareToast({
           title: '이미지를 열었습니다',
@@ -637,13 +693,13 @@ export function RecordScreen() {
               내 사진 위에 마스코트를 함께 세워 직관 인증샷을 만들어요.
             </p>
 
-            {/* 미리보기 — 셀카 + 마스코트 + "이번 시즌 잠실 직관 N번째" (스토리 9:16) */}
+            {/* 미리보기 — 1:1, 셀카 배경 + 좌상 시즌 + 우상 경기 정보 + 좌하 마스코트 */}
             <div style={{
               position: 'relative',
               width: '100%',
-              maxWidth: 300,
+              maxWidth: 340,
               margin: '0 auto',
-              aspectRatio: '9 / 16',
+              aspectRatio: '1 / 1',
               flexShrink: 0,
               borderRadius: 'var(--cb-radius-lg)',
               overflow: 'hidden',
@@ -653,25 +709,57 @@ export function RecordScreen() {
                 ? `center / cover no-repeat url(${sharePhoto.url})`
                 : 'linear-gradient(180deg, #430A21 0%, #5E1530 55%, #C85C77 100%)',
             }}>
+              {/* 상단 가독성용 그라데이션 */}
               <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0,
-                padding: '16px 14px 30px', textAlign: 'center',
-                background: 'linear-gradient(180deg, rgba(67,10,33,0.62) 0%, rgba(67,10,33,0) 100%)',
+                position: 'absolute', top: 0, left: 0, right: 0, height: '30%',
+                background: 'linear-gradient(180deg, rgba(67,10,33,0.55) 0%, rgba(67,10,33,0) 100%)',
+                pointerEvents: 'none',
+              }} />
+
+              {/* 좌상 — 시즌 카운터 */}
+              <div style={{
+                position: 'absolute', top: 12, left: 14,
+                textAlign: 'left',
               }}>
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}>
+                <p style={{ fontSize: 11, fontWeight: 800, color: '#fff', margin: 0, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}>
                   이번 시즌 잠실 직관
                 </p>
-                <p style={{ fontSize: 34, fontWeight: 900, color: '#FFFAE6', margin: '2px 0 0', textShadow: '0 2px 4px rgba(0,0,0,0.45)' }}>
+                <p style={{ fontSize: 26, fontWeight: 900, color: '#FFFAE6', margin: '2px 0 0', textShadow: '0 2px 4px rgba(0,0,0,0.45)', lineHeight: 1 }}>
                   {visitN}번째
                 </p>
               </div>
+
+              {/* 우상 — 경기 정보 카드 */}
+              {selectedGame && (
+                <div style={{
+                  position: 'absolute', top: 12, right: 12,
+                  background: 'rgba(255,255,255,0.92)',
+                  border: '2px solid #430A21',
+                  borderRadius: 'var(--cb-radius-sm)',
+                  padding: '6px 10px',
+                  minWidth: 92,
+                  textAlign: 'center',
+                  boxShadow: '0 2px 0 0 #430A21',
+                }}>
+                  <p style={{ fontSize: 12, fontWeight: 900, color: '#430A21', margin: 0, lineHeight: 1.15 }}>
+                    {selectedGame.home}
+                  </p>
+                  <p style={{ fontSize: 9, fontWeight: 700, color: '#C85C77', margin: '2px 0' }}>vs</p>
+                  <p style={{ fontSize: 12, fontWeight: 900, color: '#430A21', margin: 0, lineHeight: 1.15 }}>
+                    {selectedGame.away}
+                  </p>
+                </div>
+              )}
+
+              {/* 좌하 — 마스코트 */}
               <img
                 src={MASCOT[gameResult]}
                 alt={gameResult === 'win' ? '승리 마스코트' : '패배 마스코트'}
-                style={{ position: 'absolute', right: 6, bottom: 6, height: '50%', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}
+                style={{ position: 'absolute', left: 6, bottom: 6, height: '50%', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}
               />
+
               {!sharePhoto && (
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: '12%', textAlign: 'center', color: 'rgba(255,255,255,0.72)', fontSize: 12 }}>
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: '6%', textAlign: 'center', color: 'rgba(255,255,255,0.72)', fontSize: 11 }}>
                   사진을 추가하면 함께 합성됩니다
                 </div>
               )}
@@ -730,7 +818,7 @@ export function RecordScreen() {
 
             <button
               onClick={handleShareCard}
-              disabled={isSharing || !shareFile}
+              disabled={isSharing}
               className="cb-button cb-button--primary cb-button--md cb-button--full"
             >
               {isSharing ? <Download size={16} /> : <Share2 size={16} />}
