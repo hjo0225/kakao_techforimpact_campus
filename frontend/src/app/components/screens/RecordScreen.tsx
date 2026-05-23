@@ -154,13 +154,39 @@ async function createInstagramReadyImage(input: ShareImageInput) {
   return new File([blob], `yonggi-naelkkang-jikgwan-${input.visitN}.png`, { type: 'image/png' });
 }
 
-function downloadFile(file: File) {
+function isIOSDevice() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+// iOS Safari는 <a download>를 무시하므로 새 탭에 이미지를 띄워 길게 눌러 저장.
+// 다른 환경은 기존 <a download> 방식 그대로.
+function saveOrOpenFile(file: File): 'download' | 'newtab' | 'inline' {
   const url = URL.createObjectURL(file);
+  if (isIOSDevice()) {
+    const opened = window.open(url, '_blank');
+    if (!opened) {
+      // 팝업 차단 — 같은 창에서 이미지로 이동
+      window.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return 'inline';
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return 'newtab';
+  }
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = file.name;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'download';
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label = 'TIMEOUT'): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
+  ]);
 }
 
 export function RecordScreen() {
@@ -265,31 +291,33 @@ export function RecordScreen() {
     if (isDownloading) return;
     setIsDownloading(true);
 
-    // 미리 생성된 파일이 없으면 클릭 시점에 동기 생성 (preflight 실패한 경우 폴백)
+    // 미리 생성된 파일이 없으면 클릭 시점에 동기 생성 (preflight 실패한 경우 폴백).
+    // 모바일에서 폰트 fetch / 큰 사진 로딩이 무한 대기에 빠지지 않도록 8초 timeout.
     let file = shareFile;
     if (!file) {
       try {
-        file = await createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN, gameLabel });
+        file = await withTimeout(
+          createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN, gameLabel }),
+          8000,
+        );
         setShareFile(file);
-      } catch {
-        setShareToast({
-          title: '이미지 생성 실패',
-          body: '사진을 바꾸거나 잠시 후 다시 시도해주세요.',
-          icon: 'error',
-        });
+      } catch (err) {
+        const body = (err instanceof Error && err.message === 'TIMEOUT')
+          ? '이미지 생성이 오래 걸려 중단되었습니다. 사진을 더 작게 바꾸거나 다시 시도해주세요.'
+          : '사진을 바꾸거나 잠시 후 다시 시도해주세요.';
+        setShareToast({ title: '이미지 생성 실패', body, icon: 'error' });
         setIsDownloading(false);
-        setTimeout(() => setShareToast(null), 2600);
+        setTimeout(() => setShareToast(null), 3000);
         return;
       }
     }
 
     try {
-      downloadFile(file);
-      setShareToast({
-        title: '이미지 저장 시작',
-        body: '브라우저 다운로드 / 사진 앱에서 확인하세요.',
-        icon: 'success',
-      });
+      const mode = saveOrOpenFile(file);
+      const toastBody = mode === 'newtab' || mode === 'inline'
+        ? '이미지를 길게 눌러 사진에 저장하세요.'
+        : '브라우저 다운로드 폴더에서 확인하세요.';
+      setShareToast({ title: '이미지 저장', body: toastBody, icon: 'success' });
       if (!shareCardShared) setShareCardShared(true);
     } catch {
       setShareToast({
@@ -299,7 +327,7 @@ export function RecordScreen() {
       });
     } finally {
       setIsDownloading(false);
-      setTimeout(() => setShareToast(null), 2600);
+      setTimeout(() => setShareToast(null), 3000);
     }
   };
 
