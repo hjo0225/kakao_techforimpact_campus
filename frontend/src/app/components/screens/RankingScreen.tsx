@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../../AppContext';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import {
   BarChart3,
   Leaf,
+  RotateCcw,
   Trophy,
 } from 'lucide-react';
 import { TeamBadge } from '../TeamBadge';
@@ -17,20 +18,23 @@ function normalizeTeam(team: string | null | undefined) {
 export function RankingScreen() {
   const { selectedTeam, ecoImpact, totalCertCount } = useApp();
   const [teams, setTeams] = useState<TeamRanking[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadRankings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getTeamRankings();
+      setTeams(data);
+    } catch {
+      // 실패 시 기존 데이터 유지 (마지막 성공 응답)
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    getTeamRankings()
-      .then((data) => {
-        if (!cancelled) setTeams(data);
-      })
-      .catch(() => {
-        if (!cancelled) setTeams([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadRankings();
+  }, [loadRankings]);
 
   const myTeamKey = normalizeTeam(selectedTeam);
   const supportTeamEntry = myTeamKey
@@ -58,6 +62,7 @@ export function RankingScreen() {
       >
         <section
           style={{
+            position: 'relative',
             background: 'linear-gradient(180deg, #ffe0e5 0%, #f2a2ad 55%, #c85c77 100%)',
             borderRadius: 'var(--cb-radius-lg)',
             padding: '16px',
@@ -66,6 +71,30 @@ export function RankingScreen() {
             boxShadow: '0 4px 0 0 #430A21, 0 6px 14px rgba(67, 10, 33, 0.20)',
           }}
         >
+          <button
+            type="button"
+            onClick={() => void loadRankings()}
+            disabled={loading}
+            aria-label="랭킹 새로고침"
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255,255,255,0.65)',
+              border: '2px solid #430A21',
+              borderRadius: 'var(--cb-radius-full)',
+              boxShadow: '0 2px 0 0 #430A21',
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            <RotateCcw size={14} color="#430A21" className={loading ? 'animate-spin' : undefined} />
+          </button>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
