@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import { useApp } from '../../AppContext';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
-import { Share2, ChevronLeft, ChevronRight, ImagePlus, Download, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Download, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '@/store/authStore';
 import { getKakaoLogoutUrl } from '@/lib/kakaoAuth';
@@ -192,7 +192,7 @@ export function RecordScreen() {
   const [sharePhoto, setSharePhoto] = useState<{ file: File; url: string } | null>(null);
   const [shareFile, setShareFile] = useState<File | null>(null);
   const [shareToast, setShareToast] = useState<{ title: string; body: string; icon: 'success' | 'info' | 'error' } | null>(null);
-  const [isSharing, setIsSharing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const sharePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { firstDay, daysInMonth } = getCalendarDays(currentYear, currentMonth);
@@ -225,7 +225,7 @@ export function RecordScreen() {
     ? { home: selectedGame.home, away: selectedGame.away }
     : null;
 
-  // 공유 이미지를 미리 생성해 둠 → 버튼 클릭 시 user-gesture 안에서 동기로 share() 호출 (모바일 공유/저장 안정화)
+  // 다운로드 이미지를 미리 생성해 둠 → 버튼 클릭 시 즉시 다운로드 가능
   useEffect(() => {
     let cancelled = false;
     createInstagramReadyImage({ photoUrl: sharePhoto?.url ?? null, result: gameResult, visitN, gameLabel })
@@ -261,12 +261,11 @@ export function RecordScreen() {
     });
   };
 
-  const handleShareCard = async () => {
-    if (isSharing) return;
-    setIsSharing(true);
+  const handleDownloadCard = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
 
-    // 미리 생성된 파일이 없으면 클릭 시점에 동기 생성 (preflight 실패한 경우 폴백).
-    // 가능하면 사전 생성된 shareFile을 우선 사용해야 모바일 user-gesture가 유지됨.
+    // 미리 생성된 파일이 없으면 클릭 시점에 동기 생성 (preflight 실패한 경우 폴백)
     let file = shareFile;
     if (!file) {
       try {
@@ -278,59 +277,28 @@ export function RecordScreen() {
           body: '사진을 바꾸거나 잠시 후 다시 시도해주세요.',
           icon: 'error',
         });
-        setIsSharing(false);
+        setIsDownloading(false);
         setTimeout(() => setShareToast(null), 2600);
         return;
       }
     }
 
-    const shareData: ShareData = {
-      files: [file],
-      title: '용기낼깡 직관 카드',
-      text: `이번 시즌 잠실 직관 ${visitN}번째 · #용기낼깡 #클린야구`,
-    };
-
     try {
-      // user-gesture 안에서 share()를 먼저 호출 (이미지는 미리 생성됨 → 모바일 activation 유지)
-      if (typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare(shareData))) {
-        await navigator.share(shareData);
-        setShareToast({
-          title: '공유 시트를 열었습니다',
-          body: 'Instagram 또는 사진 앱을 선택해 저장/업로드하세요.',
-          icon: 'success',
-        });
-      } else {
-        // 미지원(주로 데스크톱/일부 브라우저) → 이미지를 새 탭에 띄워 길게 눌러 저장
-        const url = URL.createObjectURL(file);
-        const opened = window.open(url, '_blank');
-        if (!opened) downloadFile(file);
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-        setShareToast({
-          title: '이미지를 열었습니다',
-          body: '이미지를 길게 눌러 사진에 저장한 뒤 인스타그램에 올려주세요.',
-          icon: 'info',
-        });
-      }
-
-      if (!shareCardShared) {
-        setShareCardShared(true);
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        setShareToast({
-          title: '공유를 취소했습니다',
-          body: '다시 누르면 공유 시트를 열 수 있습니다.',
-          icon: 'info',
-        });
-      } else {
-        setShareToast({
-          title: '공유 실패',
-          body: '사진을 바꾸거나 브라우저 권한을 확인한 뒤 다시 시도해주세요.',
-          icon: 'error',
-        });
-      }
+      downloadFile(file);
+      setShareToast({
+        title: '이미지 저장 시작',
+        body: '브라우저 다운로드 / 사진 앱에서 확인하세요.',
+        icon: 'success',
+      });
+      if (!shareCardShared) setShareCardShared(true);
+    } catch {
+      setShareToast({
+        title: '다운로드 실패',
+        body: '브라우저 권한을 확인한 뒤 다시 시도해주세요.',
+        icon: 'error',
+      });
     } finally {
-      setIsSharing(false);
+      setIsDownloading(false);
       setTimeout(() => setShareToast(null), 2600);
     }
   };
@@ -808,16 +776,16 @@ export function RecordScreen() {
             )}
 
             <button
-              onClick={handleShareCard}
-              disabled={isSharing}
+              onClick={handleDownloadCard}
+              disabled={isDownloading}
               className="cb-button cb-button--primary cb-button--md cb-button--full"
             >
-              {isSharing ? <Download size={16} /> : <Share2 size={16} />}
-              {isSharing ? '공유 중...' : '공유하기'}
+              <Download size={16} />
+              {isDownloading ? '다운로드 중...' : '이미지 다운로드'}
             </button>
 
             <p style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', lineHeight: 1.6 }}>
-              모바일은 공유 시트에서 인스타그램/사진을 선택하세요. 미지원 시 이미지가 새 탭에 열리며 길게 눌러 저장할 수 있어요.
+              PNG 파일로 저장됩니다. 모바일은 다운로드 폴더 또는 사진 앱에서 확인하세요.
             </p>
           </div>
         )}
