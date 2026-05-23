@@ -644,6 +644,7 @@ export function RecordScreen() {
               maxWidth: 300,
               margin: '0 auto',
               aspectRatio: '9 / 16',
+              flexShrink: 0,
               borderRadius: 'var(--cb-radius-lg)',
               overflow: 'hidden',
               border: '2px solid #430A21',
