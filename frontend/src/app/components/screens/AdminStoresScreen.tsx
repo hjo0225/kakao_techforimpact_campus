@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Search,
   ShieldCheck,
   Store as StoreIcon,
   UtensilsCrossed,
@@ -33,6 +34,7 @@ import { Button, Screen, ScreenHeader, ScrollArea } from '../design-system'
 type TabId = 'slots' | 'stores' | 'assignments' | 'menu' | 'operations' | 'notices' | 'review'
 type MenuView = 'items' | 'offerings'
 type ReviewFilter = VerificationStatus | 'PRICE_MISSING' | 'POLICY_MISSING'
+type WorkStatusFilter = 'ALL' | 'ACTIVE' | 'NEEDS_ATTENTION' | 'MISSING_MENU' | 'MISSING_POLICY'
 type ResourceKey =
   | 'storeSlots'
   | 'tenantStores'
@@ -57,6 +59,34 @@ interface ReviewIssue {
   filters: ReviewFilter[]
 }
 
+interface AssignmentWorkIssue {
+  id: string
+  label: string
+  targetTab: TabId
+  targetType?: 'slot' | 'store' | 'assignment' | 'offering' | 'rule'
+  targetId?: string
+  targetMenuView?: MenuView
+}
+
+interface AssignmentWorkRow {
+  assignment: StoreAssignment
+  slot: StoreSlot | null
+  store: TenantStore | null
+  offerings: StoreMenuOffering[]
+  menuItems: TenantMenuItem[]
+  rules: StoreOperatingRule[]
+  notices: StoreNotice[]
+  displayName: string
+  slotLabel: string
+  floor: string
+  gateLabel: string
+  searchText: string
+  issues: AssignmentWorkIssue[]
+  priceMissingCount: number
+  policyMissingCount: number
+  missingMenu: boolean
+}
+
 const TAB_ITEMS: Array<{ id: TabId; label: string; icon: ReactNode }> = [
   { id: 'slots', label: '슬롯', icon: <MapPinned size={16} /> },
   { id: 'stores', label: '입점가게', icon: <StoreIcon size={16} /> },
@@ -75,11 +105,23 @@ const REVIEW_FILTERS: Array<{ id: ReviewFilter; label: string }> = [
   { id: 'POLICY_MISSING', label: '정책 미확인' },
 ]
 
+const WORK_STATUS_FILTERS: Array<{ id: WorkStatusFilter; label: string }> = [
+  { id: 'ALL', label: '전체' },
+  { id: 'ACTIVE', label: '운영 중' },
+  { id: 'NEEDS_ATTENTION', label: '확인 필요' },
+  { id: 'MISSING_MENU', label: '메뉴 없음' },
+  { id: 'MISSING_POLICY', label: '용기 정책 미확인' },
+]
+
 const STATUS_TONES: Record<VerificationStatus, { bg: string; color: string; border: string }> = {
   DRAFT: { bg: '#FFF7ED', color: '#B45309', border: '#F59E0B' },
   NEEDS_REVIEW: { bg: '#FEF2F2', color: '#B91C1C', border: '#F87171' },
   VERIFIED: { bg: '#ECFDF5', color: '#047857', border: '#34D399' },
 }
+
+const ISSUE_TONE = { bg: '#FFF7ED', color: '#B45309', border: '#F59E0B' }
+const RESOLVED_TONE = { bg: '#ECFDF5', color: '#047857', border: '#34D399' }
+const NEUTRAL_TONE = { bg: '#F9FAFB', color: '#374151', border: '#D1D5DB' }
 
 const REVIEW_RESOURCE_LABELS: Record<ResourceKey, string> = {
   storeSlots: '슬롯',
@@ -120,6 +162,34 @@ function getErrorMessage(error: unknown) {
   return '알 수 없는 오류'
 }
 
+function isPolicyUnresolved(value: PolicyChoice) {
+  return value === null || value === 'CHECK_ON_SITE'
+}
+
+function resolveOfferingPolicy(value: PolicyChoice, defaultValue: PolicyChoice) {
+  return value === 'USE_DEFAULT' ? defaultValue : value
+}
+
+function hasOfferingPolicyIssue(offering: StoreMenuOffering, store: TenantStore | null) {
+  return (
+    isPolicyUnresolved(resolveOfferingPolicy(offering.usesReusableContainer, store?.defaultReusableContainerPolicy ?? null)) ||
+    isPolicyUnresolved(resolveOfferingPolicy(offering.personalContainerAllowed, store?.defaultPersonalContainerPolicy ?? null))
+  )
+}
+
+function hasMissingPrice(priceKrw: number | null, priceText: string | null) {
+  return priceKrw === null && !priceText?.trim()
+}
+
+function floorSortValue(floor: string) {
+  if (floor === '1F') return 10
+  if (floor === '2F') return 20
+  if (floor === '2.5F') return 25
+  if (floor === '3F') return 30
+  if (floor === '4F') return 40
+  return 999
+}
+
 function formatPolicy(value: PolicyChoice) {
   if (value === 'USE_DEFAULT') return '기본값 사용'
   if (value === 'ALLOWED') return '가능'
@@ -130,6 +200,14 @@ function formatPolicy(value: PolicyChoice) {
 
 function formatSourceLabel(source: 'api' | 'fallback') {
   return source === 'api' ? 'API' : '샘플'
+}
+
+function formatFallbackReason(reason?: string) {
+  if (!reason) return 'fallback'
+  if (reason.includes('empty list')) return 'API 빈 응답'
+  if (reason.includes('403')) return '관리자 권한 확인'
+  if (reason.includes('401')) return '로그인 필요'
+  return 'API 미연결'
 }
 
 function formatStatusLabel(value: VerificationStatus) {
@@ -440,6 +518,9 @@ export function AdminStoresScreen() {
   const [activeTab, setActiveTab] = useState<TabId>('review')
   const [menuView, setMenuView] = useState<MenuView>('items')
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('NEEDS_REVIEW')
+  const [workQuery, setWorkQuery] = useState('')
+  const [workFloor, setWorkFloor] = useState('ALL')
+  const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('NEEDS_ATTENTION')
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready'>('idle')
   const [lastLoadedAt, setLastLoadedAt] = useState<string | null>(null)
 
@@ -669,6 +750,226 @@ export function AdminStoresScreen() {
     return `${storeName} · ${slotLabel}`
   }, [assignmentById, formatSlotLabel, formatStoreLabel])
 
+  const assignmentRows = useMemo<AssignmentWorkRow[]>(() => {
+    return storeAssignments.map((assignment) => {
+      const slot = slotById.get(assignment.slotId) ?? null
+      const store = storeById.get(assignment.tenantStoreId) ?? null
+      const offerings = storeMenuOfferings
+        .filter((offering) => offering.assignmentId === assignment.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      const menuItems = offerings
+        .map((offering) => menuItemById.get(offering.menuItemId))
+        .filter((item): item is TenantMenuItem => Boolean(item))
+      const rules = storeOperatingRules.filter((rule) => rule.assignmentId === assignment.id)
+      const notices = storeNotices.filter(
+        (notice) =>
+          notice.assignmentId === assignment.id ||
+          notice.slotId === assignment.slotId ||
+          notice.tenantStoreId === assignment.tenantStoreId,
+      )
+      const issues: AssignmentWorkIssue[] = []
+      const priceMissingCount = offerings.filter((offering) => hasMissingPrice(offering.priceKrw, offering.priceText)).length
+      const policyMissingCount = offerings.filter((offering) => hasOfferingPolicyIssue(offering, store)).length
+      const hasActiveRule = rules.some((rule) => rule.isActive && (rule.textOverride || (rule.openTime && rule.closeTime)))
+
+      if (!slot) {
+        issues.push({ id: 'slot-missing', label: '슬롯 연결 없음', targetTab: 'assignments', targetType: 'assignment' })
+      } else if (slot.verificationStatus !== 'VERIFIED') {
+        issues.push({ id: 'slot-review', label: '슬롯 검수 필요', targetTab: 'slots', targetType: 'slot', targetId: slot.id })
+      }
+
+      if (!store) {
+        issues.push({ id: 'store-missing', label: '가게 연결 없음', targetTab: 'assignments', targetType: 'assignment' })
+      } else {
+        if (store.verificationStatus !== 'VERIFIED') {
+          issues.push({ id: 'store-review', label: '가게 검수 필요', targetTab: 'stores', targetType: 'store', targetId: store.id })
+        }
+        if (isPolicyUnresolved(store.defaultReusableContainerPolicy) || isPolicyUnresolved(store.defaultPersonalContainerPolicy)) {
+          issues.push({ id: 'store-policy', label: '기본 용기 정책 미확인', targetTab: 'stores', targetType: 'store', targetId: store.id })
+        }
+      }
+
+      if (assignment.verificationStatus !== 'VERIFIED') {
+        issues.push({
+          id: 'assignment-review',
+          label: '배정 검수 필요',
+          targetTab: 'assignments',
+          targetType: 'assignment',
+          targetId: assignment.id,
+        })
+      }
+
+      if (!assignment.hoursText && !hasActiveRule) {
+        issues.push({ id: 'hours-missing', label: '영업시간 미입력', targetTab: 'operations', targetType: 'rule', targetId: rules[0]?.id })
+      }
+
+      if (offerings.length === 0) {
+        issues.push({ id: 'menu-missing', label: '판매 메뉴 없음', targetTab: 'menu', targetMenuView: 'offerings' })
+      }
+      if (priceMissingCount > 0) {
+        issues.push({
+          id: 'price-missing',
+          label: `가격 ${priceMissingCount}건 미입력`,
+          targetTab: 'menu',
+          targetType: 'offering',
+          targetMenuView: 'offerings',
+          targetId: offerings.find((offering) => hasMissingPrice(offering.priceKrw, offering.priceText))?.id,
+        })
+      }
+      if (policyMissingCount > 0) {
+        issues.push({
+          id: 'policy-missing',
+          label: `용기 정책 ${policyMissingCount}건 미확인`,
+          targetTab: 'menu',
+          targetType: 'offering',
+          targetMenuView: 'offerings',
+          targetId: offerings.find((offering) => hasOfferingPolicyIssue(offering, store))?.id,
+        })
+      }
+
+      const displayName = assignment.displayNameOverride || store?.name || '미지정 가게'
+      const slotLabel = slot
+        ? `${slot.floor} · ${slot.officialSlotNo ?? slot.slotCode}${slot.isCodeProvisional ? ' · 임시코드' : ''}`
+        : '미지정 슬롯'
+      const gateLabel = slot?.gate ?? slot?.sectionHint ?? '위치 힌트 없음'
+      const searchText = [
+        displayName,
+        store?.brandName,
+        store?.category,
+        slot?.floor,
+        slot?.slotCode,
+        slot?.officialSlotNo,
+        slot?.gate,
+        slot?.sectionHint,
+        assignment.hoursText,
+        ...menuItems.map((item) => item.name),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('ko-KR')
+
+      return {
+        assignment,
+        slot,
+        store,
+        offerings,
+        menuItems,
+        rules,
+        notices,
+        displayName,
+        slotLabel,
+        floor: slot?.floor ?? '미지정',
+        gateLabel,
+        searchText,
+        issues,
+        priceMissingCount,
+        policyMissingCount,
+        missingMenu: offerings.length === 0,
+      }
+    })
+  }, [
+    storeAssignments,
+    slotById,
+    storeById,
+    storeMenuOfferings,
+    menuItemById,
+    storeOperatingRules,
+    storeNotices,
+  ])
+
+  const workFloors = useMemo(
+    () => [
+      'ALL',
+      ...Array.from(new Set(assignmentRows.map((row) => row.floor).filter((floor) => floor !== '미지정'))).sort(
+        (a, b) => floorSortValue(a) - floorSortValue(b),
+      ),
+    ],
+    [assignmentRows],
+  )
+
+  const filteredAssignmentRows = useMemo(() => {
+    const query = workQuery.trim().toLocaleLowerCase('ko-KR')
+    return assignmentRows.filter((row) => {
+      if (workFloor !== 'ALL' && row.floor !== workFloor) return false
+      if (query && !row.searchText.includes(query)) return false
+
+      if (workStatusFilter === 'ACTIVE') return row.assignment.status === 'ACTIVE'
+      if (workStatusFilter === 'NEEDS_ATTENTION') return row.issues.length > 0
+      if (workStatusFilter === 'MISSING_MENU') return row.missingMenu
+      if (workStatusFilter === 'MISSING_POLICY') return row.policyMissingCount > 0
+      return true
+    })
+  }, [assignmentRows, workFloor, workQuery, workStatusFilter])
+
+  const selectedAssignmentRow = useMemo(
+    () => assignmentRows.find((row) => row.assignment.id === selectedAssignmentId) ?? null,
+    [assignmentRows, selectedAssignmentId],
+  )
+
+  const workStats = useMemo(
+    () => ({
+      active: assignmentRows.filter((row) => row.assignment.status === 'ACTIVE').length,
+      needsAttention: assignmentRows.filter((row) => row.issues.length > 0).length,
+      missingMenu: assignmentRows.filter((row) => row.missingMenu).length,
+      missingPolicy: assignmentRows.filter((row) => row.policyMissingCount > 0).length,
+      missingPrice: assignmentRows.filter((row) => row.priceMissingCount > 0).length,
+    }),
+    [assignmentRows],
+  )
+
+  const focusAssignmentRow = useCallback((row: AssignmentWorkRow, nextTab?: TabId, nextMenuView?: MenuView) => {
+    setSelectedAssignmentId(row.assignment.id)
+    if (row.slot) setSelectedSlotId(row.slot.id)
+    if (row.store) setSelectedStoreId(row.store.id)
+    if (row.offerings[0]) setSelectedOfferingId(row.offerings[0].id)
+    if (row.menuItems[0]) setSelectedMenuItemId(row.menuItems[0].id)
+    if (row.rules[0]) setSelectedRuleId(row.rules[0].id)
+    if (row.notices[0]) setSelectedNoticeId(row.notices[0].id)
+    if (nextMenuView) setMenuView(nextMenuView)
+    if (nextTab) setActiveTab(nextTab)
+  }, [])
+
+  const openWorkIssue = useCallback(
+    (row: AssignmentWorkRow, issue: AssignmentWorkIssue) => {
+      focusAssignmentRow(row, issue.targetTab, issue.targetMenuView)
+
+      if (issue.targetType === 'slot' && issue.targetId) setSelectedSlotId(issue.targetId)
+      if (issue.targetType === 'store' && issue.targetId) setSelectedStoreId(issue.targetId)
+      if (issue.targetType === 'assignment') setSelectedAssignmentId(issue.targetId ?? row.assignment.id)
+      if (issue.targetType === 'offering' && issue.targetId) setSelectedOfferingId(issue.targetId)
+      if (issue.targetType === 'rule' && issue.targetId) setSelectedRuleId(issue.targetId)
+    },
+    [focusAssignmentRow],
+  )
+
+  const visibleMenuItems = useMemo(
+    () => (selectedStoreId ? tenantMenuItems.filter((item) => item.tenantStoreId === selectedStoreId) : tenantMenuItems),
+    [selectedStoreId, tenantMenuItems],
+  )
+
+  const visibleOfferings = useMemo(
+    () =>
+      selectedAssignmentId
+        ? storeMenuOfferings.filter((offering) => offering.assignmentId === selectedAssignmentId)
+        : storeMenuOfferings,
+    [selectedAssignmentId, storeMenuOfferings],
+  )
+
+  const visibleOperatingRules = useMemo(
+    () => (selectedAssignmentId ? storeOperatingRules.filter((rule) => rule.assignmentId === selectedAssignmentId) : storeOperatingRules),
+    [selectedAssignmentId, storeOperatingRules],
+  )
+
+  const visibleNotices = useMemo(() => {
+    if (!selectedAssignment) return storeNotices
+    return storeNotices.filter(
+      (notice) =>
+        notice.assignmentId === selectedAssignment.id ||
+        notice.slotId === selectedAssignment.slotId ||
+        notice.tenantStoreId === selectedAssignment.tenantStoreId,
+    )
+  }, [selectedAssignment, storeNotices])
+
   const reviewItems = useMemo<ReviewIssue[]>(() => {
     const items: ReviewIssue[] = []
 
@@ -686,7 +987,7 @@ export function AdminStoresScreen() {
 
     tenantStores.forEach((store) => {
       const filters: ReviewFilter[] = [store.verificationStatus]
-      if (!store.defaultReusableContainerPolicy || !store.defaultPersonalContainerPolicy) {
+      if (isPolicyUnresolved(store.defaultReusableContainerPolicy) || isPolicyUnresolved(store.defaultPersonalContainerPolicy)) {
         filters.push('POLICY_MISSING')
       }
       items.push({
@@ -714,7 +1015,7 @@ export function AdminStoresScreen() {
 
     tenantMenuItems.forEach((item) => {
       const filters: ReviewFilter[] = [item.verificationStatus]
-      if (item.basePriceKrw === null && !item.basePriceText) filters.push('PRICE_MISSING')
+      if (hasMissingPrice(item.basePriceKrw, item.basePriceText)) filters.push('PRICE_MISSING')
       items.push({
         id: `menu-item-${item.id}`,
         entityId: item.id,
@@ -728,8 +1029,10 @@ export function AdminStoresScreen() {
 
     storeMenuOfferings.forEach((offering) => {
       const filters: ReviewFilter[] = [offering.verificationStatus]
-      if (offering.priceKrw === null && !offering.priceText) filters.push('PRICE_MISSING')
-      if (!offering.usesReusableContainer || !offering.personalContainerAllowed) filters.push('POLICY_MISSING')
+      const assignment = assignmentById.get(offering.assignmentId)
+      const store = assignment ? storeById.get(assignment.tenantStoreId) ?? null : null
+      if (hasMissingPrice(offering.priceKrw, offering.priceText)) filters.push('PRICE_MISSING')
+      if (hasOfferingPolicyIssue(offering, store)) filters.push('POLICY_MISSING')
       items.push({
         id: `offering-${offering.id}`,
         entityId: offering.id,
@@ -776,6 +1079,8 @@ export function AdminStoresScreen() {
     storeNotices,
     formatAssignmentLabel,
     formatStoreLabel,
+    assignmentById,
+    storeById,
     menuItemById,
   ])
 
@@ -957,7 +1262,10 @@ export function AdminStoresScreen() {
 
   const handleCreateOffering = async () => {
     const assignmentId = selectedAssignmentId ?? storeAssignments[0]?.id
-    const menuItemId = selectedMenuItemId ?? tenantMenuItems[0]?.id
+    const menuItemId =
+      selectedMenuItemId && visibleMenuItems.some((item) => item.id === selectedMenuItemId)
+        ? selectedMenuItemId
+        : visibleMenuItems[0]?.id ?? tenantMenuItems[0]?.id
     if (!assignmentId || !menuItemId) return
     const draft = createEmptyOffering(assignmentId, menuItemId)
     setOfferingSaveState({ kind: 'saving', message: '판매 메뉴 추가 중...' })
@@ -1028,7 +1336,12 @@ export function AdminStoresScreen() {
   }
 
   const handleCreateNotice = async () => {
-    const draft = createEmptyNotice()
+    const draft = {
+      ...createEmptyNotice(),
+      assignmentId: selectedAssignmentId,
+      slotId: selectedAssignment?.slotId ?? null,
+      tenantStoreId: selectedAssignment?.tenantStoreId ?? null,
+    }
     setNoticeSaveState({ kind: 'saving', message: '공지 추가 중...' })
     try {
       const saved = mergeApiEntity(draft, await adminStoresApi.createStoreNotice(draft))
@@ -1066,7 +1379,7 @@ export function AdminStoresScreen() {
   const topSummary = (
     <Section
       title="잠실 매장 관리자"
-      description="카카오 JWT 세션으로 관리자 API를 시도하고, 실패한 리소스만 샘플 데이터로 대체합니다."
+      description="현재 연결 상태와 데이터 품질을 확인합니다."
       action={
         <Button variant="secondary" size="md" onClick={() => void loadAdminData()}>
           <RefreshCw size={16} />
@@ -1101,18 +1414,214 @@ export function AdminStoresScreen() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={16} color="#B45309" />
             <span style={{ fontSize: 12, fontWeight: 800, color: '#B45309' }}>
-              일부 관리자 API가 아직 없거나 응답하지 않아 샘플 데이터를 사용 중입니다.
+              일부 관리자 API가 비어 있거나 응답하지 않아 샘플 데이터를 사용 중입니다.
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {fallbackResources.map((key) => (
               <Badge key={key} tone={{ bg: '#FFF', color: '#9A3412', border: '#FDBA74' }}>
-                {REVIEW_RESOURCE_LABELS[key]} · {errors[key] ?? 'fallback'}
+                {REVIEW_RESOURCE_LABELS[key]} · {formatFallbackReason(errors[key])}
               </Badge>
             ))}
           </div>
         </div>
       ) : null}
+    </Section>
+  )
+
+  const workbench = (
+    <Section
+      title="운영 워크벤치"
+      description="매장 배정을 기준으로 메뉴, 용기 정책, 영업시간, 공지를 같이 확인합니다."
+      action={
+        <Badge tone={filteredAssignmentRows.length > 0 ? ISSUE_TONE : RESOLVED_TONE}>
+          {filteredAssignmentRows.length}개 표시
+        </Badge>
+      }
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        {[
+          { label: '운영 중', value: workStats.active, filter: 'ACTIVE' as const },
+          { label: '확인 필요', value: workStats.needsAttention, filter: 'NEEDS_ATTENTION' as const },
+          { label: '메뉴 없음', value: workStats.missingMenu, filter: 'MISSING_MENU' as const },
+          { label: '정책 미확인', value: workStats.missingPolicy, filter: 'MISSING_POLICY' as const },
+        ].map((metric) => {
+          const active = workStatusFilter === metric.filter
+          return (
+            <button
+              key={metric.filter}
+              type="button"
+              onClick={() => setWorkStatusFilter(metric.filter)}
+              style={{
+                minHeight: 72,
+                borderRadius: 14,
+                border: active ? '2px solid #C85C77' : '1.5px solid #E5E7EB',
+                background: active ? '#FFF0F3' : '#FFF',
+                padding: '12px 10px',
+                textAlign: 'left',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280' }}>{metric.label}</div>
+              <div style={{ marginTop: 4, fontSize: 22, fontWeight: 900, color: '#111827' }}>{metric.value}</div>
+            </button>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(120px, 0.7fr)', gap: 8 }}>
+        <Field label="검색">
+          <div style={{ position: 'relative' }}>
+            <Search
+              size={16}
+              color="#9CA3AF"
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}
+            />
+            <input
+              value={workQuery}
+              onChange={(event) => setWorkQuery(event.target.value)}
+              placeholder="가게, 메뉴, 슬롯, 게이트"
+              style={inputStyle({ paddingLeft: 36 })}
+            />
+          </div>
+        </Field>
+        <Field label="층">
+          <select value={workFloor} onChange={(event) => setWorkFloor(event.target.value)} style={inputStyle()}>
+            {workFloors.map((floor) => (
+              <option key={floor} value={floor}>
+                {floor === 'ALL' ? '전체 층' : floor}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+        {WORK_STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            className={`cb-chip${workStatusFilter === filter.id ? ' is-active' : ''}`}
+            onClick={() => setWorkStatusFilter(filter.id)}
+            style={{ flexShrink: 0 }}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {selectedAssignmentRow ? (
+        <div
+          style={{
+            borderRadius: 14,
+            border: '1.5px solid #E5E7EB',
+            background: '#FFF',
+            padding: 14,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#111827', overflowWrap: 'anywhere' }}>
+                {selectedAssignmentRow.displayName}
+              </div>
+              <div style={{ marginTop: 3, fontSize: 12, color: '#6B7280', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                {selectedAssignmentRow.slotLabel} · {selectedAssignmentRow.gateLabel}
+              </div>
+            </div>
+            <Badge tone={STATUS_TONES[selectedAssignmentRow.assignment.verificationStatus]}>
+              {formatStatusLabel(selectedAssignmentRow.assignment.verificationStatus)}
+            </Badge>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Badge tone={NEUTRAL_TONE}>판매 메뉴 {selectedAssignmentRow.offerings.length}</Badge>
+            <Badge tone={NEUTRAL_TONE}>영업 규칙 {selectedAssignmentRow.rules.length}</Badge>
+            <Badge tone={NEUTRAL_TONE}>공지 {selectedAssignmentRow.notices.length}</Badge>
+            <Badge tone={selectedAssignmentRow.priceMissingCount > 0 ? ISSUE_TONE : NEUTRAL_TONE}>
+              가격 누락 {selectedAssignmentRow.priceMissingCount}
+            </Badge>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {selectedAssignmentRow.issues.length === 0 ? (
+              <Badge tone={RESOLVED_TONE}>현재 큐에서 해결됨</Badge>
+            ) : (
+              selectedAssignmentRow.issues.map((issue) => (
+                <button
+                  key={issue.id}
+                  type="button"
+                  onClick={() => openWorkIssue(selectedAssignmentRow, issue)}
+                  style={{
+                    border: `1.5px solid ${ISSUE_TONE.border}`,
+                    background: ISSUE_TONE.bg,
+                    color: ISSUE_TONE.color,
+                    borderRadius: 999,
+                    padding: '5px 9px',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {issue.label}
+                </button>
+              ))
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="soft" size="md" onClick={() => focusAssignmentRow(selectedAssignmentRow, 'assignments')}>
+              배정
+            </Button>
+            <Button variant="soft" size="md" onClick={() => focusAssignmentRow(selectedAssignmentRow, 'menu', 'offerings')}>
+              판매 메뉴
+            </Button>
+            <Button variant="soft" size="md" onClick={() => focusAssignmentRow(selectedAssignmentRow, 'operations')}>
+              영업
+            </Button>
+            <Button variant="soft" size="md" onClick={() => focusAssignmentRow(selectedAssignmentRow, 'notices')}>
+              공지
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {filteredAssignmentRows.length === 0 ? (
+          <div
+            style={{
+              padding: 16,
+              borderRadius: 14,
+              border: '1.5px dashed #D1D5DB',
+              background: '#FFF',
+              color: '#6B7280',
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            조건에 맞는 운영 단위가 없습니다.
+          </div>
+        ) : (
+          filteredAssignmentRows.map((row) => (
+            <ListButton
+              key={row.assignment.id}
+              active={row.assignment.id === selectedAssignmentId}
+              title={`${row.displayName} · ${row.slotLabel}`}
+              subtitle={`${row.assignment.status} · ${row.gateLabel} · 메뉴 ${row.offerings.length} · 영업 ${row.rules.length}`}
+              meta={
+                row.issues.length > 0 ? (
+                  <Badge tone={ISSUE_TONE}>{row.issues.length}건</Badge>
+                ) : (
+                  <Badge tone={RESOLVED_TONE}>완료</Badge>
+                )
+              }
+              onClick={() => focusAssignmentRow(row, 'assignments')}
+            />
+          ))
+        )}
+      </div>
     </Section>
   )
 
@@ -1163,7 +1672,7 @@ export function AdminStoresScreen() {
             onChange={(event) => setSlotDraft((prev) => ({ ...prev, floor: event.target.value }))}
             style={inputStyle()}
           >
-            {['1F', '2F', '3F', '4F'].map((value) => (
+            {['1F', '2F', '2.5F', '3F', '4F'].map((value) => (
               <option key={value} value={value}>
                 {value}
               </option>
@@ -1382,7 +1891,7 @@ export function AdminStoresScreen() {
     <>
       <Section
         title="배정"
-        description={`현재 ${storeAssignments.length}개 배정`}
+        description={`운영 워크벤치 조건 기준 ${filteredAssignmentRows.length}개 / 전체 ${storeAssignments.length}개`}
         action={
           <Button variant="soft" size="md" onClick={() => void handleCreateAssignment()} disabled={!storeSlots[0] || !tenantStores[0]}>
             <Plus size={16} />
@@ -1391,14 +1900,22 @@ export function AdminStoresScreen() {
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {storeAssignments.map((assignment) => (
+          {filteredAssignmentRows.map((row) => (
             <ListButton
-              key={assignment.id}
-              active={assignment.id === selectedAssignmentId}
-              title={formatAssignmentLabel(assignment.id)}
-              subtitle={`${assignment.status} · ${assignment.hoursText ?? '운영시간 미입력'}`}
-              meta={<Badge tone={STATUS_TONES[assignment.verificationStatus]}>{formatStatusLabel(assignment.verificationStatus)}</Badge>}
-              onClick={() => setSelectedAssignmentId(assignment.id)}
+              key={row.assignment.id}
+              active={row.assignment.id === selectedAssignmentId}
+              title={formatAssignmentLabel(row.assignment.id)}
+              subtitle={`${row.assignment.status} · ${row.assignment.hoursText ?? '운영시간 미입력'} · 메뉴 ${row.offerings.length}`}
+              meta={
+                row.issues.length > 0 ? (
+                  <Badge tone={ISSUE_TONE}>{row.issues.length}건</Badge>
+                ) : (
+                  <Badge tone={STATUS_TONES[row.assignment.verificationStatus]}>
+                    {formatStatusLabel(row.assignment.verificationStatus)}
+                  </Badge>
+                )
+              }
+              onClick={() => focusAssignmentRow(row)}
             />
           ))}
         </div>
@@ -1531,7 +2048,7 @@ export function AdminStoresScreen() {
         <>
           <Section
             title="기본 메뉴 목록"
-            description={`현재 ${tenantMenuItems.length}개`}
+            description={`${selectedStore ? `${selectedStore.name} 기준 ` : ''}${visibleMenuItems.length}개 / 전체 ${tenantMenuItems.length}개`}
             action={
               <Button variant="soft" size="md" onClick={() => void handleCreateMenuItem()} disabled={!tenantStores[0]}>
                 <Plus size={16} />
@@ -1540,7 +2057,7 @@ export function AdminStoresScreen() {
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tenantMenuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <ListButton
                   key={item.id}
                   active={item.id === selectedMenuItemId}
@@ -1647,7 +2164,7 @@ export function AdminStoresScreen() {
         <>
           <Section
             title="판매 메뉴 목록"
-            description={`현재 ${storeMenuOfferings.length}개`}
+            description={`${selectedAssignment ? `${formatAssignmentLabel(selectedAssignment.id)} 기준 ` : ''}${visibleOfferings.length}개 / 전체 ${storeMenuOfferings.length}개`}
             action={
               <Button
                 variant="soft"
@@ -1661,7 +2178,7 @@ export function AdminStoresScreen() {
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {storeMenuOfferings.map((offering) => (
+              {visibleOfferings.map((offering) => (
                 <ListButton
                   key={offering.id}
                   active={offering.id === selectedOfferingId}
@@ -1809,7 +2326,7 @@ export function AdminStoresScreen() {
     <>
       <Section
         title="영업 규칙"
-        description={`현재 ${storeOperatingRules.length}개 규칙`}
+        description={`${selectedAssignment ? `${formatAssignmentLabel(selectedAssignment.id)} 기준 ` : ''}${visibleOperatingRules.length}개 / 전체 ${storeOperatingRules.length}개`}
         action={
           <Button variant="soft" size="md" onClick={() => void handleCreateRule()} disabled={!storeAssignments[0]}>
             <Plus size={16} />
@@ -1818,7 +2335,7 @@ export function AdminStoresScreen() {
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {storeOperatingRules.map((rule) => (
+          {visibleOperatingRules.map((rule) => (
             <ListButton
               key={rule.id}
               active={rule.id === selectedRuleId}
@@ -1924,7 +2441,7 @@ export function AdminStoresScreen() {
     <>
       <Section
         title="공지"
-        description={`현재 ${storeNotices.length}개 공지`}
+        description={`${selectedAssignment ? `${formatAssignmentLabel(selectedAssignment.id)} 기준 ` : ''}${visibleNotices.length}개 / 전체 ${storeNotices.length}개`}
         action={
           <Button variant="soft" size="md" onClick={() => void handleCreateNotice()}>
             <Plus size={16} />
@@ -1933,7 +2450,7 @@ export function AdminStoresScreen() {
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {storeNotices.map((notice) => (
+          {visibleNotices.map((notice) => (
             <ListButton
               key={notice.id}
               active={notice.id === selectedNoticeId}
@@ -2141,13 +2658,14 @@ export function AdminStoresScreen() {
       <ScreenHeader
         eyebrow="관리자"
         title="매장 운영 관리"
-        description="슬롯, 입점가게, 메뉴, 공지를 모바일 프레임 안에서 바로 검수하고 수정합니다."
+        description="잠실야구장 내부 식음료 매장의 위치, 입점, 메뉴, 운영 정보를 관리합니다."
       />
 
       <ScrollArea stack>
         {topSummary}
+        {workbench}
 
-        <Section title="섹션 이동" description="표는 쓰지 않고 카드 기반으로 편집합니다.">
+        <Section title="원장 편집" description="운영 단위에서 고른 항목을 세부 데이터별로 수정합니다.">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="tablist" aria-label="관리자 탭">
             {TAB_ITEMS.map((tab) => (
               <button
@@ -2171,14 +2689,6 @@ export function AdminStoresScreen() {
         </Section>
 
         {content}
-
-        <Section title="입력 메모" description="긴 이름과 작은 화면을 기준으로 줄바꿈 위주로 구성했습니다.">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Badge tone={{ bg: '#EFF6FF', color: '#1D4ED8', border: '#93C5FD' }}>테이블 대신 카드/리스트</Badge>
-            <Badge tone={{ bg: '#EFF6FF', color: '#1D4ED8', border: '#93C5FD' }}>긴 이름 자동 줄바꿈</Badge>
-            <Badge tone={{ bg: '#EFF6FF', color: '#1D4ED8', border: '#93C5FD' }}>저장 실패 시 로컬 반영 유지</Badge>
-          </div>
-        </Section>
       </ScrollArea>
 
       <BottomNav />

@@ -457,6 +457,14 @@ async function listResource<T>(paths: string[], fallback: T[]): Promise<AdminLis
   }
 }
 
+function fallbackList<T>(items: T[], error: string): AdminListResult<T> {
+  return {
+    items,
+    source: 'fallback',
+    error,
+  }
+}
+
 export async function loadAdminStoresDataset(): Promise<AdminStoresDataset> {
   const [
     storeSlots,
@@ -475,6 +483,27 @@ export async function loadAdminStoresDataset(): Promise<AdminStoresDataset> {
     listResource(['/admin/store-operating-rules'], ADMIN_STORES_FALLBACK_DATA.storeOperatingRules),
     listResource(['/admin/store-notices'], ADMIN_STORES_FALLBACK_DATA.storeNotices),
   ])
+
+  const coreResourcesAreEmpty =
+    storeSlots.source === 'api' &&
+    tenantStores.source === 'api' &&
+    storeAssignments.source === 'api' &&
+    storeSlots.items.length === 0 &&
+    tenantStores.items.length === 0 &&
+    storeAssignments.items.length === 0
+
+  if (coreResourcesAreEmpty) {
+    const error = 'core resources returned an empty list'
+    return {
+      storeSlots: fallbackList(ADMIN_STORES_FALLBACK_DATA.storeSlots, error),
+      tenantStores: fallbackList(ADMIN_STORES_FALLBACK_DATA.tenantStores, error),
+      storeAssignments: fallbackList(ADMIN_STORES_FALLBACK_DATA.storeAssignments, error),
+      tenantMenuItems: fallbackList(ADMIN_STORES_FALLBACK_DATA.tenantMenuItems, error),
+      storeMenuOfferings: fallbackList(ADMIN_STORES_FALLBACK_DATA.storeMenuOfferings, error),
+      storeOperatingRules: fallbackList(ADMIN_STORES_FALLBACK_DATA.storeOperatingRules, error),
+      storeNotices: fallbackList(ADMIN_STORES_FALLBACK_DATA.storeNotices, error),
+    }
+  }
 
   return {
     storeSlots,
