@@ -1,3 +1,4 @@
+import { AdminModule } from './admin/admin.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
@@ -7,6 +8,7 @@ import { GamesModule } from './games/games.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RankingsModule } from './rankings/rankings.module';
 import { StatsModule } from './stats/stats.module';
+import { StoresModule } from './stores/stores.module';
 import { UsersModule } from './users/users.module';
 import { VerifyModule } from './verify/verify.module';
 
@@ -20,6 +22,8 @@ import { VerifyModule } from './verify/verify.module';
     VerifyModule,
     StatsModule,
     RankingsModule,
+    StoresModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

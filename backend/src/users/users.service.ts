@@ -15,6 +15,7 @@ export class UsersService {
       nickname: user.nickname,
       profileImage: user.profileImage,
       teamCode: user.teamCode,
+      role: user.role,
       avatarConfig: user.avatarConfig,
       createdAt: user.createdAt,
     };

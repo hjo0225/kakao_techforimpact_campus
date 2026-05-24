@@ -1,7 +1,11 @@
 import { Test } from '@nestjs/testing';
-import { UsageKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatsService } from './stats.service';
+
+const UsageKind = {
+  USE: 'USE',
+  RETURN: 'RETURN',
+} as const;
 
 type AnyFn = jest.Mock<unknown, unknown[]>;
 interface PrismaStub {

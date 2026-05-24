@@ -7,10 +7,15 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UsageKind } from '@prisma/client';
 import axios, { AxiosError } from 'axios';
 import FormData from 'form-data';
 import { PrismaService } from '../prisma/prisma.service';
+
+const UsageKind = {
+  USE: 'USE',
+  RETURN: 'RETURN',
+} as const;
+type UsageKind = (typeof UsageKind)[keyof typeof UsageKind];
 
 export interface ReusableVerifyResult {
   isReusable: boolean;

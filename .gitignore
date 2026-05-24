@@ -30,3 +30,12 @@ CLAUDE.md
 
 # Puppeteer UI 인스펙션 산출물
 frontend/inspect-out/
+
+# Browser/Playwright local QA artifacts
+.playwright-cli/
+.playwright-mcp/
+output/
+
+# Local OCR/reference inputs for stadium map extraction.
+# Runtime map assets live in frontend/public/maps/.
+ref/

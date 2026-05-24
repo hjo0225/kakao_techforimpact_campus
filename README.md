@@ -56,7 +56,7 @@ KBO 한 시즌 약 800만 명이 직관하고, 경기당 수만 개의 일회용
 | F3. Vision AI 사용·반납 인증          | 구현됨  | MobileNetV2 + `/verify/use`·`/verify/return`           |
 | F4. 팀별 누적 랭킹                    | 구현됨  | PG aggregate. 트래픽 증가 시 Redis ZSET                |
 | F5. 통계 / 공유 이미지                | 구현됨  | `/stats/me` + Canvas 2D 공유 카드. 등급은 폐기         |
-| F6. 다회용기 매장 + 메뉴 지도         | 구현됨  | 반납함 정보 제거, 매장·메뉴 중심으로 재설계            |
+| F6. 잠실야구장 내부 식음료 지도       | 구현됨  | DB/API 기반 슬롯·입점·메뉴 구조 + 관리자 MVP           |
 | F7. 디자인 시스템 (Vintage + Pixel)   | 구현됨  | cream/burgundy/rose + Galmuri 픽셀 폰트 + NES 컴포넌트 |
 
 상세: [`docs/PRD.md`](docs/PRD.md) · 진행 중 plan: [`docs/plans/active/`](docs/plans/active/)
@@ -67,7 +67,19 @@ KBO 한 시즌 약 800만 명이 직관하고, 경기당 수만 개의 일회용
 - 점수 산정 알고리즘 재검토 (USE 50 / RETURN 100 고정이 적절한가)
 - 시즌 리셋 정책 (영구 누적 vs 시즌별)
 - 팀 랭킹 1·2위 격차가 너무 벌어졌을 때 동기 유지 방법
-- 매장/메뉴 데이터 운영사 협의 (현재 mock)
+- 매장 메뉴·가격·다회용기·개인용기 정책 수동 검수 및 운영자 입력
+
+---
+
+### 잠실야구장 식음료 지도 통합 메모
+
+- 지도 데이터는 `StoreSlot`(고정 위치), `TenantStore`(입점 가게), `StoreAssignment`(시즌/기간별 배정), `TenantMenuItem`, `StoreMenuOffering`, `StoreOperatingRule`로 분리되어 있다. 슬롯 번호는 가게가 아니라 위치의 속성이다.
+- 마이그레이션 `backend/prisma/migrations/20260522090000_add_stadium_store_domain_and_user_role/`에는 한 슬롯에 `ACTIVE` 배정이 2개 생기지 않도록 하는 partial unique index가 포함되어 있다.
+- seed는 `backend/prisma/seed.ts`의 `JAMSIL` 데이터로 들어간다. 1F/2F/2.5F/3F는 구조도 슬롯 번호를 사용하고, 4F는 공식 번호 미확인으로 `F4_01`, `F4_02` 임시 코드를 쓴다.
+- 좌표는 `ref/*구조도.png`를 OCR/수동 검수해 뽑은 `xPct/yPct` 정규화 좌표다. `ref/`는 로컬 원본 자료라 gitignore 대상이고, 런타임 지도 이미지는 `frontend/public/maps/`에 커밋된다.
+- 실제 DB 반영 순서는 `cd backend && npm run prisma:generate && npm run db:migrate:deploy && npm run db:seed`다. 로컬에서 seed를 실행하려면 `DATABASE_URL`이 필요하다.
+- 프론트 `/map`은 백엔드 `/stores`, `/stadiums/:stadiumCode/floors` 응답을 우선 사용하고, API가 없으면 구조도 기반 fixture로 표시한다. 로컬 카카오 로그인은 `/login`의 `로컬 QA로 지도 보기` 버튼으로 우회할 수 있다.
+- 관리자 MVP는 `/admin/stores`에 있다. 메뉴, 가격, 다회용기/개인용기 정책, 영업시간은 초기 seed에서 placeholder 상태이므로 운영자가 이 화면에서 보강해야 한다.
 
 ---
 

@@ -26,6 +26,9 @@ const RecordScreen = lazy(() =>
 const RankingScreen = lazy(() =>
   import('./app/components/screens/RankingScreen').then((m) => ({ default: m.RankingScreen })),
 )
+const AdminStoresScreen = lazy(() =>
+  import('./app/components/screens/AdminStoresScreen').then((m) => ({ default: m.AdminStoresScreen })),
+)
 
 function ScreenFallback() {
   return <div className="cb-screen-fallback">불러오는 중...</div>
@@ -77,6 +80,7 @@ export default function App() {
             <Route path="/record" element={<RecordScreen />} />
             <Route path="/ranking" element={<RankingScreen />} />
             <Route path="/account" element={<RecordScreen />} />
+            <Route path="/admin/stores" element={<AdminStoresScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
