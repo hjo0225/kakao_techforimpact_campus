@@ -10,10 +10,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UsageKind } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { VerifyDto } from './dto/verify.dto';
 import { UploadedImage, VerifyService } from './verify.service';
+
+const UsageKind = {
+  USE: 'USE',
+  RETURN: 'RETURN',
+} as const;
 
 interface AuthedRequest {
   user: { userId: string };

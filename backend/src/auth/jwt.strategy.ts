@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface JwtPayload {
   sub: string;
   nickname: string;
+  role?: 'USER' | 'ADMIN';
 }
 
 const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
@@ -29,7 +30,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     void this.touchLastSeen(payload.sub);
-    return { userId: payload.sub, nickname: payload.nickname };
+    return {
+      userId: payload.sub,
+      nickname: payload.nickname,
+      role: payload.role,
+    };
   }
 
   // 비동기로 last_seen_at 갱신. 결과를 기다리지 않음 — 요청 응답 지연 0.

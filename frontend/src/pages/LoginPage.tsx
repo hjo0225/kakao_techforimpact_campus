@@ -1,9 +1,33 @@
+import { useNavigate } from 'react-router-dom'
 import landingBg from '../assets/landing-bg.png'
 import landingLogo from '../assets/landing-logo.svg'
 import { Button } from '../app/components/design-system'
 import { getKakaoLoginUrl } from '../lib/kakaoAuth'
+import { useAuthStore } from '../store/authStore'
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const setAuth = useAuthStore((state) => state.setAuth)
+  const setTeam = useAuthStore((state) => state.setTeam)
+  const isLocalDev =
+    import.meta.env.DEV &&
+    (window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === 'localhost')
+
+  const enterLocalQa = () => {
+    setAuth(
+      {
+        id: 'dev-local-user',
+        nickname: '로컬 QA',
+        profileImage: null,
+        teamCode: 'LG',
+      },
+      'dev-local-token',
+    )
+    setTeam('LG')
+    navigate('/map')
+  }
+
   return (
     <div className="cb-login-screen">
       <img src={landingBg} alt="" aria-hidden="true" className="cb-login-bg" />
@@ -26,6 +50,11 @@ export default function LoginPage() {
           </svg>
           카카오로 시작하기
         </Button>
+        {isLocalDev && (
+          <Button onClick={enterLocalQa} variant="secondary" size="lg" fullWidth>
+            로컬 QA로 지도 보기
+          </Button>
+        )}
       </div>
     </div>
   )

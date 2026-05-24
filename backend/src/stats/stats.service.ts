@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { UsageKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+
+const UsageKind = {
+  USE: 'USE',
+  RETURN: 'RETURN',
+} as const;
+
+type UsageKind = (typeof UsageKind)[keyof typeof UsageKind];
 
 export interface MyStats {
   points: number;

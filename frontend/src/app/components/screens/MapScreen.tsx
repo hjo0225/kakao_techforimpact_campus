@@ -1,625 +1,461 @@
-import { useMemo, useState } from 'react';
-import { Info, Store, UtensilsCrossed } from 'lucide-react';
-import { useApp } from '../../AppContext';
-import { BottomNav } from '../BottomNav';
-import { StatusBar } from '../StatusBar';
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Beer,
+  Coffee,
+  Info,
+  MapPin,
+  Search,
+  Store,
+  UtensilsCrossed,
+} from 'lucide-react'
+import { useApp } from '../../AppContext'
+import { BottomNav } from '../BottomNav'
+import { StatusBar } from '../StatusBar'
+import { StadiumSvgMap } from '../map/StadiumSvgMap'
+import {
+  CATEGORY_LABELS,
+  JAMSIL_FLOOR_FIXTURE,
+  getStadiumFloors,
+  getStadiumStores,
+  type StadiumFloor,
+  type StadiumStore,
+  type StoreCategory,
+} from '../../../lib/storesApi'
 
-const PLACE_TABS = ['구장 내부', '외부 식당'] as const;
+const floorButtonBaseStyle = {
+  borderRadius: '9999px',
+  padding: '10px 14px',
+  border: '2px solid #430A21',
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+} as const
 
-type PlaceTab = (typeof PLACE_TABS)[number];
-type SpotKind = 'store' | 'partner';
+const categories: Array<{ key: 'ALL' | StoreCategory; label: string; icon: typeof UtensilsCrossed }> = [
+  { key: 'ALL', label: '전체', icon: Store },
+  { key: 'MEAL', label: CATEGORY_LABELS.MEAL, icon: UtensilsCrossed },
+  { key: 'CAFE', label: CATEGORY_LABELS.CAFE, icon: Coffee },
+  { key: 'CONVENIENCE', label: CATEGORY_LABELS.CONVENIENCE, icon: Store },
+  { key: 'BEVERAGE', label: CATEGORY_LABELS.BEVERAGE, icon: Beer },
+]
 
-interface MenuItem {
-  name: string;
-  price: string;
-  icon: string;
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase()
 }
 
-interface Spot {
-  id: string;
-  kind: SpotKind;
-  x: number;
-  y: number;
-  title: string;
-  shortLabel: string;
-  location: string;
-  distance: string;
-  badge: string;
-  badgeColor: string;
-  badgeBg: string;
-  note: string;
-  hours: string;
-  walkTime?: string;
-  menu: MenuItem[];
+function matchesSearch(store: StadiumStore, rawQuery: string) {
+  const query = normalizeSearch(rawQuery)
+  if (!query) return true
+
+  const searchTargets = [
+    store.name,
+    store.slotNo,
+    store.nearestGate,
+    store.gate,
+    ...store.featuredMenus,
+  ]
+
+  return searchTargets.some((target) => target.toLowerCase().includes(query))
 }
 
-const STORES: Spot[] = [
-  {
-    id: 'store-central-2f',
-    kind: 'store',
-    x: 168,
-    y: 152,
-    title: '중앙 매점',
-    shortLabel: '중앙',
-    location: '2층 중앙 푸드코트',
-    distance: '18m',
-    badge: '영업 중',
-    badgeColor: 'var(--cb-primary-deep)',
-    badgeBg: 'var(--cb-primary-soft)',
-    note: '다회용기 보증금 결제에 자동 포함 · 컵 반납 안내 스티커 비치',
-    hours: '7회말 종료 전까지',
-    menu: [
-      { name: '클래식 버거 세트', price: '9,800원', icon: '🍔' },
-      { name: '치즈 핫도그', price: '5,500원', icon: '🌭' },
-      { name: '제로 콜라', price: '3,000원', icon: '🥤' },
-      { name: '감자튀김', price: '4,200원', icon: '🍟' },
-    ],
-  },
-  {
-    id: 'store-firstbase-2f',
-    kind: 'store',
-    x: 236,
-    y: 114,
-    title: '1루 스낵바',
-    shortLabel: '1루',
-    location: '2층 1루 내야 복도',
-    distance: '34m',
-    badge: '대기 짧음',
-    badgeColor: '#B07800',
-    badgeBg: '#FFF6D8',
-    note: '줄이 짧아 하프타임 주문 추천',
-    hours: '경기 종료 30분 전까지',
-    menu: [
-      { name: '순살 치킨 (스몰)', price: '8,500원', icon: '🍗' },
-      { name: '왕감자', price: '4,500원', icon: '🥔' },
-      { name: '생수 500ml', price: '1,500원', icon: '💧' },
-    ],
-  },
-  {
-    id: 'store-thirdbase-3f',
-    kind: 'store',
-    x: 96,
-    y: 96,
-    title: '3루 스낵존',
-    shortLabel: '3루',
-    location: '3층 3루 응원석 뒤',
-    distance: '22m',
-    badge: '영업 중',
-    badgeColor: 'var(--cb-primary-deep)',
-    badgeBg: 'var(--cb-primary-soft)',
-    note: '좌석에서 가장 가까운 다회용기 매장',
-    hours: '8회초 종료 전까지',
-    menu: [
-      { name: '즉석 떡볶이', price: '6,000원', icon: '🌶️' },
-      { name: '츄러스', price: '3,500원', icon: '🥨' },
-      { name: '복숭아 아이스티', price: '3,800원', icon: '🍑' },
-    ],
-  },
-  {
-    id: 'store-center-3f',
-    kind: 'store',
-    x: 170,
-    y: 72,
-    title: '중앙 키오스크',
-    shortLabel: '중앙',
-    location: '3층 중앙 계단 앞',
-    distance: '26m',
-    badge: '주문 가능',
-    badgeColor: 'var(--cb-primary)',
-    badgeBg: 'var(--cb-primary-soft)',
-    note: '간단 메뉴 위주 · 키오스크 셀프 주문',
-    hours: '경기 종료 1시간 전까지',
-    menu: [
-      { name: '에그 샌드위치', price: '5,800원', icon: '🥪' },
-      { name: '아메리카노', price: '3,500원', icon: '☕' },
-      { name: '생수 500ml', price: '1,500원', icon: '💧' },
-    ],
-  },
-];
+function isCategoryMatch(store: StadiumStore, category: 'ALL' | StoreCategory) {
+  return category === 'ALL' ? true : store.category === category
+}
 
-const PARTNER_RESTAURANTS: Spot[] = [
-  {
-    id: 'partner-bistro',
-    kind: 'partner',
-    x: 70,
-    y: 188,
-    title: '리턴컵 비스트로',
-    shortLabel: '비스트로',
-    location: '잠실새내역 4번 출구 방향',
-    distance: '도보 8분',
-    badge: '영업 중',
-    badgeColor: '#6D28D9',
-    badgeBg: '#F3E8FF',
-    note: '경기 티켓 제시 시 음료 10% 할인',
-    hours: '11:00 - 22:30',
-    walkTime: '8분',
-    menu: [
-      { name: '토마토 파스타', price: '13,000원', icon: '🍝' },
-      { name: '시저 샐러드', price: '11,500원', icon: '🥗' },
-      { name: '레몬 탄산수', price: '4,500원', icon: '🍋' },
-    ],
-  },
-  {
-    id: 'partner-bunsik',
-    kind: 'partner',
-    x: 154,
-    y: 202,
-    title: '새활용 분식',
-    shortLabel: '분식',
-    location: '종합운동장역 9번 출구 방향',
-    distance: '도보 6분',
-    badge: '라스트 오더 전',
-    badgeColor: '#7C3AED',
-    badgeBg: '#F3E8FF',
-    note: '포장컵 대신 다회용컵 제공',
-    hours: '10:30 - 21:30',
-    walkTime: '6분',
-    menu: [
-      { name: '국물 떡볶이', price: '5,500원', icon: '🌶️' },
-      { name: '참치 김밥', price: '4,000원', icon: '🍙' },
-      { name: '오뎅탕', price: '5,000원', icon: '🍢' },
-    ],
-  },
-  {
-    id: 'partner-burger',
-    kind: 'partner',
-    x: 248,
-    y: 188,
-    title: '그린 더그아웃 버거',
-    shortLabel: '버거',
-    location: '1루 메인게이트 맞은편',
-    distance: '도보 9분',
-    badge: '영업 중',
-    badgeColor: '#6D28D9',
-    badgeBg: '#F3E8FF',
-    note: '매장 반납함과 앱 인증 스탬프 연동 예정',
-    hours: '11:30 - 23:00',
-    walkTime: '9분',
-    menu: [
-      { name: '식물성 와퍼', price: '10,500원', icon: '🍔' },
-      { name: '트러플 감자', price: '6,000원', icon: '🍟' },
-      { name: '생맥주 500ml', price: '6,500원', icon: '🍺' },
-    ],
-  },
-];
+function getFoodOnly(category: 'ALL' | StoreCategory) {
+  return category !== 'ALL' && category !== 'CONVENIENCE'
+}
 
-const ALL_SPOTS: Spot[] = [...STORES, ...PARTNER_RESTAURANTS];
+function getCategoryTone(category: StoreCategory) {
+  switch (category) {
+    case 'MEAL':
+      return { background: 'var(--cb-primary-soft)', color: 'var(--cb-primary-deep)', border: 'var(--cb-primary-border)' }
+    case 'CAFE':
+      return { background: '#FFF4D6', color: '#8C5A00', border: '#E3B34B' }
+    case 'CONVENIENCE':
+      return { background: '#E8F5EB', color: '#2F6B3A', border: '#8AC39A' }
+    case 'BEVERAGE':
+      return { background: '#E8F1FF', color: '#1F4B8F', border: '#8FAFE8' }
+  }
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+      <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73', letterSpacing: '0.04em' }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 13, color: '#430A21', lineHeight: 1.45, minWidth: 0, wordBreak: 'keep-all' }}>{value}</p>
+    </div>
+  )
+}
 
 export function MapScreen() {
-  const { selectedGame, seatInfo } = useApp();
-  const [placeTab, setPlaceTab] = useState<PlaceTab>('구장 내부');
-  const [selectedSpotId, setSelectedSpotId] = useState<string>(STORES[0].id);
+  const { selectedGame, seatInfo } = useApp()
+  const [selectedFloor, setSelectedFloor] = useState<StadiumFloor>('2F')
+  const [selectedCategory, setSelectedCategory] = useState<'ALL' | StoreCategory>('ALL')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
 
-  const visibleSpots = useMemo(
-    () => (placeTab === '구장 내부' ? STORES : PARTNER_RESTAURANTS),
-    [placeTab],
-  );
+  const foodOnly = getFoodOnly(selectedCategory)
 
-  const selectedSpot = useMemo(
-    () => visibleSpots.find((spot) => spot.id === selectedSpotId) ?? visibleSpots[0],
-    [visibleSpots, selectedSpotId],
-  );
+  const floorsQuery = useQuery({
+    queryKey: ['stadium-floors', 'JAMSIL'],
+    queryFn: () => getStadiumFloors('JAMSIL'),
+  })
 
-  const handlePickSpot = (spot: Spot) => {
-    setSelectedSpotId(spot.id);
-    setPlaceTab(spot.kind === 'partner' ? '외부 식당' : '구장 내부');
-  };
+  const storesQuery = useQuery({
+    queryKey: ['stadium-stores', 'JAMSIL', selectedFloor, foodOnly],
+    queryFn: () => getStadiumStores({ stadiumCode: 'JAMSIL', floor: selectedFloor, foodOnly }),
+  })
 
-  const handleTabChange = (tab: PlaceTab) => {
-    setPlaceTab(tab);
-    const next = tab === '구장 내부' ? STORES[0] : PARTNER_RESTAURANTS[0];
-    setSelectedSpotId(next.id);
-  };
+  const floorOptions = floorsQuery.data?.data.floors ?? JAMSIL_FLOOR_FIXTURE
+  const queriedStores = storesQuery.data?.data.items ?? []
+
+  useEffect(() => {
+    if (!floorOptions.some((floor) => floor.code === selectedFloor)) {
+      setSelectedFloor(floorOptions[0]?.code ?? '2F')
+    }
+  }, [floorOptions, selectedFloor])
+
+  const visibleStores = useMemo(
+    () => queriedStores
+      .filter((store) => isCategoryMatch(store, selectedCategory))
+      .filter((store) => matchesSearch(store, searchQuery)),
+    [queriedStores, searchQuery, selectedCategory],
+  )
+
+  useEffect(() => {
+    if (!visibleStores.length) {
+      setSelectedStoreId(null)
+      return
+    }
+
+    if (!selectedStoreId || !visibleStores.some((store) => store.id === selectedStoreId)) {
+      setSelectedStoreId(visibleStores[0].id)
+    }
+  }, [selectedStoreId, visibleStores])
+
+  const selectedStore = useMemo(
+    () => visibleStores.find((store) => store.id === selectedStoreId) ?? visibleStores[0] ?? null,
+    [selectedStoreId, visibleStores],
+  )
+
+  const hasFallbackData = floorsQuery.data?.source === 'fallback' || storesQuery.data?.source === 'fallback'
+  const isLoading = floorsQuery.isLoading || storesQuery.isLoading
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative' }}>
       <StatusBar centerLabel="지도" />
 
-      <div style={{ padding: '10px 16px 12px', background: 'transparent' }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-          <div style={{ flex: '0 0 92px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-            <div style={{
-              flex: 1,
-              background: 'var(--cb-surface)',
-              border: '2px solid #430A21',
-              borderRadius: 'var(--cb-radius-md)',
-              padding: '10px 12px',
-              boxShadow: '0 2px 0 0 #430A21',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-            }}>
-              <p style={{ fontSize: 10, color: '#6B7280', marginBottom: 3, fontWeight: 700, letterSpacing: '0.04em' }}>구장</p>
-              <p style={{ fontSize: 13, fontWeight: 900, color: '#430A21', lineHeight: 1.25 }}>
-                {(selectedGame?.venue ?? '잠실 야구장').split(' ')[0]}
-              </p>
-            </div>
-            <div style={{
-              flex: 1,
-              background: 'var(--cb-surface)',
-              border: '2px solid #430A21',
-              borderRadius: 'var(--cb-radius-md)',
-              padding: '10px 12px',
-              boxShadow: '0 2px 0 0 #430A21',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-            }}>
-              <p style={{ fontSize: 10, color: '#6B7280', marginBottom: 3, fontWeight: 700, letterSpacing: '0.04em' }}>좌석</p>
-              <p style={{ fontSize: 13, fontWeight: 900, color: '#430A21', lineHeight: 1.25 }}>
-                {seatInfo.section || '미입력'}
-                {seatInfo.seatNumber && (
-                  <span style={{ fontSize: 10, color: '#5E1530', marginLeft: 4, fontWeight: 700 }}>
-                    {seatInfo.seatNumber}
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div style={{
-            flex: 1,
-            aspectRatio: '1.55 / 1',
-            minWidth: 0,
-            background: 'var(--cb-bg-soft)',
-            border: '2px solid #430A21',
-            borderRadius: 'var(--cb-radius-md)',
-            boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
-            padding: 4,
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '100%' }}>
-              <defs>
-                <linearGradient id="mini-field" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#F8EAC9" />
-                  <stop offset="100%" stopColor="#F0E8E7" />
-                </linearGradient>
-              </defs>
-              <ellipse cx="100" cy="58" rx="88" ry="48" fill="#FFFCF6" stroke="#E8DEDE" strokeWidth="1.5" />
-              <ellipse cx="100" cy="58" rx="70" ry="38" fill="#FAF5EF" stroke="#F0E8E7" strokeWidth="1" />
-              <ellipse cx="100" cy="58" rx="50" ry="26" fill="#F8EAC9" stroke="#F2A2AD" strokeWidth="1" />
-              <ellipse cx="100" cy="60" rx="34" ry="17" fill="url(#mini-field)" stroke="#DD7386" strokeWidth="1" />
-              <polygon points="100,46 114,60 100,74 86,60" fill="#FBE6EA" stroke="#DD7386" strokeWidth="1" />
-              <circle cx="100" cy="108" r="4.5" fill="#430A21" stroke="#fff" strokeWidth="1.5" />
-              <text x="100" y="124" textAnchor="middle" fontSize="8" fill="#430A21" fontWeight="700">내 좌석</text>
-
-              {ALL_SPOTS.map((spot) => {
-                const x = (spot.x * 200) / 340;
-                const y = (spot.y * 130) / 228;
-                const color = spot.kind === 'store' ? '#C85C77' : '#7C3AED';
-                const isSelected = selectedSpotId === spot.id;
-                return (
-                  <g key={spot.id} onClick={() => handlePickSpot(spot)} style={{ cursor: 'pointer' }}>
-                    {isSelected && (
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={8}
-                        fill={spot.kind === 'store' ? 'rgba(200, 92, 119, 0.28)' : 'rgba(124, 58, 237, 0.28)'}
-                        stroke={color}
-                        strokeWidth="1"
-                      />
-                    )}
-                    <circle cx={x} cy={y} r={4} fill={color} stroke="#fff" strokeWidth="1.5" />
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </div>
-
-        <div style={{
-          marginTop: 10,
-          background: selectedSpot.kind === 'store' ? 'var(--cb-primary-soft)' : '#F3E8FF',
-          border: `2px solid ${selectedSpot.kind === 'store' ? 'var(--cb-primary-border)' : '#7C3AED'}`,
-          borderRadius: 'var(--cb-radius-md)',
-          padding: '10px 14px',
-          boxShadow: `0 2px 0 0 ${selectedSpot.kind === 'store' ? 'var(--cb-primary-border)' : '#7C3AED'}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, marginBottom: 2 }}>내 위치 기준</p>
-            <p style={{
-              fontSize: 13,
-              fontWeight: 900,
-              color: selectedSpot.kind === 'store' ? 'var(--cb-primary-deep)' : '#6D28D9',
-              lineHeight: 1.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
-              {selectedSpot.title}
-            </p>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <p style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 700, marginBottom: 2 }}>
-              {selectedSpot.kind === 'store' ? '거리' : '도보'}
-            </p>
-            <p style={{
-              fontSize: 16,
-              fontWeight: 900,
-              color: selectedSpot.kind === 'store' ? 'var(--cb-primary-deep)' : '#6D28D9',
-              lineHeight: 1,
-            }}>
-              {selectedSpot.kind === 'store' ? selectedSpot.distance : (selectedSpot.walkTime ?? selectedSpot.distance)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div style={{
-        flexShrink: 0,
-        display: 'flex',
-        gap: 8,
-        padding: '6px 16px 10px',
-        background: 'transparent',
-      }}>
-        {PLACE_TABS.map((tab) => {
-          const active = placeTab === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => handleTabChange(tab)}
-              style={{
-                flex: 1,
-                minHeight: 40,
-                padding: '8px 14px',
-                border: '2px solid #430A21',
-                borderRadius: 'var(--cb-radius-md)',
-                background: active
-                  ? 'linear-gradient(180deg, #F2A2AD 0%, #DD7386 100%)'
-                  : 'var(--cb-surface)',
-                color: active ? '#fff' : '#430A21',
-                fontSize: 13,
-                fontWeight: active ? 900 : 700,
-                cursor: 'pointer',
-                boxShadow: active
-                  ? '0 3px 0 0 #430A21'
-                  : '0 2px 0 0 #430A21',
-                transform: active ? 'translateY(-1px)' : 'none',
-                transition: 'transform 80ms ease, box-shadow 80ms ease',
-              }}
-            >
-              {tab}
-            </button>
-          );
-        })}
-      </div>
-
       <div
-        className="hide-scroll"
         style={{
-          flex: 1,
+          flex: '1 1 0',
+          height: 0,
           minHeight: 0,
           overflowY: 'auto',
-          overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          padding: '10px 16px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-        }}
-      >
-        <div style={{
-          background: '#fff',
-          borderRadius: 'var(--cb-radius-lg)',
-          padding: '14px 16px',
-          border: `2px solid ${selectedSpot.kind === 'store' ? 'var(--cb-primary-border)' : '#7C3AED'}`,
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+          padding: '10px 16px 16px',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
-          boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 'var(--cb-radius-md)',
-              background: selectedSpot.kind === 'store' ? 'var(--cb-primary-soft)' : '#F3E8FF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              border: '1.5px solid #430A21',
-            }}>
-              {selectedSpot.kind === 'store'
-                ? <Store size={18} color="var(--cb-primary)" />
-                : <UtensilsCrossed size={18} color="#7C3AED" />}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: '#111827', lineHeight: 1.35 }}>{selectedSpot.title}</p>
-              <p style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.45, marginTop: 2 }}>{selectedSpot.note}</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{
-              flex: 1,
-              background: '#F8FAFC',
-              borderRadius: 'var(--cb-radius-md)',
-              padding: '10px 12px',
-              minWidth: 0,
-              border: '2px solid #430A21',
-              boxShadow: '0 2px 0 0 #430A21',
-            }}>
-              <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 4 }}>운영 시간</p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', lineHeight: 1.35 }}>{selectedSpot.hours}</p>
-            </div>
-            <div style={{
-              flex: 1,
-              background: '#F8FAFC',
-              borderRadius: 'var(--cb-radius-md)',
-              padding: '10px 12px',
-              minWidth: 0,
-              border: '2px solid #430A21',
-              boxShadow: '0 2px 0 0 #430A21',
-            }}>
-              <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 4 }}>
-                {selectedSpot.kind === 'store' ? '위치' : '도보'}
-              </p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', lineHeight: 1.35 }}>
-                {selectedSpot.kind === 'store' ? selectedSpot.location : (selectedSpot.walkTime ?? selectedSpot.distance)}
-              </p>
+        }}
+      >
+        <section
+          style={{
+            background: '#fff',
+            border: '3px solid #430A21',
+            borderRadius: '18px',
+            boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(67, 10, 33, 0.18)',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ padding: '14px 14px 12px', background: 'linear-gradient(180deg, #FFF6F8 0%, #FFFFFF 100%)', borderBottom: '2px solid #430A21' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73', letterSpacing: '0.04em' }}>잠실야구장 내부 식음료 지도</p>
+                <h2 style={{ margin: '4px 0 0', fontSize: 20, lineHeight: 1.2, color: '#430A21' }}>
+                  {selectedGame?.venue ?? '잠실야구장'} {selectedFloor}
+                </h2>
+              </div>
+              <div style={{ textAlign: 'right', minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73' }}>좌석 기준</p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 800, color: '#430A21', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 132 }}>
+                  {seatInfo.section || '미입력'} {seatInfo.seatNumber || ''}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <p style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: selectedSpot.kind === 'store' ? 'var(--cb-primary-deep)' : '#6D28D9',
-              marginBottom: 8,
-            }}
-            >
-              대표 메뉴
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {selectedSpot.menu.map((item) => (
-                <div key={item.name} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '8px 12px',
-                  background: '#FAFAFB',
-                  borderRadius: 'var(--cb-radius-md)',
-                  border: '2px solid #430A21',
-                  boxShadow: '0 2px 0 0 #430A21',
-                }}>
-                  <div
-                    aria-hidden="true"
+          <div style={{ padding: 14, display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              <div style={{ background: 'var(--cb-bg-soft)', border: '2px solid #430A21', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 0 0 #430A21' }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73' }}>현재 층 매장</p>
+                <p style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 900, color: '#430A21' }}>{visibleStores.length}곳</p>
+              </div>
+              <div style={{ background: 'var(--cb-primary-soft)', border: '2px solid var(--cb-primary-border)', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 0 0 var(--cb-primary-border)' }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: 'var(--cb-primary-deep)' }}>데이터 소스</p>
+                <p style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 900, color: '#430A21' }}>{hasFallbackData ? 'Fixture' : 'API'}</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+              {floorOptions.map((floor) => {
+                const isActive = floor.code === selectedFloor
+
+                return (
+                  <button
+                    key={floor.code}
+                    type="button"
+                    onClick={() => setSelectedFloor(floor.code)}
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 'var(--cb-radius-sm)',
-                      background: '#fff',
-                      border: '1.5px solid #430A21',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 18,
-                      flexShrink: 0,
+                      ...floorButtonBaseStyle,
+                      background: isActive ? 'var(--cb-primary-soft)' : '#fff',
+                      color: isActive ? 'var(--cb-primary-deep)' : '#5E1530',
+                      borderColor: isActive ? 'var(--cb-primary-border)' : '#430A21',
+                      boxShadow: isActive ? '0 2px 0 0 var(--cb-primary-border)' : '0 2px 0 0 #430A21',
                     }}
+                    aria-pressed={isActive}
                   >
-                    {item.icon}
-                  </div>
-                  <p style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#111827', lineHeight: 1.4 }}>{item.name}</p>
-                  <p style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: selectedSpot.kind === 'store' ? 'var(--cb-primary-deep)' : '#6D28D9',
-                    flexShrink: 0,
-                  }}
-                  >
-                    {item.price}
-                  </p>
-                </div>
-              ))}
+                    {floor.label}
+                  </button>
+                )
+              })}
             </div>
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {visibleSpots.map((spot) => {
-            const isActive = selectedSpot.id === spot.id;
-            const preview = spot.menu.slice(0, 2).map((m) => m.name).join(' · ');
-            return (
-              <button
-                key={spot.id}
-                type="button"
-                onClick={() => handlePickSpot(spot)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  background: isActive
-                    ? (spot.kind === 'store' ? 'var(--cb-bg-soft)' : '#FBF7FF')
-                    : '#fff',
-                  borderRadius: 'var(--cb-radius-lg)',
-                  padding: '14px',
-                  border: isActive
-                    ? `2px solid ${spot.kind === 'store' ? 'var(--cb-primary-border)' : '#7C3AED'}`
-                    : '2px solid #430A21',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  cursor: 'pointer',
-                  boxShadow: isActive
-                    ? '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)'
-                    : '0 2px 0 0 #430A21',
-                }}
-              >
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 'var(--cb-radius-md)',
-                  background: spot.kind === 'store' ? 'var(--cb-primary-soft)' : '#F3E8FF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  border: '1.5px solid #430A21',
-                }}>
-                  {spot.kind === 'store'
-                    ? <Store size={18} color="var(--cb-primary)" />
-                    : <UtensilsCrossed size={18} color="#7C3AED" />}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', lineHeight: 1.35 }}>{spot.title}</span>
-                    <span style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: spot.badgeColor,
-                      background: spot.badgeBg,
-                      padding: '3px 8px',
-                      borderRadius: 'var(--cb-radius-full)',
-                      border: `1.5px solid ${spot.badgeColor}`,
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+              {categories.map((category) => {
+                const Icon = category.icon
+                const isActive = selectedCategory === category.key
+
+                return (
+                  <button
+                    key={category.key}
+                    type="button"
+                    onClick={() => setSelectedCategory(category.key)}
+                    style={{
+                      ...floorButtonBaseStyle,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: isActive ? '#430A21' : '#fff',
+                      color: isActive ? '#FFF8F9' : '#430A21',
+                      boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
                     }}
-                    >
-                      {spot.badge}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.45 }}>{preview}</p>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 3 }}>
-                    {spot.kind === 'store' ? '거리' : '도보'}
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    fontWeight: 800,
-                    color: spot.kind === 'store' ? 'var(--cb-primary-deep)' : '#6D28D9',
-                  }}
+                    aria-pressed={isActive}
                   >
-                    {spot.kind === 'store' ? spot.distance : (spot.walkTime ?? spot.distance)}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                    <Icon size={14} />
+                    {category.label}
+                  </button>
+                )
+              })}
+            </div>
 
-        <div style={{
-          background: '#F8FAFC',
-          borderRadius: 'var(--cb-radius-md)',
-          border: '2px solid #430A21',
-          padding: '12px 14px',
-          display: 'flex',
-          gap: 10,
-          boxShadow: '0 2px 0 0 #430A21',
-        }}>
-          <Info size={15} color="#94A3B8" style={{ flexShrink: 0, marginTop: 2 }} />
-          <p style={{ fontSize: 11, color: '#64748B', lineHeight: 1.6 }}>
-            메뉴 가격과 영업 상태는 경기 시간대 기준 예시 데이터입니다. 다회용기 보증금은 결제 시 자동 포함되며, 매장 또는 반납함에서 반납하면 환불됩니다.
-          </p>
-        </div>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: '#FFFDF8',
+                border: '2px solid #430A21',
+                borderRadius: '12px',
+                boxShadow: '0 2px 0 0 #430A21',
+                padding: '0 12px',
+                minHeight: 46,
+              }}
+            >
+              <Search size={16} color="#5E1530" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="가게명, 메뉴명, 매장번호, 가까운 게이트"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  border: 0,
+                  outline: 'none',
+                  background: 'transparent',
+                  color: '#430A21',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '12px 0',
+                }}
+              />
+            </label>
+
+            {hasFallbackData && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: '#FFF4D6', border: '2px solid #B07800', borderRadius: '12px', boxShadow: '0 2px 0 0 #B07800', padding: '10px 12px' }}>
+                <Info size={16} color="#8C5A00" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: '#8C5A00' }}>
+                  백엔드 응답이 없거나 형식이 맞지 않아 로컬 fixture로 표시 중입니다.
+                </p>
+              </div>
+            )}
+
+            <StadiumSvgMap
+              floor={selectedFloor}
+              stores={visibleStores}
+              selectedStoreId={selectedStore?.id ?? null}
+              onSelectStore={(store) => setSelectedStoreId(store.id)}
+            />
+
+            {isLoading && (
+              <div style={{ background: 'var(--cb-bg-soft)', border: '2px solid #430A21', borderRadius: '12px', boxShadow: '0 2px 0 0 #430A21', padding: '12px 14px' }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#5E1530', fontWeight: 700 }}>잠실야구장 매장을 불러오는 중입니다.</p>
+              </div>
+            )}
+
+            {selectedStore ? (
+              <section style={{ background: '#fff', border: '3px solid #430A21', borderRadius: '16px', boxShadow: '0 3px 0 0 #430A21, 0 5px 10px rgba(67, 10, 33, 0.16)', padding: 14, display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      flexShrink: 0,
+                      display: 'grid',
+                      placeItems: 'center',
+                      borderRadius: '12px',
+                      background: getCategoryTone(selectedStore.category).background,
+                      border: `2px solid ${getCategoryTone(selectedStore.category).border}`,
+                    }}
+                  >
+                    <MapPin size={18} color={getCategoryTone(selectedStore.category).color} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <h3
+                        title={selectedStore.name}
+                        style={{
+                          margin: 0,
+                          fontSize: 18,
+                          lineHeight: 1.25,
+                          color: '#430A21',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {selectedStore.name}
+                      </h3>
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          padding: '4px 8px',
+                          borderRadius: '9999px',
+                          background: getCategoryTone(selectedStore.category).background,
+                          border: `1.5px solid ${getCategoryTone(selectedStore.category).border}`,
+                          color: getCategoryTone(selectedStore.category).color,
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {CATEGORY_LABELS[selectedStore.category]}
+                      </span>
+                    </div>
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#8C6B73', fontWeight: 700 }}>
+                      Slot {selectedStore.slotNo} · {selectedStore.nearestGate}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <DetailRow label="층" value={selectedStore.floor} />
+                  <DetailRow label="게이트" value={selectedStore.gate} />
+                  <DetailRow label="구역" value={selectedStore.zone} />
+                  <DetailRow label="영업시간" value={selectedStore.businessHours} />
+                  <DetailRow label="대표 메뉴" value={selectedStore.featuredMenus.join(', ')} />
+                  <DetailRow
+                    label="용기 여부"
+                    value={`다회용기 ${selectedStore.reusableContainer ? '가능' : '불가'} / 개인용기 ${selectedStore.personalCupAllowed ? '가능' : '불가'}`}
+                  />
+                  <DetailRow label="비고" value={selectedStore.note ?? '-'} />
+                </div>
+              </section>
+            ) : (
+              <div style={{ background: '#fff', border: '2px solid #430A21', borderRadius: '14px', boxShadow: '0 2px 0 0 #430A21', padding: '16px 14px' }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#5E1530', fontWeight: 700 }}>
+                  현재 필터에 맞는 매장이 없습니다. 층이나 카테고리를 바꿔 보세요.
+                </p>
+              </div>
+            )}
+
+            <section style={{ display: 'grid', gap: 8 }}>
+              {visibleStores.map((store) => {
+                const tone = getCategoryTone(store.category)
+                const isActive = store.id === selectedStore?.id
+
+                return (
+                  <button
+                    key={store.id}
+                    type="button"
+                    onClick={() => setSelectedStoreId(store.id)}
+                    style={{
+                      textAlign: 'left',
+                      background: isActive ? '#FFF6F8' : '#fff',
+                      border: isActive ? '2px solid var(--cb-primary-border)' : '2px solid #430A21',
+                      borderRadius: '14px',
+                      boxShadow: isActive ? '0 2px 0 0 var(--cb-primary-border)' : '0 2px 0 0 #430A21',
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div
+                        style={{
+                          marginTop: 1,
+                          minWidth: 38,
+                          height: 38,
+                          borderRadius: '10px',
+                          background: tone.background,
+                          border: `2px solid ${tone.border}`,
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}
+                      >
+                        <Store size={16} color={tone.color} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+                          <p
+                            title={store.name}
+                            style={{
+                              margin: 0,
+                              flex: 1,
+                              minWidth: 0,
+                              fontSize: 14,
+                              fontWeight: 800,
+                              color: '#430A21',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {store.name}
+                          </p>
+                          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: tone.color }}>{store.slotNo}</span>
+                        </div>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#8C6B73', fontWeight: 700 }}>
+                          {store.nearestGate} · {store.zone}
+                        </p>
+                        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#5E1530', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          대표 메뉴: {store.featuredMenus.join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </section>
+          </div>
+        </section>
+
       </div>
 
       <BottomNav />
     </div>
-  );
+  )
 }

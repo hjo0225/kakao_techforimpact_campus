@@ -8,12 +8,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UsageKind {
+  USE
+  RETURN
+}
+
+enum StoreSlotKind {
+  FOOD
+  CAFE
+  CONVENIENCE
+  GOODS
+  TICKET
+  INFO
+  FAMILY
+  OTHER
+}
+
+enum StoreSide {
+  FIRST_BASE
+  THIRD_BASE
+  CENTER
+  OUTFIELD
+  INFIELD
+  UNKNOWN
+}
+
+enum StoreAssignmentStatus {
+  ACTIVE
+  PLANNED
+  TEMP_CLOSED
+  ENDED
+}
+
+enum ContainerPolicy {
+  UNKNOWN
+  SUPPORTED
+  NOT_SUPPORTED
+  MENU_DEPENDENT
+}
+
+enum MenuSaleStatus {
+  ON_SALE
+  SOLD_OUT
+  HIDDEN
+}
+
 model User {
   id           BigInt    @id @default(autoincrement())
   kakaoId      BigInt    @unique @map("kakao_id")
   nickname     String
   profileImage String?   @map("profile_image")
   teamCode     String?   @map("team_code")
+  role         UserRole  @default(USER)
   avatarConfig Json?     @map("avatar_config")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -25,6 +76,293 @@ model User {
   @@index([teamCode], name: "users_team_code_idx")
   @@index([lastSeenAt], name: "users_last_seen_at_idx")
   @@map("users")
+}
+
+model Stadium {
+  code      String   @id
+  name      String
+  shortName String   @map("short_name")
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  floors StadiumFloor[]
+  gates  StadiumGate[]
+  slots  StoreSlot[]
+
+  @@map("stadiums")
+}
+
+model StadiumFloor {
+  id          String   @id
+  stadiumCode String   @map("stadium_code")
+  code        String
+  name        String
+  sortOrder   Int      @map("sort_order")
+  mapImageUrl String?  @map("map_image_url")
+  mapWidth    Int?     @map("map_width")
+  mapHeight   Int?     @map("map_height")
+  isPublic    Boolean  @default(true) @map("is_public")
+  sourceRef   String?  @map("source_ref")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  stadium Stadium      @relation(fields: [stadiumCode], references: [code])
+  gates   StadiumGate[]
+  slots   StoreSlot[]
+
+  @@unique([stadiumCode, code])
+  @@map("stadium_floors")
+}
+
+model StadiumGate {
+  id          String   @id
+  stadiumCode String   @map("stadium_code")
+  floorId     String?  @map("floor_id")
+  code        String
+  name        String
+  gateType    String   @default("UNKNOWN") @map("gate_type")
+  xPct        Float?   @map("x_pct")
+  yPct        Float?   @map("y_pct")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  stadium Stadium       @relation(fields: [stadiumCode], references: [code])
+  floor   StadiumFloor? @relation(fields: [floorId], references: [id])
+  slots   StoreSlot[]
+
+  @@unique([stadiumCode, code])
+  @@index([floorId])
+  @@map("stadium_gates")
+}
+
+model StoreSlot {
+  id                 String        @id
+  stadiumCode        String        @map("stadium_code")
+  floorId            String        @map("floor_id")
+  nearestGateId      String?       @map("nearest_gate_id")
+  slotNo             String        @map("slot_no")
+  officialSlotNo     String?       @map("official_slot_no")
+  isCodeProvisional  Boolean       @default(false) @map("is_code_provisional")
+  slotKind           StoreSlotKind @map("slot_kind")
+  side               StoreSide     @default(UNKNOWN)
+  areaLabel          String        @map("area_label")
+  seatSectionHints   Json?         @map("seat_section_hints")
+  xPct               Float?        @map("x_pct")
+  yPct               Float?        @map("y_pct")
+  polygonSvgPath     String?       @map("polygon_svg_path")
+  labelXOffset       Float?        @map("label_x_offset")
+  labelYOffset       Float?        @map("label_y_offset")
+  rotationDeg        Float?        @map("rotation_deg")
+  accessNote         String?       @map("access_note")
+  landmarkNote       String?       @map("landmark_note")
+  walkingDifficulty  String?       @map("walking_difficulty")
+  queueAreaNote      String?       @map("queue_area_note")
+  sourceRef          String?       @map("source_ref")
+  sourceUrl          String?       @map("source_url")
+  sourceConfidence   String?       @map("source_confidence")
+  verificationStatus String        @default("DRAFT") @map("verification_status")
+  isTenantable       Boolean       @default(true) @map("is_tenantable")
+  isFoodMapVisible   Boolean       @default(true) @map("is_food_map_visible")
+  isActive           Boolean       @default(true) @map("is_active")
+  lastVerifiedAt     DateTime?     @map("last_verified_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  stadium     Stadium          @relation(fields: [stadiumCode], references: [code])
+  floor       StadiumFloor     @relation(fields: [floorId], references: [id])
+  nearestGate StadiumGate?     @relation(fields: [nearestGateId], references: [id])
+  assignments StoreAssignment[]
+  notices     StoreNotice[]
+
+  @@unique([stadiumCode, slotNo])
+  @@index([floorId])
+  @@index([nearestGateId])
+  @@index([slotKind])
+  @@map("store_slots")
+}
+
+model TenantStore {
+  id                             BigInt          @id @default(autoincrement())
+  name                           String
+  brandName                      String?         @map("brand_name")
+  normalizedName                 String?         @map("normalized_name")
+  category                       String
+  description                    String?
+  tags                           Json?
+  defaultPaymentMethods          Json?           @map("default_payment_methods")
+  defaultHoursText               String?         @map("default_hours_text")
+  defaultReusableContainerPolicy ContainerPolicy @default(UNKNOWN) @map("default_reusable_container_policy")
+  defaultPersonalContainerPolicy ContainerPolicy @default(UNKNOWN) @map("default_personal_container_policy")
+  officialUrl                    String?         @map("official_url")
+  instagramUrl                   String?         @map("instagram_url")
+  logoUrl                        String?         @map("logo_url")
+  imageUrls                      Json?           @map("image_urls")
+  operatorDisplayName            String?         @map("operator_display_name")
+  adminOperatorName              String?         @map("admin_operator_name")
+  adminContact                   String?         @map("admin_contact")
+  publicNote                     String?         @map("public_note")
+  adminNote                      String?         @map("admin_note")
+  createdAt                      DateTime        @default(now()) @map("created_at")
+  updatedAt                      DateTime        @updatedAt @map("updated_at")
+
+  assignments StoreAssignment[]
+  menuItems   TenantMenuItem[]
+  notices     StoreNotice[]
+
+  @@index([name])
+  @@index([brandName])
+  @@index([category])
+  @@map("tenant_stores")
+}
+
+model StoreAssignment {
+  id                  BigInt                @id @default(autoincrement())
+  slotId              String                @map("slot_id")
+  tenantStoreId       BigInt                @map("tenant_store_id")
+  seasonYear          Int?                  @map("season_year")
+  status              StoreAssignmentStatus @default(ACTIVE)
+  startsOn            DateTime?             @map("starts_on") @db.Date
+  endsOn              DateTime?             @map("ends_on") @db.Date
+  displayNameOverride String?               @map("display_name_override")
+  badgeLabel          String?               @map("badge_label")
+  publicNote          String?               @map("public_note")
+  adminNote           String?               @map("admin_note")
+  sourceUrl           String?               @map("source_url")
+  sourceRef           String?               @map("source_ref")
+  sourceConfidence    String?               @map("source_confidence")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+
+  slot           StoreSlot            @relation(fields: [slotId], references: [id])
+  tenantStore    TenantStore          @relation(fields: [tenantStoreId], references: [id])
+  menuOfferings  StoreMenuOffering[]
+  operatingRules StoreOperatingRule[]
+  notices        StoreNotice[]
+
+  @@index([slotId, status])
+  @@index([tenantStoreId])
+  @@index([seasonYear])
+  @@index([startsOn, endsOn])
+  @@map("store_assignments")
+}
+
+model TenantMenuItem {
+  id                 BigInt   @id @default(autoincrement())
+  tenantStoreId      BigInt   @map("tenant_store_id")
+  name               String
+  description        String?
+  category           String?
+  imageUrl           String?  @map("image_url")
+  basePriceKrw       Int?     @map("base_price_krw")
+  basePriceText      String?  @map("base_price_text")
+  isSignature        Boolean  @default(false) @map("is_signature")
+  isAlcohol          Boolean  @default(false) @map("is_alcohol")
+  isAgeRestricted    Boolean  @default(false) @map("is_age_restricted")
+  allergenTags       Json?    @map("allergen_tags")
+  dietaryTags        Json?    @map("dietary_tags")
+  spicyLevel         Int?     @map("spicy_level")
+  sourceUrl          String?  @map("source_url")
+  sourceRef          String?  @map("source_ref")
+  sourceConfidence   String?  @map("source_confidence")
+  verificationStatus String   @default("DRAFT") @map("verification_status")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenantStore TenantStore         @relation(fields: [tenantStoreId], references: [id])
+  offerings   StoreMenuOffering[]
+
+  @@index([tenantStoreId])
+  @@index([name])
+  @@map("tenant_menu_items")
+}
+
+model StoreMenuOffering {
+  id                             BigInt         @id @default(autoincrement())
+  assignmentId                   BigInt         @map("assignment_id")
+  menuItemId                     BigInt         @map("menu_item_id")
+  priceKrw                       Int?           @map("price_krw")
+  priceText                      String?        @map("price_text")
+  saleStatus                     MenuSaleStatus @default(ON_SALE) @map("sale_status")
+  usesReusableContainer          Boolean?       @map("uses_reusable_container")
+  personalContainerAllowed       Boolean?       @map("personal_container_allowed")
+  reusableContainerRequired      Boolean?       @map("reusable_container_required")
+  containerDepositKrw            Int?           @map("container_deposit_krw")
+  personalContainerDiscountKrw   Int?           @map("personal_container_discount_krw")
+  containerType                  String?        @map("container_type")
+  estimatedPrepMinutes           Int?           @map("estimated_prep_minutes")
+  isPopular                      Boolean        @default(false) @map("is_popular")
+  dailyStockLimit                Int?           @map("daily_stock_limit")
+  remainingStock                 Int?           @map("remaining_stock")
+  sortOrder                      Int            @default(0) @map("sort_order")
+  note                           String?
+  sourceUrl                      String?        @map("source_url")
+  sourceRef                      String?        @map("source_ref")
+  sourceConfidence               String?        @map("source_confidence")
+  verificationStatus             String         @default("DRAFT") @map("verification_status")
+  createdAt                      DateTime       @default(now()) @map("created_at")
+  updatedAt                      DateTime       @updatedAt @map("updated_at")
+
+  assignment StoreAssignment @relation(fields: [assignmentId], references: [id])
+  menuItem   TenantMenuItem  @relation(fields: [menuItemId], references: [id])
+
+  @@unique([assignmentId, menuItemId])
+  @@index([assignmentId, sortOrder])
+  @@index([menuItemId])
+  @@index([saleStatus])
+  @@map("store_menu_offerings")
+}
+
+model StoreOperatingRule {
+  id                    BigInt    @id @default(autoincrement())
+  assignmentId          BigInt    @map("assignment_id")
+  ruleType              String    @map("rule_type")
+  dayOfWeek             Int?      @map("day_of_week")
+  specialDate           DateTime? @map("special_date") @db.Date
+  openTime              String?   @map("open_time")
+  closeTime             String?   @map("close_time")
+  openMinutesBeforeGame Int?      @map("open_minutes_before_game")
+  closeTiming           String?   @map("close_timing")
+  lastOrderTime         String?   @map("last_order_time")
+  textOverride          String?   @map("text_override")
+  isActive              Boolean   @default(true) @map("is_active")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  assignment StoreAssignment @relation(fields: [assignmentId], references: [id])
+
+  @@index([assignmentId])
+  @@index([ruleType])
+  @@map("store_operating_rules")
+}
+
+model StoreNotice {
+  id            BigInt    @id @default(autoincrement())
+  tenantStoreId BigInt?   @map("tenant_store_id")
+  assignmentId  BigInt?   @map("assignment_id")
+  slotId        String?   @map("slot_id")
+  title         String
+  body          String
+  noticeType    String    @default("GENERAL") @map("notice_type")
+  startsAt      DateTime? @map("starts_at")
+  endsAt        DateTime? @map("ends_at")
+  isPinned      Boolean   @default(false) @map("is_pinned")
+  isPublic      Boolean   @default(true) @map("is_public")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenantStore TenantStore?     @relation(fields: [tenantStoreId], references: [id])
+  assignment  StoreAssignment? @relation(fields: [assignmentId], references: [id])
+  slot        StoreSlot?       @relation(fields: [slotId], references: [id])
+
+  @@index([tenantStoreId])
+  @@index([assignmentId])
+  @@index([slotId])
+  @@index([noticeType])
+  @@map("store_notices")
 }
 
 model Team {
@@ -57,11 +395,6 @@ model Game {
   @@unique([date, awayTeamCode, homeTeamCode])
   @@index([date])
   @@map("games")
-}
-
-enum UsageKind {
-  USE
-  RETURN
 }
 
 model Usage {
