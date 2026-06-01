@@ -100,19 +100,38 @@ html, body, #root {
 }
 
 .cb-desktop-shell {
-  min-height: 100vh;
+  --cb-desktop-shell-pad-y: clamp(10px, 2dvh, 24px);
+  height: 100dvh;
+  min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px 16px;
+  padding: var(--cb-desktop-shell-pad-y) clamp(12px, 2vw, 28px);
   background: linear-gradient(135deg, var(--cream-50, #fffcf6) 0%, var(--cb-bg) 50%, var(--cb-surface-muted) 100%);
   font-family: var(--cb-font-family);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.cb-desktop-content {
+  width: min(100%, 720px);
+  height: min(100%, calc(100dvh - var(--cb-desktop-shell-pad-y, 16px) - var(--cb-desktop-shell-pad-y, 16px)));
+  min-height: 0;
+  border: 3px solid rgba(67, 10, 33, 0.22);
+  border-radius: 28px;
+  background: var(--cb-bg);
+  box-shadow:
+    0 28px 60px rgba(67, 10, 33, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .cb-phone-frame {
   width: 100%;
-  max-width: 390px;
-  height: 844px;
+  max-width: 430px;
+  height: min(932px, calc(100dvh - var(--cb-desktop-shell-pad-y, 16px) - var(--cb-desktop-shell-pad-y, 16px)));
   border-radius: 44px;
   background: var(--cb-bg);
   box-shadow:
