@@ -56,6 +56,17 @@ const categoryStyles: Record<StoreCategory, { fill: string; stroke: string; text
   BEVERAGE: { fill: '#BFD4F4', stroke: '#46639C', text: '#1F3D6B', soft: '#E8F1FF' },
 }
 
+const unavailableContainerStyle = {
+  fill: '#D1D5DB',
+  stroke: '#6B7280',
+  text: '#374151',
+  soft: '#F3F4F6',
+}
+
+function getMarkerTone(store: StadiumStore) {
+  return store.reusableContainer ? categoryStyles[store.category] : unavailableContainerStyle
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
 }
@@ -65,7 +76,7 @@ function truncate(value: string, maxLength: number) {
 }
 
 function markerStyle(store: StadiumStore, isSelected: boolean): CSSProperties {
-  const tone = categoryStyles[store.category]
+  const tone = getMarkerTone(store)
   const markerSize = isSelected ? 'clamp(28px, 7vw, 38px)' : 'clamp(22px, 5.5vw, 30px)'
   const borderWidth = isSelected ? 3 : 2
 
@@ -115,7 +126,7 @@ function StoreMarker({
   selected: boolean
   onSelectStore: (store: StadiumStore) => void
 }) {
-  const tone = categoryStyles[store.category]
+  const tone = getMarkerTone(store)
 
   return (
     <button
@@ -146,7 +157,7 @@ function StoreMarker({
 }
 
 function SelectionLabel({ store }: { store: StadiumStore }) {
-  const tone = categoryStyles[store.category]
+  const tone = getMarkerTone(store)
 
   return (
     <div style={labelPosition(store)}>

@@ -147,7 +147,6 @@ const DEFAULT_HOURS_TEXT = '경기일 운영, 상세 시간 현장 확인'
 const DEFAULT_PRICE_TEXT = '현장 확인'
 const DEFAULT_VERIFICATION_STATUS = 'NEEDS_REVIEW'
 const DEFAULT_SOURCE_CONFIDENCE = 'MEDIUM'
-const DEFAULT_CONTAINER_POLICY = 'UNKNOWN'
 const DEFAULT_ASSIGNMENT_STATUS = 'ACTIVE'
 const DEFAULT_MENU_SALE_STATUS = 'ON_SALE'
 const DEFAULT_RULE_TYPE = 'GAME_DAY'
@@ -207,6 +206,25 @@ interface SlotGroupSeed {
     side?: string
     areaLabel?: string
   }>
+}
+
+interface MenuSeedInput {
+  name: string
+  category: string
+  priceKrw: number | null
+  isSignature?: boolean
+  isAlcohol?: boolean
+  usesReusableContainer?: boolean | null
+  personalContainerAllowed?: boolean | null
+  containerType?: string | null
+}
+
+interface StoreSeedProfile {
+  hoursText: string
+  reusableContainerPolicy: string
+  personalContainerPolicy: string
+  publicNote: string | null
+  menus: MenuSeedInput[]
 }
 
 const STADIUM_FOOD_MAP_MODELS = [
@@ -705,6 +723,221 @@ function getPlaceholderMenuCategory(slot: SlotSeedInput) {
   return 'MAIN'
 }
 
+function menu(
+  name: string,
+  category: string,
+  priceKrw: number | null,
+  options: Omit<MenuSeedInput, 'name' | 'category' | 'priceKrw'> = {},
+): MenuSeedInput {
+  return { name, category, priceKrw, ...options }
+}
+
+function getMenuPriceText(priceKrw: number | null) {
+  return priceKrw == null ? DEFAULT_PRICE_TEXT : `${priceKrw.toLocaleString('ko-KR')}원`
+}
+
+function getStoreHoursText(slot: SlotSeedInput) {
+  if (slot.slotKind === 'CAFE') return '경기 시작 2시간 전부터 경기 종료 후 30분까지'
+  if (slot.tenantCategory === 'CONVENIENCE') return '경기 시작 3시간 전부터 경기 종료 후 30분까지'
+  if (slot.tenantCategory === 'BEER' || slot.tenantCategory === 'POPUP') return '경기 시작 2시간 전부터 8회말까지'
+  if (slot.tenantCategory === 'MERCHANDISE') return '경기 시작 3시간 전부터 경기 종료까지'
+  if (slot.slotKind === 'TICKET' || slot.slotKind === 'FAMILY') return DEFAULT_HOURS_TEXT
+  return '경기 시작 2시간 전부터 경기 종료까지'
+}
+
+function buildStoreSeedProfile(slot: SlotSeedInput): StoreSeedProfile {
+  const normalizedName = normalizeTenantName(slot.name)
+  const isDrinkFocused = slot.slotKind === 'CAFE' || ['BEER', 'DESSERT', 'POPUP'].includes(slot.tenantCategory)
+  const isConvenience = slot.tenantCategory === 'CONVENIENCE'
+  const isSnackFocused = ['SNACK', 'CONVENIENCE'].includes(slot.tenantCategory)
+  const drinkContainer = { usesReusableContainer: true, personalContainerAllowed: true, containerType: '컵' }
+  const snackContainer = { usesReusableContainer: true, personalContainerAllowed: false, containerType: '다회용 컵/볼' }
+  const mealExceptionContainer = { usesReusableContainer: true, personalContainerAllowed: false, containerType: '다회용 용기' }
+  const packagedContainer = { usesReusableContainer: false, personalContainerAllowed: false, containerType: '포장 상품' }
+
+  let menus: MenuSeedInput[]
+  if (normalizedName.includes('까페희다')) {
+    menus = [
+      menu('아메리카노', 'DRINK', 4500, { isSignature: true, ...drinkContainer }),
+      menu('크림라떼', 'DRINK', 5800, drinkContainer),
+      menu('버터쿠키', 'DESSERT', 3500, snackContainer),
+    ]
+  } else if (normalizedName.includes('카페그라운드') || normalizedName.includes('까페그라운드') || normalizedName.includes('달곰')) {
+    menus = [
+      menu('아이스 아메리카노', 'DRINK', 4500, { isSignature: true, ...drinkContainer }),
+      menu('카페라떼', 'DRINK', 5500, drinkContainer),
+      menu('초코 머핀', 'DESSERT', 4500, snackContainer),
+    ]
+  } else if (normalizedName.includes('와팡')) {
+    menus = [
+      menu('와플 플레이트', 'DESSERT', 6500, { isSignature: true, ...snackContainer }),
+      menu('아이스티', 'DRINK', 4500, drinkContainer),
+      menu('아메리카노', 'DRINK', 4500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('백미당')) {
+    menus = [
+      menu('우유 아이스크림', 'DESSERT', 4800, { isSignature: true, ...snackContainer }),
+      menu('밀크쉐이크', 'DRINK', 6200, drinkContainer),
+      menu('아메리카노', 'DRINK', 4500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('코카콜라')) {
+    menus = [
+      menu('코카-콜라', 'DRINK', 2500, { isSignature: true, ...drinkContainer }),
+      menu('코카-콜라 제로', 'DRINK', 2500, drinkContainer),
+      menu('스프라이트', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('잠실원샷') && normalizedName.includes('pizza')) {
+    menus = [
+      menu('생맥주 500cc', 'ALCOHOL', 5500, { isSignature: true, isAlcohol: true, ...drinkContainer }),
+      menu('페퍼로니 조각피자', 'MAIN', 6500, mealExceptionContainer),
+      menu('나쵸', 'SNACK', 5000, snackContainer),
+    ]
+  } else if (normalizedName.includes('잠실원샷') || normalizedName.includes('맥주창고')) {
+    menus = [
+      menu('생맥주 500cc', 'ALCOHOL', 5500, { isSignature: true, isAlcohol: true, ...drinkContainer }),
+      menu('레몬 하이볼', 'ALCOHOL', 8000, { isAlcohol: true, ...drinkContainer }),
+      menu('나쵸', 'SNACK', 5000, snackContainer),
+    ]
+  } else if (normalizedName.includes('bhc')) {
+    menus = [
+      menu('뿌링클 순살', 'MAIN', 23000, { isSignature: true }),
+      menu('치킨강정컵', 'SNACK', 8000, snackContainer),
+      menu('생맥주 500cc', 'ALCOHOL', 5500, { isAlcohol: true, ...drinkContainer }),
+    ]
+  } else if (normalizedName.includes('bbq')) {
+    menus = [
+      menu('황금올리브 치킨', 'MAIN', 24000, { isSignature: true }),
+      menu('닭강정컵', 'SNACK', 9000, snackContainer),
+      menu('생맥주 500cc', 'ALCOHOL', 5500, { isAlcohol: true, ...drinkContainer }),
+    ]
+  } else if (normalizedName.includes('kfc')) {
+    menus = [
+      menu('징거버거 세트', 'MAIN', 11000, { isSignature: true }),
+      menu('치킨텐더', 'SNACK', 6500, snackContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('맘스터치')) {
+    menus = [
+      menu('싸이버거 세트', 'MAIN', 9500, { isSignature: true }),
+      menu('케이준 양념감자', 'SNACK', 4000, snackContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('도미노') || normalizedName.includes('피자헛') || normalizedName.includes('mrpizza')) {
+    menus = [
+      menu('페퍼로니 조각피자', 'MAIN', 6500, { isSignature: true, ...mealExceptionContainer }),
+      menu('콤비네이션 피자', 'MAIN', 25000),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('gs25')) {
+    menus = [
+      menu('생수', 'DRINK', 1500, packagedContainer),
+      menu('캔맥주', 'ALCOHOL', 4500, { isAlcohol: true, ...packagedContainer }),
+      menu('삼각김밥', 'SNACK', 1800, packagedContainer),
+    ]
+  } else if (normalizedName.includes('죠스') || normalizedName.includes('이가네') || normalizedName.includes('올떡') || normalizedName.includes('한식분식')) {
+    menus = [
+      menu('떡볶이', 'MAIN', 6000, { isSignature: true, ...snackContainer }),
+      menu('순대', 'MAIN', 7000, snackContainer),
+      menu('꼬치어묵', 'SNACK', 4000, snackContainer),
+    ]
+  } else if (normalizedName.includes('명인만두')) {
+    menus = [
+      menu('고기만두', 'MAIN', 6000, { isSignature: true, ...snackContainer }),
+      menu('김치만두', 'MAIN', 6000, snackContainer),
+      menu('떡만두국', 'MAIN', 9000, mealExceptionContainer),
+    ]
+  } else if (normalizedName.includes('수내닭꼬치')) {
+    menus = [
+      menu('숯불 닭꼬치', 'SNACK', 5000, { isSignature: true, ...snackContainer }),
+      menu('소떡소떡', 'SNACK', 4500, snackContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('송사부')) {
+    menus = [
+      menu('야채 고로케', 'SNACK', 3000, { isSignature: true, ...snackContainer }),
+      menu('고기 고로케', 'SNACK', 3500, snackContainer),
+      menu('아이스티', 'DRINK', 4500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('통밥')) {
+    menus = [
+      menu('스팸마요 컵밥', 'MAIN', 8500, { isSignature: true, ...mealExceptionContainer }),
+      menu('제육 컵밥', 'MAIN', 9000, mealExceptionContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('갑도리')) {
+    menus = [
+      menu('닭강정컵', 'SNACK', 9000, { isSignature: true, ...snackContainer }),
+      menu('부산 어묵탕', 'MAIN', 7000, snackContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('miss') || normalizedName.includes('potato')) {
+    menus = [
+      menu('감자튀김', 'SNACK', 5000, { isSignature: true, ...snackContainer }),
+      menu('치즈 프라이', 'SNACK', 6500, snackContainer),
+      menu('레몬에이드', 'DRINK', 5500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('앤티앤스')) {
+    menus = [
+      menu('오리지널 프레즐', 'SNACK', 4200, { isSignature: true, ...snackContainer }),
+      menu('아몬드 크림치즈 스틱', 'SNACK', 5500, snackContainer),
+      menu('레몬에이드', 'DRINK', 5500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('핫도그')) {
+    menus = [
+      menu('오리지널 핫도그', 'SNACK', 5500, { isSignature: true, ...snackContainer }),
+      menu('칠리치즈 핫도그', 'SNACK', 7000, snackContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('꼬꼬닭')) {
+    menus = [
+      menu('닭강정컵', 'SNACK', 9000, { isSignature: true, ...snackContainer }),
+      menu('치킨컵', 'SNACK', 7500, snackContainer),
+      menu('아이스 아메리카노', 'DRINK', 4500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('辛철판') || normalizedName.includes('신철판')) {
+    menus = [
+      menu('철판 야끼소바', 'MAIN', 9000, { isSignature: true, ...mealExceptionContainer }),
+      menu('철판 볶음밥', 'MAIN', 9000, mealExceptionContainer),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  } else if (normalizedName.includes('광장식당')) {
+    menus = [
+      menu('제육덮밥', 'MAIN', 9500, { isSignature: true, ...mealExceptionContainer }),
+      menu('김치볶음밥', 'MAIN', 9000, mealExceptionContainer),
+      menu('생수', 'DRINK', 1500, packagedContainer),
+    ]
+  } else if (normalizedName.includes('짝태')) {
+    menus = [
+      menu('짝태구이', 'SNACK', 13000, { isSignature: true }),
+      menu('먹태구이', 'SNACK', 14000),
+      menu('생맥주 500cc', 'ALCOHOL', 5500, { isAlcohol: true, ...drinkContainer }),
+    ]
+  } else if (normalizedName.includes('열심히살겠습니다')) {
+    menus = [
+      menu('직화 불고기덮밥', 'MAIN', 10000, { isSignature: true, ...mealExceptionContainer }),
+      menu('냉모밀', 'MAIN', 8500, mealExceptionContainer),
+      menu('생수', 'DRINK', 1500, packagedContainer),
+    ]
+  } else if (slot.slotKind === 'GOODS') {
+    menus = [menu(getPlaceholderMenuName(slot), 'OTHER', null, packagedContainer)]
+  } else if (slot.slotKind === 'TICKET' || slot.slotKind === 'FAMILY') {
+    menus = [menu(getPlaceholderMenuName(slot), 'OTHER', null, { usesReusableContainer: null, personalContainerAllowed: null })]
+  } else {
+    menus = [
+      menu(getPlaceholderMenuName(slot), getPlaceholderMenuCategory(slot), null),
+      menu('콜라', 'DRINK', 2500, drinkContainer),
+    ]
+  }
+
+  return {
+    hoursText: getStoreHoursText(slot),
+    reusableContainerPolicy: isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused || isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
+    personalContainerPolicy: isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused ? 'SUPPORTED' : isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
+    publicNote: slot.publicNote ?? '메뉴와 가격은 현장 운영에 따라 달라질 수 있습니다.',
+    menus,
+  }
+}
+
 function materializeSlotSeeds(): SlotSeedInput[] {
   return SLOT_GROUPS.flatMap((group) =>
     group.entries.map((entry, index) => {
@@ -757,15 +990,16 @@ async function createManyAndSync(modelName: string, rows: SeedRow[]) {
 
 async function ensureTenantStore(slot: SlotSeedInput) {
   const normalizedName = normalizeTenantName(slot.name)
+  const profile = buildStoreSeedProfile(slot)
   const tenantStoreData = {
     name: slot.name,
     brandName: slot.name,
     normalizedName,
     category: slot.tenantCategory,
-    defaultHoursText: DEFAULT_HOURS_TEXT,
-    defaultReusableContainerPolicy: DEFAULT_CONTAINER_POLICY,
-    defaultPersonalContainerPolicy: DEFAULT_CONTAINER_POLICY,
-    publicNote: slot.publicNote ?? null,
+    defaultHoursText: profile.hoursText,
+    defaultReusableContainerPolicy: profile.reusableContainerPolicy,
+    defaultPersonalContainerPolicy: profile.personalContainerPolicy,
+    publicNote: profile.publicNote,
   }
 
   const existing = await db.tenantStore.findFirst({
@@ -818,14 +1052,16 @@ async function ensureAssignment(slot: SlotSeedInput, tenantStoreId: bigint | num
   })
 }
 
-async function ensureTenantMenuItem(slot: SlotSeedInput, tenantStoreId: bigint | number) {
-  const name = getPlaceholderMenuName(slot)
+async function ensureTenantMenuItem(slot: SlotSeedInput, tenantStoreId: bigint | number, menuSeed: MenuSeedInput) {
   const menuItemData = {
     tenantStoreId,
-    name,
-    category: getPlaceholderMenuCategory(slot),
-    basePriceKrw: null,
-    basePriceText: DEFAULT_PRICE_TEXT,
+    name: menuSeed.name,
+    category: menuSeed.category,
+    basePriceKrw: menuSeed.priceKrw,
+    basePriceText: getMenuPriceText(menuSeed.priceKrw),
+    isSignature: Boolean(menuSeed.isSignature),
+    isAlcohol: Boolean(menuSeed.isAlcohol),
+    isAgeRestricted: Boolean(menuSeed.isAlcohol),
     sourceRef: FLOOR_SOURCE_REFS[slot.floorCode],
     sourceConfidence: slot.sourceConfidence ?? DEFAULT_SOURCE_CONFIDENCE,
     verificationStatus: slot.verificationStatus ?? DEFAULT_VERIFICATION_STATUS,
@@ -835,7 +1071,7 @@ async function ensureTenantMenuItem(slot: SlotSeedInput, tenantStoreId: bigint |
   const existing = await db.tenantMenuItem.findFirst({
     where: {
       tenantStoreId,
-      name,
+      name: menuSeed.name,
     },
   })
 
@@ -851,14 +1087,23 @@ async function ensureTenantMenuItem(slot: SlotSeedInput, tenantStoreId: bigint |
   })
 }
 
-async function ensureStoreMenuOffering(slot: SlotSeedInput, assignmentId: bigint | number, menuItemId: bigint | number) {
+async function ensureStoreMenuOffering(
+  slot: SlotSeedInput,
+  assignmentId: bigint | number,
+  menuItemId: bigint | number,
+  menuSeed: MenuSeedInput,
+  sortOrder: number,
+) {
   const offeringData = {
     assignmentId,
     menuItemId,
-    priceKrw: null,
-    priceText: DEFAULT_PRICE_TEXT,
+    priceKrw: menuSeed.priceKrw,
+    priceText: getMenuPriceText(menuSeed.priceKrw),
     saleStatus: DEFAULT_MENU_SALE_STATUS,
-    sortOrder: 0,
+    sortOrder,
+    usesReusableContainer: menuSeed.usesReusableContainer ?? null,
+    personalContainerAllowed: menuSeed.personalContainerAllowed ?? null,
+    containerType: menuSeed.containerType ?? null,
     sourceRef: FLOOR_SOURCE_REFS[slot.floorCode],
     sourceConfidence: slot.sourceConfidence ?? DEFAULT_SOURCE_CONFIDENCE,
     verificationStatus: slot.verificationStatus ?? DEFAULT_VERIFICATION_STATUS,
@@ -884,12 +1129,13 @@ async function ensureStoreMenuOffering(slot: SlotSeedInput, assignmentId: bigint
 }
 
 async function ensureStoreOperatingRule(slot: SlotSeedInput, assignmentId: bigint | number) {
+  const profile = buildStoreSeedProfile(slot)
   const ruleData = {
     assignmentId,
     ruleType: DEFAULT_RULE_TYPE,
     openMinutesBeforeGame: 120,
     closeTiming: 'GAME_END',
-    textOverride: DEFAULT_HOURS_TEXT,
+    textOverride: profile.hoursText,
     isActive: true,
   }
 
@@ -964,8 +1210,11 @@ async function seedStadiumFoodMap() {
   for (const slot of slotSeeds) {
     const tenantStore = await ensureTenantStore(slot)
     const assignment = await ensureAssignment(slot, tenantStore.id)
-    const menuItem = await ensureTenantMenuItem(slot, tenantStore.id)
-    await ensureStoreMenuOffering(slot, assignment.id, menuItem.id)
+    const profile = buildStoreSeedProfile(slot)
+    for (const [index, menuSeed] of profile.menus.entries()) {
+      const menuItem = await ensureTenantMenuItem(slot, tenantStore.id, menuSeed)
+      await ensureStoreMenuOffering(slot, assignment.id, menuItem.id, menuSeed, index + 1)
+    }
     await ensureStoreOperatingRule(slot, assignment.id)
   }
 

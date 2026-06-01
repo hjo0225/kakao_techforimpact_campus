@@ -92,6 +92,7 @@ interface BackendStoresResponse {
     }
     menus?: Array<{
       name: string
+      priceText?: string | null
       usesReusableContainer?: boolean | null
       personalContainerAllowed?: boolean | null
     }>
@@ -129,6 +130,14 @@ type StoreFixtureRow = readonly [
   nearestGate: string,
   zone: string,
 ]
+
+interface StoreFixtureDetails {
+  businessHours: string
+  featuredMenus: string[]
+  reusableContainer: boolean
+  personalCupAllowed: boolean
+  note?: string
+}
 
 const JAMSIL_STORE_FIXTURE_ROWS: StoreFixtureRow[] = [
   ['1F', 'A01', '까페희다', 'CAFE', 14.706, 34.649, 'GATE 1-2', '3루 내야 외곽'],
@@ -201,24 +210,126 @@ const JAMSIL_STORE_FIXTURE_ROWS: StoreFixtureRow[] = [
   ['4F', 'F4_02', '열심히살겠습니다', 'MEAL', 57.647, 68.421, 'GATE 1-1', '4층 중앙'],
 ]
 
+function normalizeFixtureName(name: string) {
+  return name.normalize('NFKC').toLowerCase().replace(/[\s/&.-]+/g, '')
+}
+
+function getStoreFixtureDetails(name: string, category: StoreCategory): StoreFixtureDetails {
+  const normalizedName = normalizeFixtureName(name)
+  const defaultNote = '메뉴와 가격은 현장 운영에 따라 달라질 수 있는 참고용 목업 데이터입니다.'
+  const drinkHours = '경기 시작 2시간 전부터 경기 종료 후 30분까지'
+  const foodHours = '경기 시작 2시간 전부터 경기 종료까지'
+  const beerHours = '경기 시작 2시간 전부터 8회말까지'
+  const convenienceHours = '경기 시작 3시간 전부터 경기 종료 후 30분까지'
+
+  if (normalizedName.includes('까페희다')) {
+    return { businessHours: drinkHours, featuredMenus: ['아메리카노 4,500원', '크림라떼 5,800원', '버터쿠키 3,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('카페그라운드') || normalizedName.includes('까페그라운드') || normalizedName.includes('달곰')) {
+    return { businessHours: drinkHours, featuredMenus: ['아이스 아메리카노 4,500원', '카페라떼 5,500원', '초코 머핀 4,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('와팡')) {
+    return { businessHours: drinkHours, featuredMenus: ['와플 플레이트 6,500원', '아이스티 4,500원', '아메리카노 4,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('백미당')) {
+    return { businessHours: drinkHours, featuredMenus: ['우유 아이스크림 4,800원', '밀크쉐이크 6,200원', '아메리카노 4,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('코카콜라')) {
+    return { businessHours: beerHours, featuredMenus: ['코카-콜라 2,500원', '코카-콜라 제로 2,500원', '스프라이트 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('잠실원샷') && normalizedName.includes('pizza')) {
+    return { businessHours: beerHours, featuredMenus: ['생맥주 500cc 5,500원', '페퍼로니 조각피자 6,500원', '나쵸 5,000원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('잠실원샷') || normalizedName.includes('맥주창고')) {
+    return { businessHours: beerHours, featuredMenus: ['생맥주 500cc 5,500원', '레몬 하이볼 8,000원', '나쵸 5,000원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('bhc')) {
+    return { businessHours: foodHours, featuredMenus: ['뿌링클 순살 23,000원', '치킨강정컵 8,000원', '생맥주 500cc 5,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('bbq')) {
+    return { businessHours: foodHours, featuredMenus: ['황금올리브 치킨 24,000원', '닭강정컵 9,000원', '생맥주 500cc 5,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('kfc')) {
+    return { businessHours: foodHours, featuredMenus: ['징거버거 세트 11,000원', '치킨텐더 6,500원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('맘스터치')) {
+    return { businessHours: foodHours, featuredMenus: ['싸이버거 세트 9,500원', '케이준 양념감자 4,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('도미노') || normalizedName.includes('피자헛') || normalizedName.includes('mrpizza')) {
+    return { businessHours: foodHours, featuredMenus: ['페퍼로니 조각피자 6,500원', '콤비네이션 피자 25,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('gs25')) {
+    return { businessHours: convenienceHours, featuredMenus: ['생수 1,500원', '캔맥주 4,500원', '삼각김밥 1,800원'], reusableContainer: false, personalCupAllowed: false, note: '포장 상품 중심 매장입니다.' }
+  }
+  if (normalizedName.includes('죠스') || normalizedName.includes('이가네') || normalizedName.includes('올떡') || normalizedName.includes('한식분식')) {
+    return { businessHours: foodHours, featuredMenus: ['떡볶이 6,000원', '순대 7,000원', '꼬치어묵 4,000원'], reusableContainer: true, personalCupAllowed: false, note: defaultNote }
+  }
+  if (normalizedName.includes('명인만두')) {
+    return { businessHours: foodHours, featuredMenus: ['고기만두 6,000원', '김치만두 6,000원', '떡만두국 9,000원'], reusableContainer: true, personalCupAllowed: false, note: defaultNote }
+  }
+  if (normalizedName.includes('수내닭꼬치')) {
+    return { businessHours: foodHours, featuredMenus: ['숯불 닭꼬치 5,000원', '소떡소떡 4,500원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('송사부')) {
+    return { businessHours: foodHours, featuredMenus: ['야채 고로케 3,000원', '고기 고로케 3,500원', '아이스티 4,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('통밥')) {
+    return { businessHours: foodHours, featuredMenus: ['스팸마요 컵밥 8,500원', '제육 컵밥 9,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('갑도리')) {
+    return { businessHours: foodHours, featuredMenus: ['닭강정컵 9,000원', '부산 어묵탕 7,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('miss') || normalizedName.includes('potato')) {
+    return { businessHours: foodHours, featuredMenus: ['감자튀김 5,000원', '치즈 프라이 6,500원', '레몬에이드 5,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('앤티앤스')) {
+    return { businessHours: foodHours, featuredMenus: ['오리지널 프레즐 4,200원', '아몬드 크림치즈 스틱 5,500원', '레몬에이드 5,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('핫도그')) {
+    return { businessHours: foodHours, featuredMenus: ['오리지널 핫도그 5,500원', '칠리치즈 핫도그 7,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('꼬꼬닭')) {
+    return { businessHours: foodHours, featuredMenus: ['닭강정컵 9,000원', '치킨컵 7,500원', '아이스 아메리카노 4,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('辛철판') || normalizedName.includes('신철판')) {
+    return { businessHours: foodHours, featuredMenus: ['철판 야끼소바 9,000원', '철판 볶음밥 9,000원', '콜라 2,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('광장식당')) {
+    return { businessHours: foodHours, featuredMenus: ['제육덮밥 9,500원', '김치볶음밥 9,000원', '생수 1,500원'], reusableContainer: true, personalCupAllowed: false, note: defaultNote }
+  }
+  if (normalizedName.includes('짝태')) {
+    return { businessHours: beerHours, featuredMenus: ['짝태구이 13,000원', '먹태구이 14,000원', '생맥주 500cc 5,500원'], reusableContainer: true, personalCupAllowed: true, note: defaultNote }
+  }
+  if (normalizedName.includes('열심히살겠습니다')) {
+    return { businessHours: foodHours, featuredMenus: ['직화 불고기덮밥 10,000원', '냉모밀 8,500원', '생수 1,500원'], reusableContainer: true, personalCupAllowed: false, note: defaultNote }
+  }
+
+  return {
+    businessHours: category === 'CONVENIENCE' ? convenienceHours : foodHours,
+    featuredMenus: category === 'BEVERAGE' ? ['음료 2,500원', '생맥주 500cc 5,500원'] : ['대표 메뉴 현장 확인'],
+    reusableContainer: category === 'CAFE' || category === 'BEVERAGE',
+    personalCupAllowed: category === 'CAFE' || category === 'BEVERAGE',
+    note: defaultNote,
+  }
+}
+
 const JAMSIL_STORE_FIXTURE: StadiumStore[] = JAMSIL_STORE_FIXTURE_ROWS.map(
-  ([floor, slotNo, name, category, xPct, yPct, nearestGate, zone]) => ({
-    id: `jamsil-${slotNo.toLowerCase()}`,
-    stadiumCode: 'JAMSIL',
-    floor,
-    name,
-    slotNo,
-    gate: nearestGate,
-    nearestGate,
-    zone,
-    category,
-    marker: { xPct, yPct },
-    businessHours: '경기일 운영, 상세 시간 현장 확인',
-    featuredMenus: ['대표 메뉴'],
-    reusableContainer: false,
-    personalCupAllowed: false,
-    note: '구조도 기반 초기 데이터입니다. 메뉴, 가격, 용기 정책은 관리자 입력이 필요합니다.',
-  }),
+  ([floor, slotNo, name, category, xPct, yPct, nearestGate, zone]) => {
+    const details = getStoreFixtureDetails(name, category)
+    return {
+      id: `jamsil-${slotNo.toLowerCase()}`,
+      stadiumCode: 'JAMSIL',
+      floor,
+      name,
+      slotNo,
+      gate: nearestGate,
+      nearestGate,
+      zone,
+      category,
+      marker: { xPct, yPct },
+      ...details,
+    }
+  },
 )
 
 function isFloorResponse(value: unknown): value is StadiumFloorsResponse {
@@ -319,7 +430,9 @@ function transformBackendStores(
           yPct: store.slot.map?.yPct ?? 50,
         },
         businessHours: store.tenant.hoursText ?? '경기일 운영, 상세 시간 현장 확인',
-        featuredMenus: menus.length ? menus.slice(0, 3).map((menu) => menu.name) : ['대표 메뉴'],
+        featuredMenus: menus.length
+          ? menus.slice(0, 3).map((menu) => menu.priceText ? `${menu.name} ${menu.priceText}` : menu.name)
+          : ['대표 메뉴'],
         reusableContainer:
           isPositivePolicy(store.tenant.reusableContainerPolicy) ||
           menus.some((menu) => Boolean(menu.usesReusableContainer)),
