@@ -154,6 +154,18 @@ const DEFAULT_RULE_TYPE = 'GAME_DAY'
 
 type SeedRow = Record<string, unknown>
 
+// 다회용기/개인용기 정책 오버라이드 (지정 안 하면 UNKNOWN). 대표 메뉴 offering에도 반영.
+interface ContainerSeed {
+  reusablePolicy?: string // ContainerPolicy enum: SUPPORTED | NOT_SUPPORTED | MENU_DEPENDENT | UNKNOWN
+  personalPolicy?: string
+  usesReusableContainer?: boolean
+  personalContainerAllowed?: boolean
+  reusableContainerRequired?: boolean
+  depositKrw?: number
+  personalDiscountKrw?: number
+  containerType?: string
+}
+
 interface SlotSeedInput {
   floorCode: string
   slotNo: string
@@ -176,6 +188,7 @@ interface SlotSeedInput {
   publicNote?: string
   badgeLabel?: string
   placeholderMenuName?: string
+  container?: ContainerSeed
 }
 
 interface SlotGroupSeed {
@@ -206,6 +219,7 @@ interface SlotGroupSeed {
     nearestGateCode?: string
     side?: string
     areaLabel?: string
+    container?: ContainerSeed
   }>
 }
 
@@ -398,6 +412,33 @@ const SLOT_GROUPS: SlotGroupSeed[] = [
       { slotNo: 'A11', name: 'KFC', tenantCategory: 'CHICKEN', slotKind: 'FOOD', isFoodMapVisible: true },
       { slotNo: 'A12', name: '꼬꼬닭', tenantCategory: 'CHICKEN', slotKind: 'FOOD', isFoodMapVisible: true },
       { slotNo: 'A13', name: 'GS25', tenantCategory: 'CONVENIENCE', slotKind: 'CONVENIENCE', isFoodMapVisible: true },
+      {
+        // 정오님(jeongoheo) 다회용기 시범 매장 — 목업. 공식 슬롯 번호 미정 → 임시 코드.
+        slotNo: 'JUNGO_01',
+        name: '정오',
+        tenantCategory: 'CAFE',
+        slotKind: 'CAFE',
+        isFoodMapVisible: true,
+        officialSlotNo: null,
+        isCodeProvisional: true,
+        sourceConfidence: 'LOW',
+        verificationStatus: DEFAULT_VERIFICATION_STATUS,
+        xPct: 50,
+        yPct: 38,
+        landmarkNote: '1층 중앙 복도 다회용기 시범 매장 (목업)',
+        publicNote: '다회용기 사용·반납 인증이 가능한 시범 매장입니다.',
+        placeholderMenuName: '다회용컵 아메리카노',
+        container: {
+          reusablePolicy: 'SUPPORTED',
+          personalPolicy: 'SUPPORTED',
+          usesReusableContainer: true,
+          personalContainerAllowed: true,
+          reusableContainerRequired: false,
+          depositKrw: 1000,
+          personalDiscountKrw: 300,
+          containerType: '다회용컵',
+        },
+      },
     ],
   },
   {
@@ -732,6 +773,7 @@ function materializeSlotSeeds(): SlotSeedInput[] {
         publicNote: entry.publicNote,
         badgeLabel: entry.badgeLabel ?? DEFAULT_PRICE_TEXT,
         placeholderMenuName: entry.placeholderMenuName,
+        container: entry.container,
       }
     }),
   )
@@ -763,8 +805,8 @@ async function ensureTenantStore(slot: SlotSeedInput) {
     normalizedName,
     category: slot.tenantCategory,
     defaultHoursText: DEFAULT_HOURS_TEXT,
-    defaultReusableContainerPolicy: DEFAULT_CONTAINER_POLICY,
-    defaultPersonalContainerPolicy: DEFAULT_CONTAINER_POLICY,
+    defaultReusableContainerPolicy: slot.container?.reusablePolicy ?? DEFAULT_CONTAINER_POLICY,
+    defaultPersonalContainerPolicy: slot.container?.personalPolicy ?? DEFAULT_CONTAINER_POLICY,
     publicNote: slot.publicNote ?? null,
   }
 
@@ -859,6 +901,12 @@ async function ensureStoreMenuOffering(slot: SlotSeedInput, assignmentId: bigint
     priceText: DEFAULT_PRICE_TEXT,
     saleStatus: DEFAULT_MENU_SALE_STATUS,
     sortOrder: 0,
+    usesReusableContainer: slot.container?.usesReusableContainer ?? null,
+    personalContainerAllowed: slot.container?.personalContainerAllowed ?? null,
+    reusableContainerRequired: slot.container?.reusableContainerRequired ?? null,
+    containerDepositKrw: slot.container?.depositKrw ?? null,
+    personalContainerDiscountKrw: slot.container?.personalDiscountKrw ?? null,
+    containerType: slot.container?.containerType ?? null,
     sourceRef: FLOOR_SOURCE_REFS[slot.floorCode],
     sourceConfidence: slot.sourceConfidence ?? DEFAULT_SOURCE_CONFIDENCE,
     verificationStatus: slot.verificationStatus ?? DEFAULT_VERIFICATION_STATUS,

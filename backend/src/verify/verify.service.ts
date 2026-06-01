@@ -1,21 +1,27 @@
 import {
-  BadRequestException,
   ConflictException,
-  HttpException,
+  ForbiddenException,
   Injectable,
   Logger,
-  ServiceUnavailableException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import FormData from 'form-data';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 const UsageKind = {
   USE: 'USE',
   RETURN: 'RETURN',
 } as const;
 type UsageKind = (typeof UsageKind)[keyof typeof UsageKind];
+
+const ContainerLabel = {
+  REUSABLE: 'REUSABLE',
+  SINGLE_USE: 'SINGLE_USE',
+} as const;
+type ContainerLabel = (typeof ContainerLabel)[keyof typeof ContainerLabel];
 
 export interface ReusableVerifyResult {
   isReusable: boolean;
@@ -35,9 +41,24 @@ export interface VerifyMeta {
   lng?: number;
 }
 
-export interface VerifyOutcome {
-  vision: ReusableVerifyResult;
-  usage: {
+export interface AnalyzeOutcome {
+  sampleId: string;
+  /** Vision 예측. 서비스 다운 시 null (그래도 샘플은 적재됨). */
+  ai: ReusableVerifyResult | null;
+  /** AI가 제안하는 라벨 — UI 기본 선택값. AI 다운 시 REUSABLE. */
+  suggestedLabel: ContainerLabel;
+}
+
+export interface ConfirmOutcome {
+  sample: {
+    id: string;
+    kind: UsageKind;
+    userLabel: ContainerLabel;
+    status: 'CONFIRMED';
+  };
+  scored: boolean;
+  reason?: 'SINGLE_USE_LABEL' | 'NO_RECENT_USE';
+  usage?: {
     id: string;
     kind: UsageKind;
     score: number;
@@ -45,7 +66,6 @@ export interface VerifyOutcome {
   };
 }
 
-const CONFIDENCE_THRESHOLD = 70; // % — 미만이면 검증 실패
 const SCORE_USE = 50;
 const SCORE_RETURN = 100;
 const RETURN_WINDOW_HOURS = 12;
@@ -57,32 +77,107 @@ export class VerifyService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
   ) {}
 
-  async verifyAndRecord(
+  /**
+   * 1단계: 이미지를 GCS에 적재하고 Vision 예측을 받아 PENDING 샘플을 만든다.
+   * 어떤 판별 결과든 학습용으로 항상 저장한다 (Vision 다운이어도 적재).
+   */
+  async analyze(
     userId: string,
     kind: UsageKind,
     image: UploadedImage,
     meta: VerifyMeta,
-  ): Promise<VerifyOutcome> {
-    if (kind === UsageKind.RETURN) {
-      await this.assertRecentUse(userId);
+  ): Promise<AnalyzeOutcome> {
+    const { path, hash } = await this.storage.uploadVerificationImage(
+      userId,
+      image,
+    );
+    const ai = await this.callVision(image);
+
+    const sample = await this.prisma.verificationSample.create({
+      data: {
+        userId: BigInt(userId),
+        kind,
+        imagePath: path,
+        imageHash: hash,
+        aiIsReusable: ai?.isReusable ?? null,
+        aiClassIndex: ai?.classIndex ?? null,
+        aiConfidence: ai?.confidence ?? null,
+        gameId: meta.gameId ? BigInt(meta.gameId) : null,
+        lat: meta.lat ?? null,
+        lng: meta.lng ?? null,
+      },
+    });
+
+    return {
+      sampleId: sample.id.toString(),
+      ai,
+      suggestedLabel:
+        ai && !ai.isReusable
+          ? ContainerLabel.SINGLE_USE
+          : ContainerLabel.REUSABLE,
+    };
+  }
+
+  /**
+   * 2단계: 유저가 정답 라벨을 확정한다. 라벨이 REUSABLE이면 점수 행(usages)을 만든다.
+   * 모든 시도는 이미 1단계에서 적재되어 있으므로 SINGLE_USE도 음성 샘플로 남는다.
+   */
+  async confirm(
+    userId: string,
+    sampleId: string,
+    userLabel: ContainerLabel,
+  ): Promise<ConfirmOutcome> {
+    const sample = await this.prisma.verificationSample.findUnique({
+      where: { id: BigInt(sampleId) },
+    });
+    if (!sample) {
+      throw new NotFoundException({
+        code: 'SAMPLE_NOT_FOUND',
+        message: '인증 샘플을 찾을 수 없습니다',
+      });
+    }
+    if (sample.userId !== BigInt(userId)) {
+      throw new ForbiddenException({
+        code: 'NOT_OWNER',
+        message: '본인의 인증 샘플만 확정할 수 있습니다',
+      });
+    }
+    if (sample.status !== 'PENDING') {
+      throw new ConflictException({
+        code: 'ALREADY_CONFIRMED',
+        message: '이미 라벨이 확정된 샘플입니다',
+      });
     }
 
-    const vision = await this.callVision(image);
-    if (!vision.isReusable) {
-      throw new BadRequestException({
-        code: 'NOT_REUSABLE',
-        message: '다회용기로 판별되지 않았습니다',
-        vision,
+    const kind = sample.kind;
+
+    // 일회용기 라벨 → 점수 없음, 음성 샘플로만 확정
+    if (userLabel === ContainerLabel.SINGLE_USE) {
+      await this.prisma.verificationSample.update({
+        where: { id: sample.id },
+        data: { userLabel, status: 'CONFIRMED', confirmedAt: new Date() },
       });
+      return {
+        sample: { id: sampleId, kind, userLabel, status: 'CONFIRMED' },
+        scored: false,
+        reason: 'SINGLE_USE_LABEL',
+      };
     }
-    if (vision.confidence < CONFIDENCE_THRESHOLD) {
-      throw new BadRequestException({
-        code: 'LOW_CONFIDENCE',
-        message: `confidence ${vision.confidence.toFixed(2)}% < ${CONFIDENCE_THRESHOLD}%`,
-        vision,
+
+    // RETURN 점수는 직전 12시간 내 USE가 있어야 부여 (위반 시 샘플은 확정하되 미점수)
+    if (kind === UsageKind.RETURN && !(await this.hasRecentUse(userId))) {
+      await this.prisma.verificationSample.update({
+        where: { id: sample.id },
+        data: { userLabel, status: 'CONFIRMED', confirmedAt: new Date() },
       });
+      return {
+        sample: { id: sampleId, kind, userLabel, status: 'CONFIRMED' },
+        scored: false,
+        reason: 'NO_RECENT_USE',
+      };
     }
 
     const score = kind === UsageKind.RETURN ? SCORE_RETURN : SCORE_USE;
@@ -91,15 +186,25 @@ export class VerifyService {
         userId: BigInt(userId),
         kind,
         score,
-        confidence: vision.confidence,
-        gameId: meta.gameId ? BigInt(meta.gameId) : null,
-        lat: meta.lat ?? null,
-        lng: meta.lng ?? null,
+        confidence: sample.aiConfidence,
+        gameId: sample.gameId,
+        lat: sample.lat,
+        lng: sample.lng,
+      },
+    });
+    await this.prisma.verificationSample.update({
+      where: { id: sample.id },
+      data: {
+        userLabel,
+        status: 'CONFIRMED',
+        confirmedAt: new Date(),
+        usageId: usage.id,
       },
     });
 
     return {
-      vision,
+      sample: { id: sampleId, kind, userLabel, status: 'CONFIRMED' },
+      scored: true,
       usage: {
         id: usage.id.toString(),
         kind: usage.kind,
@@ -109,7 +214,7 @@ export class VerifyService {
     };
   }
 
-  private async assertRecentUse(userId: string): Promise<void> {
+  private async hasRecentUse(userId: string): Promise<boolean> {
     const cutoff = new Date(Date.now() - RETURN_WINDOW_HOURS * 60 * 60 * 1000);
     const recentUse = await this.prisma.usage.findFirst({
       where: {
@@ -119,17 +224,15 @@ export class VerifyService {
       },
       orderBy: { scannedAt: 'desc' },
     });
-    if (!recentUse) {
-      throw new ConflictException({
-        code: 'NO_RECENT_USE',
-        message: `최근 ${RETURN_WINDOW_HOURS}시간 내 사용 인증 기록이 없습니다`,
-      });
-    }
+    return recentUse !== null;
   }
 
+  /**
+   * Vision Cloud Run 호출. 학습 데이터 적재를 막지 않도록 실패해도 throw하지 않고 null 반환.
+   */
   private async callVision(
     image: UploadedImage,
-  ): Promise<ReusableVerifyResult> {
+  ): Promise<ReusableVerifyResult | null> {
     const visionUrl = this.config.getOrThrow<string>('VISION_API_URL');
     const form = new FormData();
     form.append('image', image.buffer, {
@@ -149,11 +252,8 @@ export class VerifyService {
       );
       return data;
     } catch (err) {
-      if (err instanceof AxiosError && err.response) {
-        throw new HttpException(err.response.data, err.response.status);
-      }
-      this.logger.error('vision API 호출 실패', err);
-      throw new ServiceUnavailableException('vision 서비스 호출 실패');
+      this.logger.warn('vision API 호출 실패 — ai=null로 적재 진행', err);
+      return null;
     }
   }
 }

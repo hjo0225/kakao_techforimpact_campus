@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+### feat(api): 인증을 휴먼인더루프 2단계로 변경 + 학습데이터 적재 (Breaking)
+
+- **API 교체**: `POST /verify/use`·`/verify/return` 제거 → `POST /verify/analyze` + `POST /verify/confirm`
+  - `/verify/analyze` (multipart: `image`, `kind`, `gameId?`, `lat?`, `lng?`): 이미지를 GCS에 적재하고 Vision 예측을 받아 `PENDING` 샘플 생성. `{ sampleId, ai, suggestedLabel }`. Vision 다운이어도 `ai=null`로 적재
+  - `/verify/confirm` (json: `sampleId`, `userLabel`): 유저가 정답 라벨 확정. `REUSABLE`이면 `usages` 점수 행 생성·연결. `{ sample, scored, reason?, usage? }`
+- **신규 테이블** `verification_samples` + enum `ContainerLabel`/`SampleStatus` + 마이그레이션 `20260601000000_add_verification_samples`. AI 예측(`ai_*`)과 유저 정답 라벨(`user_label`)을 함께 보관 → 재학습 데이터
+- **이미지 저장**: GCS 버킷(`GCS_TRAINING_BUCKET`)에 원본 적재, DB엔 `gs://` 경로 + sha256. 신규 의존성 `@google-cloud/storage`, `StorageModule`/`StorageService`
+- **통과 기준 변경**: AI confidence 게이트(`NOT_REUSABLE`/`LOW_CONFIDENCE`) 제거 → 모든 시도를 기록하고 유저 라벨이 점수를 결정. RETURN 직전 12시간 USE 가드는 점수 부여 단계에서 유지(위반 시 샘플은 기록, 미점수 `NO_RECENT_USE`)
+- 프론트 `ReportScreen`: 촬영 → AI 분석 → 라벨 확정(다회용기/일회용기 선택) 흐름. `verifyApi`에 `analyzeImage`/`confirmLabel`
+- 단위 테스트 `verify.service.spec.ts` analyze/confirm 10건으로 갱신
+
 ### fix(api): `/stats/me`의 `totalCount` 의미 변경 — `min(use, return)` (실제 회수된 컵 수)
 
 - 기존: `useCount + returnCount` (같은 컵을 2회로 부풀림)

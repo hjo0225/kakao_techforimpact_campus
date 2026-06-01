@@ -6,18 +6,55 @@ import { StatusBar } from '../StatusBar';
 import { Camera, CheckCircle, RotateCcw, ScanLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ApiError } from '../../../lib/apiClient';
-import { verifyImage } from '../../../lib/verifyApi';
+import {
+  analyzeImage,
+  confirmLabel,
+  type AiPrediction,
+  type ContainerLabel,
+} from '../../../lib/verifyApi';
 
 type CertificationMode = 'use' | 'return';
-type AnalysisState = 'idle' | 'captured' | 'classifying' | 'success' | 'failure';
+type AnalysisState =
+  | 'idle'
+  | 'captured'
+  | 'analyzing'
+  | 'labeling'
+  | 'submitting'
+  | 'success'
+  | 'recorded'
+  | 'failure';
+type ResultTone = 'success' | 'neutral' | 'error';
 
 interface SimulatedResult {
   detected: '다회용기' | '일회용기';
-  approved: boolean;
+  tone: ResultTone;
   reason: string;
   guide: string;
   statusLabel: string;
 }
+
+const LABEL_OPTIONS: Array<{
+  value: ContainerLabel;
+  title: string;
+  subtitle: string;
+  tone: string;
+  tint: string;
+}> = [
+  {
+    value: 'REUSABLE',
+    title: '다회용기',
+    subtitle: '점수 반영 대상',
+    tone: '#15803D',
+    tint: '#F0FDF4',
+  },
+  {
+    value: 'SINGLE_USE',
+    title: '일회용기',
+    subtitle: '학습용으로만 기록',
+    tone: '#C2410C',
+    tint: '#FFF7ED',
+  },
+];
 
 interface HistoryItem {
   id: string;
@@ -94,6 +131,43 @@ function isTimeSaleInning(inning: string) {
   return inning.includes('7회') || inning.includes('8회');
 }
 
+function tonePalette(tone: ResultTone) {
+  if (tone === 'success') {
+    return {
+      title: '인증 완료!',
+      cardMain: '#15803D',
+      cardShadow: 'rgba(21, 128, 61, 0.20)',
+      iconBg: 'var(--cb-primary-soft)',
+      iconBorder: 'var(--cb-primary-border)',
+      iconColor: 'var(--cb-primary-deep)',
+      noteMain: '#15803D',
+      noteBg: '#F0FDF4',
+    };
+  }
+  if (tone === 'neutral') {
+    return {
+      title: '기록 완료',
+      cardMain: '#1D4ED8',
+      cardShadow: 'rgba(29, 78, 216, 0.20)',
+      iconBg: '#EFF6FF',
+      iconBorder: '#1D4ED8',
+      iconColor: '#1D4ED8',
+      noteMain: '#1D4ED8',
+      noteBg: '#EFF6FF',
+    };
+  }
+  return {
+    title: '인증 실패',
+    cardMain: '#E11D48',
+    cardShadow: 'rgba(225, 29, 72, 0.20)',
+    iconBg: '#FFF1F2',
+    iconBorder: '#FCA5A5',
+    iconColor: '#E11D48',
+    noteMain: '#C2410C',
+    noteBg: '#FFF7ED',
+  };
+}
+
 function formatNowLabel() {
   const now = new Date();
   const hours = `${now.getHours()}`.padStart(2, '0');
@@ -113,6 +187,9 @@ export function ReportScreen() {
   const [activeResult, setActiveResult] = useState<SimulatedResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>(HISTORY_SEED);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [sampleId, setSampleId] = useState<string | null>(null);
+  const [aiPrediction, setAiPrediction] = useState<AiPrediction | null>(null);
+  const [selectedLabel, setSelectedLabel] = useState<ContainerLabel>('REUSABLE');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timersRef = useRef<number[]>([]);
 
@@ -126,7 +203,10 @@ export function ReportScreen() {
 
   const modeMeta = CERTIFICATION_MODES.find((item) => item.id === mode) ?? CERTIFICATION_MODES[0];
   const canStartAnalysis = analysisState === 'captured' || analysisState === 'failure';
-  const isBusy = analysisState === 'classifying';
+  const isAnalyzing = analysisState === 'analyzing';
+  const isSubmitting = analysisState === 'submitting';
+  const isBusy = isAnalyzing || isSubmitting;
+  const isLabeling = analysisState === 'labeling' || analysisState === 'submitting';
 
   if (!selectedGame) return <LockedScreen tabName="인증" />;
 
@@ -154,43 +234,35 @@ export function ReportScreen() {
     clearTimers();
     setActiveResult(null);
     setImageFile(null);
+    setSampleId(null);
+    setAiPrediction(null);
     setAnalysisState('idle');
   };
 
-  const buildResultFromError = (mode: CertificationMode, err: unknown): SimulatedResult => {
+  const buildResultFromError = (err: unknown): SimulatedResult => {
     if (err instanceof ApiError) {
       const body = err.body as { code?: string; message?: string } | null;
-      const code = body?.code;
-      if (code === 'NOT_REUSABLE') {
-        return {
-          detected: '일회용기',
-          approved: false,
-          statusLabel: '재촬영 필요',
-          reason: '일회용기로 인식돼 인증이 보류됐습니다.',
-          guide: '다회용 컵만 단독으로 다시 촬영해주세요.',
-        };
-      }
-      if (code === 'LOW_CONFIDENCE') {
+      if (body?.code === 'ALREADY_CONFIRMED') {
         return {
           detected: '다회용기',
-          approved: false,
-          statusLabel: '신뢰도 부족',
-          reason: body?.message ?? 'AI 판별 신뢰도가 70% 미만입니다.',
-          guide: '용기 전면이 또렷이 보이도록 다시 촬영해주세요.',
+          tone: 'error',
+          statusLabel: '이미 확정됨',
+          reason: '이미 라벨이 확정된 인증입니다.',
+          guide: '새로 촬영해 다시 시도해주세요.',
         };
       }
-      if (code === 'NO_RECENT_USE') {
+      if (err.status === 503) {
         return {
           detected: '다회용기',
-          approved: false,
-          statusLabel: '사용 인증 필요',
-          reason: '최근 12시간 내 사용 인증 기록이 없습니다.',
-          guide: mode === 'return' ? '먼저 사용 인증을 완료해주세요.' : '',
+          tone: 'error',
+          statusLabel: '저장 실패',
+          reason: '이미지 저장에 실패했습니다.',
+          guide: '잠시 후 다시 시도해주세요.',
         };
       }
       return {
         detected: '다회용기',
-        approved: false,
+        tone: 'error',
         statusLabel: `오류 ${err.status}`,
         reason: body?.message ?? err.message,
         guide: '잠시 후 다시 시도해주세요.',
@@ -198,52 +270,109 @@ export function ReportScreen() {
     }
     return {
       detected: '다회용기',
-      approved: false,
+      tone: 'error',
       statusLabel: '네트워크 오류',
       reason: '서버에 연결하지 못했습니다.',
       guide: '네트워크 상태를 확인하고 다시 시도해주세요.',
     };
   };
 
+  // 1단계: 이미지 업로드 + AI 예측. 유저 라벨링 단계로 넘어간다.
   const handleAnalyze = async () => {
     if (!canStartAnalysis || isBusy || !imageFile) return;
 
     clearTimers();
-    setAnalysisState('classifying');
+    setActiveResult(null);
+    setAnalysisState('analyzing');
 
     try {
-      const apiResult = await verifyImage(mode, imageFile);
-      const result: SimulatedResult = {
-        detected: '다회용기',
-        approved: true,
-        statusLabel: mode === 'use' ? 'AI 확인 완료' : '반납 확인 완료',
-        reason: `confidence ${apiResult.vision.confidence.toFixed(1)}%`,
-        guide: '',
-      };
-      addCertification(mode);
-      setActiveResult(result);
-      const successItem: HistoryItem = {
-        id: apiResult.usage.id,
-        mode,
-        label: mode === 'use' ? '사용 인증' : '반납 인증',
-        time: formatNowLabel(),
-        detected: '다회용기',
-        passed: true,
-      };
-      setHistory((prev) => [successItem, ...prev].slice(0, 6));
-      setAnalysisState('success');
+      const res = await analyzeImage(mode, imageFile);
+      setSampleId(res.sampleId);
+      setAiPrediction(res.ai);
+      setSelectedLabel(res.suggestedLabel);
+      setAnalysisState('labeling');
     } catch (err) {
-      const result = buildResultFromError(mode, err);
-      setActiveResult(result);
-      const failureItem: HistoryItem = {
-        id: `${Date.now()}`,
-        mode,
-        label: mode === 'use' ? '사용 인증' : '반납 인증',
-        time: formatNowLabel(),
-        detected: result.detected,
-        passed: false,
-      };
-      setHistory((prev) => [failureItem, ...prev].slice(0, 6));
+      setActiveResult(buildResultFromError(err));
+      setAnalysisState('failure');
+    }
+  };
+
+  const handleSelectLabel = (label: ContainerLabel) => {
+    if (isSubmitting) return;
+    setSelectedLabel(label);
+  };
+
+  // 2단계: 유저가 고른 라벨을 확정. REUSABLE이면 점수 반영.
+  const handleConfirm = async () => {
+    if (!sampleId || isSubmitting) return;
+
+    clearTimers();
+    setAnalysisState('submitting');
+
+    try {
+      const res = await confirmLabel(sampleId, selectedLabel);
+      const isReusable = selectedLabel === 'REUSABLE';
+      const detected: SimulatedResult['detected'] = isReusable
+        ? '다회용기'
+        : '일회용기';
+      const label = mode === 'use' ? '사용 인증' : '반납 인증';
+
+      if (res.scored) {
+        addCertification(mode);
+        setActiveResult({
+          detected,
+          tone: 'success',
+          statusLabel: mode === 'use' ? '사용 인증 완료' : '반납 인증 완료',
+          reason: aiPrediction
+            ? `확정 라벨: ${detected} · AI ${aiPrediction.confidence.toFixed(1)}%`
+            : `확정 라벨: ${detected}`,
+          guide: '',
+        });
+        setHistory((prev) =>
+          [
+            {
+              id: res.usage?.id ?? `${Date.now()}`,
+              mode,
+              label,
+              time: formatNowLabel(),
+              detected,
+              passed: true,
+            },
+            ...prev,
+          ].slice(0, 6),
+        );
+        setAnalysisState('success');
+        return;
+      }
+
+      const neutral = res.reason === 'SINGLE_USE_LABEL';
+      setActiveResult({
+        detected,
+        tone: neutral ? 'neutral' : 'error',
+        statusLabel: neutral ? '일회용기로 기록' : '사용 인증 필요',
+        reason: neutral
+          ? '일회용기로 라벨링해 학습 데이터로 저장했습니다. 점수는 반영되지 않습니다.'
+          : '최근 12시간 내 사용 인증이 없어 반납 점수가 반영되지 않았습니다.',
+        guide: neutral
+          ? '다회용기를 사용하면 점수가 반영됩니다.'
+          : '먼저 사용 인증을 완료해주세요.',
+      });
+      setHistory((prev) =>
+        [
+          {
+            id: res.sample.id,
+            mode,
+            label,
+            time: formatNowLabel(),
+            detected,
+            passed: false,
+          },
+          ...prev,
+        ].slice(0, 6),
+      );
+      setAnalysisState(neutral ? 'recorded' : 'failure');
+    } catch (err) {
+      setActiveResult(buildResultFromError(err));
       setAnalysisState('failure');
     }
   };
@@ -375,10 +504,13 @@ export function ReportScreen() {
                 key={item.id}
                 type="button"
                 onClick={() => {
+                  if (isBusy) return;
                   setMode(item.id);
                   setActiveResult(null);
-                  if (analysisState === 'success' || analysisState === 'failure') {
-                    setAnalysisState('captured');
+                  setSampleId(null);
+                  setAiPrediction(null);
+                  if (analysisState !== 'idle') {
+                    setAnalysisState(imageFile ? 'captured' : 'idle');
                   }
                 }}
                 style={{
@@ -597,7 +729,7 @@ export function ReportScreen() {
             </div>
 
             <AnimatePresence>
-              {analysisState === 'classifying' && (
+              {isBusy && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -642,9 +774,13 @@ export function ReportScreen() {
                     >
                       <ScanLine size={24} color={modeMeta.tone} />
                     </motion.div>
-                    <p style={{ fontSize: 17, fontWeight: 700, color: '#0F172A' }}>Vision AI 판독 중</p>
+                    <p style={{ fontSize: 17, fontWeight: 700, color: '#0F172A' }}>
+                      {isSubmitting ? '인증 확정 중' : 'Vision AI 판독 중'}
+                    </p>
                     <p style={{ marginTop: 8, fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
-                      용기 종류와 반납 장면을 빠르게 확인하고 있습니다.
+                      {isSubmitting
+                        ? '선택한 라벨을 저장하고 점수를 반영하고 있습니다.'
+                        : '용기 종류를 분석하고 결과를 준비하고 있습니다.'}
                     </p>
                     <div
                       style={{
@@ -700,7 +836,7 @@ export function ReportScreen() {
             </button>
             <button
               type="button"
-              aria-label="AI 인증 시작"
+              aria-label="AI 분석 시작"
               onClick={handleAnalyze}
               disabled={!canStartAnalysis || isBusy}
               style={{
@@ -720,98 +856,182 @@ export function ReportScreen() {
                   : '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
               }}
             >
-              {isBusy ? '분석 중...' : 'AI 인증 시작'}
+              {isAnalyzing ? '분석 중...' : 'AI 분석 시작'}
             </button>
           </div>
         </div>
 
-        <AnimatePresence mode="wait">
-          {activeResult && (
-            <motion.div
-              key={`${analysisState}-${activeResult.statusLabel}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
+        {isLabeling && (
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 'var(--cb-radius-lg)',
+              padding: 16,
+              border: '2px solid #430A21',
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
+            }}
+          >
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>라벨 확정</p>
+            <p style={{ marginTop: 4, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
+              {aiPrediction
+                ? `AI 예측: ${aiPrediction.isReusable ? '다회용기' : '일회용기'} · ${aiPrediction.confidence.toFixed(1)}%`
+                : 'AI가 판단하지 못했습니다. 직접 선택해 주세요.'}
+            </p>
+            <p style={{ marginTop: 4, fontSize: 11, color: '#94A3B8', lineHeight: 1.5 }}>
+              최종 선택은 학습 데이터로 저장됩니다. 실제 용기와 같은 것을 골라주세요.
+            </p>
+
+            <div
               style={{
-                background: '#fff',
-                borderRadius: 'var(--cb-radius-lg)',
-                padding: 16,
-                border: analysisState === 'success' ? '2px solid #15803D' : '2px solid #E11D48',
-                boxShadow: analysisState === 'success'
-                  ? '0 3px 0 0 #15803D, 0 4px 6px rgba(21, 128, 61, 0.20)'
-                  : '0 3px 0 0 #E11D48, 0 4px 6px rgba(225, 29, 72, 0.20)',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+                marginTop: 12,
               }}
             >
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div
+              {LABEL_OPTIONS.map((opt) => {
+                const active = opt.value === selectedLabel;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleSelectLabel(opt.value)}
+                    disabled={isSubmitting}
+                    aria-pressed={active}
+                    style={{
+                      borderRadius: 'var(--cb-radius-md)',
+                      border: active ? `2px solid ${opt.tone}` : '2px solid #430A21',
+                      background: active ? opt.tint : '#fff',
+                      padding: '12px 12px 11px',
+                      textAlign: 'left',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      boxShadow: active ? `0 3px 0 0 ${opt.tone}` : '0 2px 0 0 #430A21',
+                    }}
+                  >
+                    <p style={{ fontSize: 14, fontWeight: 700, color: active ? opt.tone : '#0F172A' }}>
+                      {opt.title}
+                    </p>
+                    <p style={{ marginTop: 4, fontSize: 10, color: '#64748B' }}>{opt.subtitle}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isSubmitting}
+              style={{
+                width: '100%',
+                marginTop: 12,
+                borderRadius: 'var(--cb-radius-md)',
+                border: '2px solid #430A21',
+                background: isSubmitting ? '#CBD5E1' : 'var(--cb-primary)',
+                color: '#fff',
+                padding: '14px 12px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                boxShadow: isSubmitting
+                  ? '0 2px 0 0 #430A21'
+                  : '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
+              }}
+            >
+              {isSubmitting
+                ? '확정 중...'
+                : `${selectedLabel === 'REUSABLE' ? '다회용기' : '일회용기'}로 인증 확정`}
+            </button>
+          </div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {activeResult &&
+            (() => {
+              const palette = tonePalette(activeResult.tone);
+              const isSuccess = activeResult.tone === 'success';
+              return (
+                <motion.div
+                  key={`${analysisState}-${activeResult.statusLabel}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 'var(--cb-radius-md)',
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: analysisState === 'success' ? 'var(--cb-primary-soft)' : '#FFF1F2',
-                    border: `1.5px solid ${analysisState === 'success' ? 'var(--cb-primary-border)' : '#FCA5A5'}`,
+                    background: '#fff',
+                    borderRadius: 'var(--cb-radius-lg)',
+                    padding: 16,
+                    border: `2px solid ${palette.cardMain}`,
+                    boxShadow: `0 3px 0 0 ${palette.cardMain}, 0 4px 6px ${palette.cardShadow}`,
                   }}
                 >
-                  <CheckCircle size={22} color={analysisState === 'success' ? 'var(--cb-primary-deep)' : '#E11D48'} />
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
-                    {analysisState === 'success' ? '인증 완료!' : '인증 실패'}
-                  </p>
-                  {analysisState === 'success' && <span style={srOnlyStyle}>인증 완료</span>}
-                  <p style={{ marginTop: 4, fontSize: 12, color: '#475569', lineHeight: 1.55 }}>
-                    {activeResult.reason}
-                  </p>
-                </div>
-              </div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 'var(--cb-radius-md)',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: palette.iconBg,
+                        border: `1.5px solid ${palette.iconBorder}`,
+                      }}
+                    >
+                      <CheckCircle size={22} color={palette.iconColor} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
+                        {palette.title}
+                      </p>
+                      {isSuccess && <span style={srOnlyStyle}>인증 완료</span>}
+                      <p style={{ marginTop: 4, fontSize: 12, color: '#475569', lineHeight: 1.55 }}>
+                        {activeResult.reason}
+                      </p>
+                    </div>
+                  </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  gap: 8,
-                  marginTop: 14,
-                }}
-              >
-                <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
-                  <p style={{ fontSize: 10, color: '#64748B' }}>확인 결과</p>
-                  <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.detected}</p>
-                </div>
-                <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
-                  <p style={{ fontSize: 10, color: '#64748B' }}>처리 상태</p>
-                  <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.statusLabel}</p>
-                </div>
-              </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                      gap: 8,
+                      marginTop: 14,
+                    }}
+                  >
+                    <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
+                      <p style={{ fontSize: 10, color: '#64748B' }}>확인 결과</p>
+                      <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.detected}</p>
+                    </div>
+                    <div style={{ borderRadius: 'var(--cb-radius-md)', background: '#F8FAFC', padding: '10px 11px', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
+                      <p style={{ fontSize: 10, color: '#64748B' }}>처리 상태</p>
+                      <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{activeResult.statusLabel}</p>
+                    </div>
+                  </div>
 
-              <div
-                style={{
-                  marginTop: 12,
-                  borderRadius: 'var(--cb-radius-md)',
-                  padding: '11px 12px',
-                  background: analysisState === 'success' ? '#F0FDF4' : '#FFF7ED',
-                  border: `2px solid ${analysisState === 'success' ? '#15803D' : '#C2410C'}`,
-                  boxShadow: `0 2px 0 0 ${analysisState === 'success' ? '#15803D' : '#C2410C'}`,
-                }}
-              >
-                <p style={{ fontSize: 12, fontWeight: 700, color: analysisState === 'success' ? '#15803D' : '#C2410C' }}>
-                  {analysisState === 'success'
-                    ? '서울 감축 지표에 반영되었습니다'
-                    : activeResult.statusLabel}
-                </p>
-                <p style={{ marginTop: 4, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
-                  {analysisState === 'success'
-                    ? (timeSaleActive
-                      ? '7-8회 조기 반납 구간에 인증해 대기 줄이 짧았습니다.'
-                      : '인증한 다회용기는 줄인 일회용기 개수와 폐기물 감량에 합산됩니다.')
-                    : activeResult.guide}
-                </p>
-              </div>
-            </motion.div>
-          )}
+                  <div
+                    style={{
+                      marginTop: 12,
+                      borderRadius: 'var(--cb-radius-md)',
+                      padding: '11px 12px',
+                      background: palette.noteBg,
+                      border: `2px solid ${palette.noteMain}`,
+                      boxShadow: `0 2px 0 0 ${palette.noteMain}`,
+                    }}
+                  >
+                    <p style={{ fontSize: 12, fontWeight: 700, color: palette.noteMain }}>
+                      {isSuccess ? '서울 감축 지표에 반영되었습니다' : activeResult.statusLabel}
+                    </p>
+                    <p style={{ marginTop: 4, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
+                      {isSuccess
+                        ? timeSaleActive
+                          ? '7-8회 조기 반납 구간에 인증해 대기 줄이 짧았습니다.'
+                          : '인증한 다회용기는 줄인 일회용기 개수와 폐기물 감량에 합산됩니다.'
+                        : activeResult.guide}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
         </AnimatePresence>
 
         <div

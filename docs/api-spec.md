@@ -135,58 +135,85 @@ JWT 검증 후 본인 프로필 조회.
 
 ---
 
-## Verify (Vision AI)
+## Verify (휴먼인더루프 인증 + 학습데이터 적재)
 
-다회용기 사용/반납 인증. 내부적으로 Vision Cloud Run(`cleanballtrio-vision`, MobileNetV2)에 forward한 뒤 통과 시 `usages` 테이블에 기록 + 점수 부여.
+다회용기 사용/반납 인증을 **2단계**로 처리한다. 어떤 판별 결과든 모든 시도를 학습용으로
+`verification_samples` 테이블 + GCS(원본 이미지)에 영구 저장한다. AI(Vision Cloud Run,
+`cleanballtrio-vision`, MobileNetV2)가 먼저 예측하고, **유저가 정답 라벨을 확정**한다.
+유저 라벨이 `REUSABLE`일 때만 `usages`에 점수 행을 만든다.
 
 공통 규칙:
 - JWT 필수
-- `Content-Type: multipart/form-data`
-- 검증 기준: `isReusable === true` **그리고** `confidence ≥ 70` → 통과
-- 통과 시: USE = 50점, RETURN = 100점 (`usages.score`)
+- 점수: USE = 50점, RETURN = 100점 (`usages.score`)
+- RETURN은 직전 12시간 내 USE가 있어야 점수 부여 (없으면 샘플은 기록하되 미점수)
 
-### `POST /verify/use`
+### `POST /verify/analyze` (1단계)
 
-**Request fields (multipart)**
+이미지를 GCS에 적재하고 Vision 예측을 받아 `PENDING` 샘플을 만든다. Vision이 다운이어도
+샘플은 적재되고 `ai`는 `null`이 된다.
+
+**Request fields (multipart/form-data)**
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `image` | file | ✅ | JPEG/PNG. 최대 10MB. |
-| `gameId` | string | 선택 | 관람 중인 경기 id (게임 사용 통계용) |
+| `image` | file | ✅ | JPEG/PNG/WebP. 최대 10MB. |
+| `kind` | string | ✅ | `USE` 또는 `RETURN` |
+| `gameId` | string | 선택 | 관람 중인 경기 id |
 | `lat` | number | 선택 | 위도 |
 | `lng` | number | 선택 | 경도 |
 
 **Response 200**
 ```json
 {
-  "vision": { "isReusable": true, "classIndex": 0, "confidence": 92.5 },
-  "usage": {
-    "id": "12",
-    "kind": "USE",
-    "score": 50,
-    "scannedAt": "2026-05-12T10:00:00.000Z"
-  }
+  "sampleId": "31",
+  "ai": { "isReusable": true, "classIndex": 0, "confidence": 92.5 },
+  "suggestedLabel": "REUSABLE"
+}
+```
+- `ai`: Vision 다운 시 `null`
+- `suggestedLabel`: UI 기본 선택값. AI가 일회용기로 보면 `SINGLE_USE`, 그 외(또는 null)는 `REUSABLE`
+
+### `POST /verify/confirm` (2단계)
+
+유저가 정답 라벨을 확정한다. `REUSABLE`이면 점수 행(usages)을 만들어 샘플에 연결한다.
+
+**Request body (application/json)**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `sampleId` | string | ✅ | 1단계에서 받은 샘플 id |
+| `userLabel` | string | ✅ | `REUSABLE` 또는 `SINGLE_USE` |
+
+**Response 200 — 점수 부여(REUSABLE)**
+```json
+{
+  "sample": { "id": "31", "kind": "USE", "userLabel": "REUSABLE", "status": "CONFIRMED" },
+  "scored": true,
+  "usage": { "id": "12", "kind": "USE", "score": 50, "scannedAt": "2026-06-01T10:00:00.000Z" }
 }
 ```
 
-### `POST /verify/return`
-
-USE와 동일한 요청 스키마. **추가 가드**:
-- 같은 사용자의 가장 최근 USE가 12시간 이내에 있어야 함
-- 없으면 `409 Conflict { code: 'NO_RECENT_USE' }`
-
-응답 형태는 USE와 동일하지만 `usage.kind = "RETURN"`, `usage.score = 100`.
+**Response 200 — 미점수(기록만)**
+```json
+{
+  "sample": { "id": "31", "kind": "RETURN", "userLabel": "REUSABLE", "status": "CONFIRMED" },
+  "scored": false,
+  "reason": "NO_RECENT_USE"
+}
+```
+- `reason`: `SINGLE_USE_LABEL`(일회용기 라벨 → 음성 샘플) / `NO_RECENT_USE`(RETURN 직전 USE 없음)
+- 두 경우 모두 샘플은 `CONFIRMED`로 저장된다 (학습 데이터 유지)
 
 ### 공통 에러
 
 | 상태 | code | 의미 |
 |---|---|---|
-| 400 | `NOT_REUSABLE` | 모델이 single_use로 판별 |
-| 400 | `LOW_CONFIDENCE` | confidence < 70% |
-| 400 | (NestJS) | `image` 누락 / 파일 크기 초과 / `gameId`/`lat`/`lng` validation |
+| 400 | (NestJS) | `image`/`kind` 누락, 파일 크기 초과, `gameId`/`lat`/`lng`/`userLabel` validation |
 | 401 | — | JWT 무효 |
-| 409 | `NO_RECENT_USE` | RETURN인데 직전 12시간 USE 없음 |
-| 503 | — | Vision 서비스 타임아웃/다운 |
+| 403 | `NOT_OWNER` | 본인 샘플이 아님 |
+| 404 | `SAMPLE_NOT_FOUND` | 없는 sampleId |
+| 409 | `ALREADY_CONFIRMED` | 이미 라벨 확정된 샘플 |
+| 503 | — | GCS 이미지 저장 실패 |
 
 ---
 
