@@ -19,7 +19,7 @@ Get-Content $envPath | ForEach-Object {
     }
 }
 
-foreach ($key in @('KAKAO_REST_API_KEY', 'KAKAO_CLIENT_SECRET', 'JWT_SECRET', 'DB_PASSWORD', 'VISION_API_URL')) {
+foreach ($key in @('KAKAO_REST_API_KEY', 'KAKAO_CLIENT_SECRET', 'JWT_SECRET', 'DB_PASSWORD', 'VISION_API_URL', 'GCS_TRAINING_BUCKET')) {
     if (-not $envVars.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envVars[$key])) {
         Write-Error "필수 env 변수 누락: $key (backend/.env 확인)"
         exit 1
@@ -48,7 +48,8 @@ $setEnvVars = "^|^" + (@(
     "JWT_SECRET=$($envVars['JWT_SECRET'])",
     "CORS_ORIGIN=$corsOrigin",
     "DATABASE_URL=$dbUrl",
-    "VISION_API_URL=$($envVars['VISION_API_URL'])"
+    "VISION_API_URL=$($envVars['VISION_API_URL'])",
+    "GCS_TRAINING_BUCKET=$($envVars['GCS_TRAINING_BUCKET'])"
 ) -join '|')
 
 Write-Host "Cloud Run 배포 시작 (5~10분 소요)..." -ForegroundColor Cyan
