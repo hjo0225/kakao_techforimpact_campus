@@ -14,8 +14,7 @@ const ContainerPolicy = {
   NOT_SUPPORTED: 'NOT_SUPPORTED',
   MENU_DEPENDENT: 'MENU_DEPENDENT',
 } as const;
-type ContainerPolicy =
-  (typeof ContainerPolicy)[keyof typeof ContainerPolicy];
+type ContainerPolicy = (typeof ContainerPolicy)[keyof typeof ContainerPolicy];
 
 const MenuSaleStatus = {
   ON_SALE: 'ON_SALE',

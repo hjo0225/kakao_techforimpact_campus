@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ImageOff } from 'lucide-react';
+import { X, ImageOff } from 'lucide-react';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import {
@@ -7,14 +7,6 @@ import {
   fetchVerificationImageUrl,
   type VerificationHistoryItem,
 } from '../../../lib/verifyApi';
-
-const cardStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 'var(--cb-radius-lg)',
-  padding: 14,
-  border: '2px solid #430A21',
-  boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
-};
 
 function dateKey(iso: string): string {
   const d = new Date(iso);
@@ -31,8 +23,7 @@ function timeLabel(iso: string): string {
   });
 }
 
-// 인증 사진 썸네일 — bearer로 받아 blob URL, 언마운트 시 revoke
-function VerifyThumb({ id }: { id: string }) {
+function PhotoThumb({ id, onClick }: { id: string; onClick: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -41,48 +32,124 @@ function VerifyThumb({ id }: { id: string }) {
     let created: string | null = null;
     fetchVerificationImageUrl(id)
       .then((u) => {
-        if (cancelled) {
-          URL.revokeObjectURL(u);
-          return;
-        }
+        if (cancelled) { URL.revokeObjectURL(u); return; }
         created = u;
         setUrl(u);
       })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
+      .catch(() => { if (!cancelled) setFailed(true); });
     return () => {
       cancelled = true;
       if (created) URL.revokeObjectURL(created);
     };
   }, [id]);
 
-  const box: React.CSSProperties = {
-    width: 56,
-    height: 56,
-    flexShrink: 0,
-    borderRadius: 'var(--cb-radius-md)',
-    border: '2px solid #430A21',
-    overflow: 'hidden',
-    background: '#F1F5F9',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  if (failed) {
-    return (
-      <div style={box}>
-        <ImageOff size={20} color="#94A3B8" />
-      </div>
-    );
-  }
-  if (!url) {
-    return <div style={{ ...box, background: '#E2E8F0' }} />;
-  }
   return (
-    <div style={box}>
-      <img src={url} alt="인증 사진" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'block',
+        padding: 0,
+        margin: 0,
+        border: 'none',
+        background: '#1E293B',
+        aspectRatio: '1 / 1',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        width: '100%',
+      }}
+    >
+      {url ? (
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      ) : failed ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <ImageOff size={18} color="#475569" />
+        </div>
+      ) : (
+        <div style={{ width: '100%', height: '100%', background: '#1E293B' }} />
+      )}
+    </button>
+  );
+}
+
+function PhotoLightbox({ item, onClose }: { item: VerificationHistoryItem; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let created: string | null = null;
+    fetchVerificationImageUrl(item.id)
+      .then((u) => {
+        if (cancelled) { URL.revokeObjectURL(u); return; }
+        created = u;
+        setUrl(u);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [item.id]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.92)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="닫기"
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          background: 'rgba(255,255,255,0.14)',
+          border: 'none',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+      >
+        <X size={20} color="#fff" />
+      </button>
+
+      {url ? (
+        <img
+          src={url}
+          alt="인증 사진"
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', display: 'block' }}
+        />
+      ) : (
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>불러오는 중...</div>
+      )}
+
+      <p style={{
+        position: 'absolute',
+        bottom: 32,
+        color: 'rgba(255,255,255,0.55)',
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        margin: 0,
+      }}>
+        {dateKey(item.createdAt)} {timeLabel(item.createdAt)}
+      </p>
     </div>
   );
 }
@@ -90,22 +157,16 @@ function VerifyThumb({ id }: { id: string }) {
 export function CalendarScreen() {
   const [items, setItems] = useState<VerificationHistoryItem[] | null>(null);
   const [error, setError] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     getVerificationHistory()
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data) => { if (!cancelled) setItems(data); })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
   }, []);
 
-  // 날짜별 그룹 (최신순)
   const groups = useMemo(() => {
     if (!items) return [];
     const map = new Map<string, VerificationHistoryItem[]>();
@@ -118,9 +179,14 @@ export function CalendarScreen() {
     return Array.from(map.entries());
   }, [items]);
 
+  const selectedItem = useMemo(
+    () => items?.find((it) => it.id === selectedId) ?? null,
+    [items, selectedId],
+  );
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
-      <StatusBar centerLabel="캘린더" />
+      <StatusBar centerLabel="사진 기록" />
 
       <div
         style={{
@@ -128,91 +194,49 @@ export function CalendarScreen() {
           minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
-          padding: '14px 16px 18px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
+          paddingBottom: 18,
         }}
       >
-        <div style={cardStyle}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>인증 캘린더</p>
-          <p style={{ marginTop: 4, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
-            날짜별 다회용기 인증 기록과 촬영한 사진을 모아봅니다.
-          </p>
-        </div>
-
         {error && (
-          <div style={{ ...cardStyle, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
+          <p style={{ textAlign: 'center', color: '#64748B', fontSize: 12, padding: '32px 16px' }}>
             기록을 불러오지 못했습니다.
-          </div>
+          </p>
         )}
-
         {!error && items && items.length === 0 && (
-          <div style={{ ...cardStyle, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
-            아직 인증 기록이 없습니다. 카메라로 첫 인증을 남겨보세요.
-          </div>
+          <p style={{ textAlign: 'center', color: '#64748B', fontSize: 12, padding: '32px 16px' }}>
+            아직 인증 사진이 없습니다. 카메라로 첫 인증을 남겨보세요.
+          </p>
         )}
-
         {!error && !items && (
-          <div style={{ ...cardStyle, textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>
+          <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: '32px 16px' }}>
             불러오는 중...
-          </div>
+          </p>
         )}
 
         {groups.map(([day, dayItems]) => (
-          <div key={day} style={cardStyle}>
-            <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)' }}>{day}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-              {dayItems.map((it) => {
-                const kindLabel = it.kind === 'USE' ? '사용 인증' : '반납 인증';
-                const labelText =
-                  it.userLabel === 'REUSABLE'
-                    ? '다회용기'
-                    : it.userLabel === 'SINGLE_USE'
-                      ? '일회용기'
-                      : '미확정';
-                const confirmed = it.status === 'CONFIRMED' && it.userLabel === 'REUSABLE';
-                return (
-                  <div
-                    key={it.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 10,
-                      borderRadius: 'var(--cb-radius-md)',
-                      background: '#F8FAFC',
-                      border: '2px solid #430A21',
-                      boxShadow: '0 2px 0 0 #430A21',
-                    }}
-                  >
-                    <VerifyThumb id={it.id} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-                        {kindLabel} · {labelText}
-                      </p>
-                      <p style={{ marginTop: 3, fontSize: 11, color: '#64748B' }}>
-                        {timeLabel(it.createdAt)}
-                        {it.confidence != null ? ` · AI ${it.confidence.toFixed(0)}%` : ''}
-                      </p>
-                    </div>
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: confirmed ? '#15803D' : '#C2410C',
-                      }}
-                    >
-                      {confirmed ? '반영' : '미반영'}
-                    </span>
-                  </div>
-                );
-              })}
+          <div key={day} style={{ marginBottom: 20 }}>
+            <p style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: '#64748B',
+              letterSpacing: '0.06em',
+              padding: '12px 14px 6px',
+              margin: 0,
+            }}>
+              {day}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+              {dayItems.map((it) => (
+                <PhotoThumb key={it.id} id={it.id} onClick={() => setSelectedId(it.id)} />
+              ))}
             </div>
           </div>
         ))}
       </div>
+
+      {selectedItem && (
+        <PhotoLightbox item={selectedItem} onClose={() => setSelectedId(null)} />
+      )}
 
       <BottomNav />
     </div>

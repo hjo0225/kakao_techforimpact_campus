@@ -234,6 +234,7 @@ export function StadiumSvgMap({
   return (
     <div
       style={{
+        width: '100%',
         border: '3px solid #430A21',
         borderRadius: '18px',
         overflow: 'hidden',
@@ -249,7 +250,6 @@ export function StadiumSvgMap({
           position: 'relative',
           width: '100%',
           aspectRatio: `${mapImage.width} / ${mapImage.height}`,
-          overflow: 'hidden',
           background: '#F4EEE8',
           touchAction: 'pan-y',
         }}

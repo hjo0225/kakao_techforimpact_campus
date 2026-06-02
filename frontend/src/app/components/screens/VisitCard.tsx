@@ -47,7 +47,7 @@ interface CardInput {
   visitN: number;
 }
 
-// 직관카드 프레임 — 1080² 정사각형. 사진을 전부 담고(contain) 남는 부분은 검은 여백 + 좌하단 토끼.
+// 직관카드 프레임 — 1080² 정사각형. 사진을 cover로 채움 + 좌하단 토끼.
 async function createCardImage(input: CardInput): Promise<File> {
   const mascot = await loadImage(input.mascotSrc);
   const size = 1080;
@@ -60,10 +60,8 @@ async function createCardImage(input: CardInput): Promise<File> {
 
   if (input.photoUrl) {
     const photo = await loadImage(input.photoUrl);
-    // 검은 배경 + 사진 전체를 비율 유지하며 가운데 맞춤(contain) → 짤림 없음, 검은 여백
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, size, size);
-    const scale = Math.min(size / photo.width, size / photo.height);
+    // cover: 짧은 쪽 기준으로 꽉 채워 그림 (여백 없음, 긴 쪽은 크롭)
+    const scale = Math.max(size / photo.width, size / photo.height);
     const w = photo.width * scale;
     const h = photo.height * scale;
     ctx.drawImage(photo, (size - w) / 2, (size - h) / 2, w, h);
