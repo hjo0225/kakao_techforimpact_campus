@@ -20,11 +20,11 @@ const RIGHT_TABS: Tab[] = [
 
 export function BottomNav() {
   const { currentRoute, navigate } = useNavigation();
-  const { cameraPurpose, triggerCameraAction } = useApp();
+  const { triggerCameraAction } = useApp();
 
   const handleCamera = () => {
-    // 직관카드 화면에 이미 있으면 촬영(파일 선택)을 트리거, 아니면 카메라 화면으로 이동
-    if (currentRoute === 'report' && cameraPurpose === 'visit-card') {
+    // 카메라 화면(인증/직관카드)에 이미 있으면 촬영(파일 선택) 트리거, 아니면 이동
+    if (currentRoute === 'report') {
       triggerCameraAction();
     } else {
       navigate('report');
