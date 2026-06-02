@@ -223,7 +223,7 @@ export function VisitCard() {
         <CameraPurposeToggle />
 
         {/* 카드 프리뷰 — 사진 비율 그대로(짤림 없음). 길면 화면이 스크롤됨. */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', flexShrink: 0 }}>
           <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', minHeight: 200 }}>
             {cardUrl ? (
               <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: 'auto', display: 'block' }} />
@@ -253,7 +253,7 @@ export function VisitCard() {
         </div>
 
         {/* 프레임 선택 (가로 스크롤 — 항목 추가 가능) */}
-        <div style={cardStyle}>
+        <div style={{ ...cardStyle, flexShrink: 0 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>프레임</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
             {FRAMES.map((f) => {
@@ -285,7 +285,7 @@ export function VisitCard() {
         </div>
 
         {/* 저장하기 + 공유하기 (한 줄) */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button
             type="button"
             onClick={handleDownload}

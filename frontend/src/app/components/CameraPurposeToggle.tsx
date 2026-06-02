@@ -14,6 +14,7 @@ export function CameraPurposeToggle() {
     <div
       style={{
         display: 'flex',
+        flexShrink: 0,
         border: '2px solid #430A21',
         borderRadius: 'var(--cb-radius-md)',
         overflow: 'hidden',
@@ -35,7 +36,10 @@ export function CameraPurposeToggle() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              padding: '14px 0',
+              height: 48,
+              padding: 0,
+              boxSizing: 'border-box',
+              lineHeight: 1,
               background: active ? 'var(--cb-primary)' : '#fff',
               color: active ? '#fff' : '#64748B',
               border: 'none',

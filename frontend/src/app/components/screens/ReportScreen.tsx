@@ -232,7 +232,7 @@ export function ReportScreen() {
         </div>
 
         {/* 사진 프리뷰 */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', flexShrink: 0 }}>
           <div
             style={{
               position: 'relative',
