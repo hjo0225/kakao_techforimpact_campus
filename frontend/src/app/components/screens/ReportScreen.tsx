@@ -247,7 +247,16 @@ export function ReportScreen() {
             {photo ? (
               <img src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.85)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+              >
                 <Camera size={34} />
                 <p style={{ marginTop: 8, fontSize: 12, fontWeight: 700 }}>중앙 카메라 버튼으로 촬영</p>
               </div>
