@@ -368,11 +368,11 @@ export function ReportScreen() {
               boxShadow: `0 3px 0 0 ${resultPalette(result.tone).main}`,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               <CheckCircle size={22} color={resultPalette(result.tone).main} />
               <p style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{result.title}</p>
             </div>
-            <p style={{ marginTop: 8, fontSize: 12, color: '#475569', lineHeight: 1.55 }}>{result.reason}</p>
+            <p style={{ marginTop: 8, fontSize: 12, color: '#475569', lineHeight: 1.55, textAlign: 'center' }}>{result.reason}</p>
             <button
               type="button"
               onClick={reset}
