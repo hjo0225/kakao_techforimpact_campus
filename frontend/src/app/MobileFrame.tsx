@@ -3,11 +3,11 @@ import type { ReactNode } from 'react'
 
 export default function MobileFrame({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window === 'undefined' ? true : window.innerWidth <= 768,
+    typeof window === 'undefined' ? true : window.innerWidth <= 1100,
   )
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768)
+    const checkMobile = () => setIsMobile(window.innerWidth <= 1100)
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
@@ -22,10 +22,8 @@ export default function MobileFrame({ children }: { children: ReactNode }) {
 function DesktopFrame({ children }: { children: ReactNode }) {
   return (
     <div className="cb-desktop-shell">
-      <div className="cb-phone-frame">
-        <div className="cb-dynamic-island" />
-        <div className="cb-phone-content">{children}</div>
-        <div className="cb-home-indicator" />
+      <div className="cb-desktop-content">
+        {children}
       </div>
     </div>
   )

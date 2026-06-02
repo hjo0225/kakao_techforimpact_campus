@@ -41,6 +41,14 @@ const categories: Array<{ key: 'ALL' | StoreCategory; label: string; icon: typeo
   { key: 'BEVERAGE', label: CATEGORY_LABELS.BEVERAGE, icon: Beer },
 ]
 
+type ContainerFilter = 'REUSABLE' | 'PERSONAL' | 'ALL'
+
+const containerFilters: Array<{ key: ContainerFilter; label: string }> = [
+  { key: 'REUSABLE', label: '다회용기 가능' },
+  { key: 'PERSONAL', label: '개인용기 가능' },
+  { key: 'ALL', label: '용기 전체' },
+]
+
 function normalizeSearch(value: string) {
   return value.trim().toLowerCase()
 }
@@ -62,6 +70,12 @@ function matchesSearch(store: StadiumStore, rawQuery: string) {
 
 function isCategoryMatch(store: StadiumStore, category: 'ALL' | StoreCategory) {
   return category === 'ALL' ? true : store.category === category
+}
+
+function isContainerMatch(store: StadiumStore, filter: ContainerFilter) {
+  if (filter === 'REUSABLE') return store.reusableContainer
+  if (filter === 'PERSONAL') return store.personalCupAllowed
+  return true
 }
 
 function getFoodOnly(category: 'ALL' | StoreCategory) {
@@ -94,6 +108,7 @@ export function MapScreen() {
   const { selectedGame, seatInfo } = useApp()
   const [selectedFloor, setSelectedFloor] = useState<StadiumFloor>('2F')
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | StoreCategory>('ALL')
+  const [containerFilter, setContainerFilter] = useState<ContainerFilter>('REUSABLE')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
 
@@ -121,8 +136,9 @@ export function MapScreen() {
   const visibleStores = useMemo(
     () => queriedStores
       .filter((store) => isCategoryMatch(store, selectedCategory))
+      .filter((store) => isContainerMatch(store, containerFilter))
       .filter((store) => matchesSearch(store, searchQuery)),
-    [queriedStores, searchQuery, selectedCategory],
+    [containerFilter, queriedStores, searchQuery, selectedCategory],
   )
 
   useEffect(() => {
@@ -249,6 +265,29 @@ export function MapScreen() {
                   >
                     <Icon size={14} />
                     {category.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+              {containerFilters.map((filter) => {
+                const isActive = containerFilter === filter.key
+
+                return (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    onClick={() => setContainerFilter(filter.key)}
+                    style={{
+                      ...floorButtonBaseStyle,
+                      background: isActive ? '#430A21' : '#fff',
+                      color: isActive ? '#FFF8F9' : '#430A21',
+                      boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
+                    }}
+                    aria-pressed={isActive}
+                  >
+                    {filter.label}
                   </button>
                 )
               })}
