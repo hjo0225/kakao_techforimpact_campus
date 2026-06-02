@@ -15,9 +15,7 @@ const cardStyle: React.CSSProperties = {
 export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { selectedTeam, totalCertCount, ecoImpact } = useApp();
-
-  const teamLabel = selectedTeam ?? user?.teamCode ?? '미설정';
+  const { totalCertCount, ecoImpact } = useApp();
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
@@ -55,9 +53,6 @@ export function ProfileScreen() {
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: 18, fontWeight: 800, color: '#0F172A' }}>
               {user?.nickname ?? '게스트'}
-            </p>
-            <p style={{ marginTop: 4, fontSize: 12, color: '#64748B' }}>
-              응원팀 · {teamLabel}
             </p>
           </div>
         </div>
