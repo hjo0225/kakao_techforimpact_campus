@@ -47,44 +47,40 @@ interface CardInput {
   visitN: number;
 }
 
-// 직관카드 프레임 — 사진을 비율 그대로(짤리지 않게) + 좌하단 토끼 마스코트만.
+// 직관카드 프레임 — 1080² 정사각형. 사진을 전부 담고(contain) 남는 부분은 검은 여백 + 좌하단 토끼.
 async function createCardImage(input: CardInput): Promise<File> {
   const mascot = await loadImage(input.mascotSrc);
-
-  // 사진이 있으면 캔버스를 사진 비율에 맞춤(크롭 없음). 없으면 1080² 기본.
-  let canvasW = 1080;
-  let canvasH = 1080;
-  let photo: HTMLImageElement | null = null;
-  if (input.photoUrl) {
-    photo = await loadImage(input.photoUrl);
-    const maxSide = 1080;
-    const scale = Math.min(1, maxSide / Math.max(photo.width, photo.height));
-    canvasW = Math.max(1, Math.round(photo.width * scale));
-    canvasH = Math.max(1, Math.round(photo.height * scale));
-  }
+  const size = 1080;
 
   const canvas = document.createElement('canvas');
-  canvas.width = canvasW;
-  canvas.height = canvasH;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is not available.');
 
-  if (photo) {
-    ctx.drawImage(photo, 0, 0, canvasW, canvasH); // 전체 사진, 짤림 없음
+  if (input.photoUrl) {
+    const photo = await loadImage(input.photoUrl);
+    // 검은 배경 + 사진 전체를 비율 유지하며 가운데 맞춤(contain) → 짤림 없음, 검은 여백
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, size, size);
+    const scale = Math.min(size / photo.width, size / photo.height);
+    const w = photo.width * scale;
+    const h = photo.height * scale;
+    ctx.drawImage(photo, (size - w) / 2, (size - h) / 2, w, h);
   } else {
-    const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
+    const bg = ctx.createLinearGradient(0, 0, 0, size);
     bg.addColorStop(0, '#430A21');
     bg.addColorStop(0.55, '#5E1530');
     bg.addColorStop(1, '#C85C77');
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.fillRect(0, 0, size, size);
   }
 
   // 좌하단 토끼 마스코트만
-  const mascotHeight = canvasH * 0.5;
+  const mascotHeight = size * 0.5;
   const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
-  const pad = Math.round(canvasW * 0.03);
-  ctx.drawImage(mascot, pad, canvasH - mascotHeight - pad, mascotWidth, mascotHeight);
+  const pad = Math.round(size * 0.03);
+  ctx.drawImage(mascot, pad, size - mascotHeight - pad, mascotWidth, mascotHeight);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((r) => (r ? resolve(r) : reject(new Error('export failed'))), 'image/png');
