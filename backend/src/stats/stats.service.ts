@@ -9,7 +9,6 @@ const UsageKind = {
 type UsageKind = (typeof UsageKind)[keyof typeof UsageKind];
 
 export interface MyStats {
-  points: number;
   useCount: number;
   returnCount: number;
   totalCount: number;
@@ -34,22 +33,18 @@ export class StatsService {
     const rows = await this.prisma.usage.groupBy({
       by: ['kind'],
       where: { userId: BigInt(userId) },
-      _sum: { score: true },
       _count: { _all: true },
     });
 
-    let points = 0;
     let useCount = 0;
     let returnCount = 0;
 
     for (const row of rows) {
-      points += row._sum.score ?? 0;
       if (row.kind === UsageKind.USE) useCount = row._count._all;
       else if (row.kind === UsageKind.RETURN) returnCount = row._count._all;
     }
 
     return {
-      points,
       useCount,
       returnCount,
       // 사용·반납 양쪽 인증이 모두 있을 때 실제 회수된 다회용기 1개로 카운트.

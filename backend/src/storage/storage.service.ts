@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -62,5 +63,36 @@ export class StorageService {
     }
 
     return { path: `gs://${this.bucketName}/${objectName}`, hash };
+  }
+
+  /**
+   * gs:// 경로의 인증 이미지를 내려받는다 (캘린더 사진 서빙용).
+   */
+  async downloadVerificationImage(
+    imagePath: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    const match = /^gs:\/\/([^/]+)\/(.+)$/.exec(imagePath);
+    if (!match) {
+      throw new NotFoundException('잘못된 이미지 경로입니다');
+    }
+    const [, bucket, objectName] = match;
+    const ext = objectName.split('.').pop()?.toLowerCase();
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+
+    try {
+      const [buffer] = await this.storage
+        .bucket(bucket)
+        .file(objectName)
+        .download();
+      return { buffer, contentType };
+    } catch (err) {
+      this.logger.error('GCS 다운로드 실패', err);
+      throw new NotFoundException('이미지를 찾을 수 없습니다');
+    }
   }
 }

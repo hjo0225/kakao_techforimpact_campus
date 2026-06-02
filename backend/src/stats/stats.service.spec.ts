@@ -30,16 +30,15 @@ describe('StatsService', () => {
     jest.clearAllMocks();
   });
 
-  it('USE 7 + RETURN 5 → points 850, totalCount는 min(use,return)=5', async () => {
+  it('USE 7 + RETURN 5 → totalCount는 min(use,return)=5', async () => {
     prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _sum: { score: 350 }, _count: { _all: 7 } },
-      { kind: UsageKind.RETURN, _sum: { score: 500 }, _count: { _all: 5 } },
+      { kind: UsageKind.USE, _count: { _all: 7 } },
+      { kind: UsageKind.RETURN, _count: { _all: 5 } },
     ]);
 
     const stats = await service.getMyStats('1');
 
     expect(stats).toEqual({
-      points: 850,
       useCount: 7,
       returnCount: 5,
       totalCount: 5,
@@ -52,7 +51,6 @@ describe('StatsService', () => {
     const stats = await service.getMyStats('1');
 
     expect(stats).toEqual({
-      points: 0,
       useCount: 0,
       returnCount: 0,
       totalCount: 0,
@@ -61,13 +59,12 @@ describe('StatsService', () => {
 
   it('USE만 있음 → totalCount 0 (반납 0이면 회수된 컵 없음)', async () => {
     prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _sum: { score: 50 }, _count: { _all: 1 } },
+      { kind: UsageKind.USE, _count: { _all: 1 } },
     ]);
 
     const stats = await service.getMyStats('1');
 
     expect(stats).toEqual({
-      points: 50,
       useCount: 1,
       returnCount: 0,
       totalCount: 0,
@@ -76,8 +73,8 @@ describe('StatsService', () => {
 
   it('USE 2 + RETURN 1 → totalCount=1 (반납 미완료분은 제외)', async () => {
     prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _sum: { score: 100 }, _count: { _all: 2 } },
-      { kind: UsageKind.RETURN, _sum: { score: 100 }, _count: { _all: 1 } },
+      { kind: UsageKind.USE, _count: { _all: 2 } },
+      { kind: UsageKind.RETURN, _count: { _all: 1 } },
     ]);
 
     const stats = await service.getMyStats('1');
@@ -87,8 +84,8 @@ describe('StatsService', () => {
 
   it('USE 3 + RETURN 3 → totalCount=3 (모두 짝 맞음)', async () => {
     prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _sum: { score: 150 }, _count: { _all: 3 } },
-      { kind: UsageKind.RETURN, _sum: { score: 300 }, _count: { _all: 3 } },
+      { kind: UsageKind.USE, _count: { _all: 3 } },
+      { kind: UsageKind.RETURN, _count: { _all: 3 } },
     ]);
 
     const stats = await service.getMyStats('1');
@@ -105,17 +102,6 @@ describe('StatsService', () => {
       where: { userId: bigint };
     };
     expect(call.where.userId).toBe(123n);
-  });
-
-  it('_sum.score가 null인 행도 안전하게 처리', async () => {
-    // Prisma는 빈 그룹의 _sum이 null이 될 수 있음
-    prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _sum: { score: null }, _count: { _all: 0 } },
-    ]);
-
-    const stats = await service.getMyStats('1');
-
-    expect(stats.points).toBe(0);
   });
 
   describe('getMyLogs', () => {
