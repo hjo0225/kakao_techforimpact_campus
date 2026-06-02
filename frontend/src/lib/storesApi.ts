@@ -313,7 +313,7 @@ function getStoreFixtureDetails(name: string, category: StoreCategory): StoreFix
   }
 }
 
-const JAMSIL_STORE_FIXTURE: StadiumStore[] = JAMSIL_STORE_FIXTURE_ROWS.map(
+export const JAMSIL_STORE_FIXTURE: StadiumStore[] = JAMSIL_STORE_FIXTURE_ROWS.map(
   ([floor, slotNo, name, category, xPct, yPct, nearestGate, zone]) => {
     const details = getStoreFixtureDetails(name, category)
     return {
