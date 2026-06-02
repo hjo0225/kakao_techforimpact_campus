@@ -218,37 +218,7 @@ export function VisitCard() {
         {/* 맨 위 — 용도 설정 (인증 / 직관카드) */}
         <CameraPurposeToggle />
 
-        {/* 카드 프리뷰 — 사진 비율 그대로(짤림 없음). 길면 화면이 스크롤됨. */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', minHeight: 200 }}>
-            {cardUrl ? (
-              <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: 'auto', display: 'block' }} />
-            ) : (
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, padding: 40 }}>카드 생성 중...</div>
-            )}
-            {!photo && cardUrl && (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  background: 'rgba(67, 10, 33, 0.28)',
-                  color: '#fff',
-                  pointerEvents: 'none',
-                }}
-              >
-                <Camera size={30} />
-                <p style={{ fontSize: 12, fontWeight: 700 }}>중앙 카메라 버튼으로 촬영</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 프레임 선택 (가로 스크롤 — 항목 추가 가능) */}
+        {/* 프레임 선택 — 탭 바로 아래 (가로 스크롤, 항목 추가 가능) */}
         <div style={{ ...cardStyle, flexShrink: 0 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>프레임</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
@@ -277,6 +247,36 @@ export function VisitCard() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* 카드 프리뷰 — 사진 비율 그대로(짤림 없음). 길면 화면이 스크롤됨. */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', minHeight: 200 }}>
+            {cardUrl ? (
+              <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            ) : (
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, padding: 40 }}>카드 생성 중...</div>
+            )}
+            {!photo && cardUrl && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  background: 'rgba(67, 10, 33, 0.28)',
+                  color: '#fff',
+                  pointerEvents: 'none',
+                }}
+              >
+                <Camera size={30} />
+                <p style={{ fontSize: 12, fontWeight: 700 }}>중앙 카메라 버튼으로 촬영</p>
+              </div>
+            )}
           </div>
         </div>
 
