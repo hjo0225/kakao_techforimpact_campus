@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { getMyStats, getMyLogs, type MyStats, type MyUsageLog } from '../lib/statsApi';
 
@@ -47,6 +47,9 @@ interface AppState {
   setShareCardShared: (v: boolean) => void;
   cameraPurpose: CameraPurpose;
   setCameraPurpose: (p: CameraPurpose) => void;
+  // 중앙 카메라 버튼이 호출할 화면별 촬영 액션 (예: 직관카드 파일 선택)
+  registerCameraAction: (fn: (() => void) | null) => void;
+  triggerCameraAction: () => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -102,6 +105,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>([]);
   const [shareCardShared, setShareCardShared] = useState(false);
   const [cameraPurpose, setCameraPurpose] = useState<CameraPurpose>('verify');
+
+  const cameraActionRef = useRef<(() => void) | null>(null);
+  const registerCameraAction = useCallback((fn: (() => void) | null) => {
+    cameraActionRef.current = fn;
+  }, []);
+  const triggerCameraAction = useCallback(() => {
+    cameraActionRef.current?.();
+  }, []);
 
   const refreshStats = useCallback(() => {
     if (!token) {
@@ -184,6 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ecoImpact,
     shareCardShared, setShareCardShared,
     cameraPurpose, setCameraPurpose,
+    registerCameraAction, triggerCameraAction,
   }), [
     addCertification,
     certificationLogs,
@@ -196,6 +208,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     shareCardShared,
     todayMission,
     cameraPurpose,
+    registerCameraAction,
+    triggerCameraAction,
   ]);
 
   return (

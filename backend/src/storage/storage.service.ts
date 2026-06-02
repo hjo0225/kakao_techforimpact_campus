@@ -45,9 +45,25 @@ export class StorageService {
     userId: string,
     image: UploadInput,
   ): Promise<UploadResult> {
+    return this.uploadTo('verify', userId, image);
+  }
+
+  /** 직관카드 이미지를 업로드. */
+  async uploadVisitCardImage(
+    userId: string,
+    image: UploadInput,
+  ): Promise<UploadResult> {
+    return this.uploadTo('visit-cards', userId, image);
+  }
+
+  private async uploadTo(
+    keyPrefix: string,
+    userId: string,
+    image: UploadInput,
+  ): Promise<UploadResult> {
     const hash = createHash('sha256').update(image.buffer).digest('hex');
     const ext = EXT_BY_MIME[image.mimetype] ?? 'bin';
-    const objectName = `verify/${userId}/${hash}.${ext}`;
+    const objectName = `${keyPrefix}/${userId}/${hash}.${ext}`;
 
     try {
       await this.storage
@@ -66,9 +82,9 @@ export class StorageService {
   }
 
   /**
-   * gs:// 경로의 인증 이미지를 내려받는다 (캘린더 사진 서빙용).
+   * gs:// 경로의 이미지를 내려받는다 (캘린더 사진/직관카드 서빙용).
    */
-  async downloadVerificationImage(
+  async downloadImage(
     imagePath: string,
   ): Promise<{ buffer: Buffer; contentType: string }> {
     const match = /^gs:\/\/([^/]+)\/(.+)$/.exec(imagePath);

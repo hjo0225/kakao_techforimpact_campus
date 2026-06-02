@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### feat: 직관카드 서버 저장 + 공개 공유 링크 + 기존 카드 프레임 복원
+
+- 신규 테이블 `visit_cards`(마이그레이션 `20260602010000_add_visit_cards`)
+- **추가 엔드포인트**: `POST /visit-cards`(이미지 저장→공유 토큰), `GET /visit-cards`(목록), `GET /visit-cards/:id/image`(본인), `DELETE /visit-cards/:id`. **공개**: `GET /share/visit-cards/:token`, `GET /share/visit-cards/:token/image`(인증 불필요)
+- 프론트: 직관카드 = 기존 RecordScreen의 인스타 카드 프레임(셀카 cover + 시즌 N번째 + 응원팀 + 승/패 마스코트, Canvas 1080²) 복원 + 서버 저장 & 공유(Web Share/링크 복사). 공개 공유 페이지 `/card/:token`(로그인 불필요)
+- BottomNav: 중앙 카메라 버튼 클리핑 수정(패딩으로 바 살짝 위로)
+- storage: `downloadVerificationImage` → `downloadImage`(범용), `uploadVisitCardImage` 추가
+
 ### feat: 리그/포인트/경기선택 제거 + BeReal 네비 + 캘린더 (Breaking)
 
 - **제거된 엔드포인트**: `GET /rankings/teams`(리그), `GET /attendance/me`·`POST /attendance`·`DELETE /attendance/:gameId`(경기선택). `attendances` 테이블 drop(마이그레이션 `20260602000000_drop_attendances`)

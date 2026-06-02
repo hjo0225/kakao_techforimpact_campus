@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore'
 import MobileFrame from './app/MobileFrame'
 import LoginPage from './pages/LoginPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
+import SharedCardPage from './pages/SharedCardPage'
 
 const TeamSelectScreen = lazy(() =>
   import('./app/components/screens/TeamSelectScreen').then((m) => ({ default: m.TeamSelectScreen })),
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+          <Route path="/card/:token" element={<SharedCardPage />} />
           <Route element={<PrivateLayout />}>
             <Route path="/onboarding" element={<TeamSelectScreen />} />
             <Route path="/home" element={<HomeScreen />} />
