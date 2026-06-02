@@ -23,8 +23,8 @@ export function BottomNav() {
   const { triggerCameraAction } = useApp();
 
   const handleCamera = () => {
-    // 카메라 화면(인증/직관카드)에 이미 있으면 촬영(파일 선택) 트리거, 아니면 이동
-    if (currentRoute === 'report') {
+    // 홈(home = 카메라 화면)이거나 report에 이미 있으면 촬영 트리거, 아니면 이동
+    if (currentRoute === 'home' || currentRoute === 'report') {
       triggerCameraAction();
     } else {
       navigate('report');
