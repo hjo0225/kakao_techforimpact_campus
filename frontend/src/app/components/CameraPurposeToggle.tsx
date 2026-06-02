@@ -6,7 +6,7 @@ const PURPOSES: Array<{ value: CameraPurpose; title: string; icon: LucideIcon }>
   { value: 'visit-card', title: '직관카드', icon: ImageIcon },
 ];
 
-// 맨 위 용도 설정 — 인증 / 직관카드 (밑줄 탭 스타일)
+// 맨 위 용도 설정 — 인증 / 직관카드 (테두리 있는 세그먼트 탭)
 export function CameraPurposeToggle() {
   const { cameraPurpose, setCameraPurpose } = useApp();
 
@@ -14,10 +14,13 @@ export function CameraPurposeToggle() {
     <div
       style={{
         display: 'flex',
-        borderBottom: '2px solid #430A21',
+        border: '2px solid #430A21',
+        borderRadius: 'var(--cb-radius-md)',
+        overflow: 'hidden',
+        boxShadow: '0 2px 0 0 #430A21',
       }}
     >
-      {PURPOSES.map((p) => {
+      {PURPOSES.map((p, i) => {
         const active = p.value === cameraPurpose;
         const Icon = p.icon;
         return (
@@ -33,11 +36,10 @@ export function CameraPurposeToggle() {
               justifyContent: 'center',
               gap: 6,
               padding: '12px 0',
-              marginBottom: -2,
-              background: 'transparent',
+              background: active ? 'var(--cb-primary)' : '#fff',
+              color: active ? '#fff' : '#64748B',
               border: 'none',
-              borderBottom: active ? '3px solid var(--cb-primary)' : '3px solid transparent',
-              color: active ? 'var(--cb-primary-deep)' : '#94A3B8',
+              borderRight: i === 0 ? '2px solid #430A21' : 'none',
               fontSize: 14,
               fontWeight: active ? 800 : 600,
               cursor: 'pointer',
