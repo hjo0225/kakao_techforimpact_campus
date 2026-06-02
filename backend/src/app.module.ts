@@ -10,6 +10,7 @@ import { StatsModule } from './stats/stats.module';
 import { StoresModule } from './stores/stores.module';
 import { UsersModule } from './users/users.module';
 import { VerifyModule } from './verify/verify.module';
+import { VisitCardsModule } from './visit-cards/visit-cards.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { VerifyModule } from './verify/verify.module';
     UsersModule,
     GamesModule,
     VerifyModule,
+    VisitCardsModule,
     StatsModule,
     StoresModule,
     AdminModule,

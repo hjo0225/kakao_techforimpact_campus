@@ -58,7 +58,8 @@ export function BottomNav() {
         alignItems: 'flex-end',
         background: '#fff',
         borderTop: '2px solid #430A21',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingTop: 8,
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
       }}
     >
       {LEFT_TABS.map(renderTab)}

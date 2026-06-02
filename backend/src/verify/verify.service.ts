@@ -260,7 +260,7 @@ export class VerifyService {
         message: '본인의 인증 이미지만 볼 수 있습니다',
       });
     }
-    return this.storage.downloadVerificationImage(sample.imagePath);
+    return this.storage.downloadImage(sample.imagePath);
   }
 
   private async hasRecentUse(userId: string): Promise<boolean> {

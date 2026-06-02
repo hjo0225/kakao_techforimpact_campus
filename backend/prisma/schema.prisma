@@ -72,6 +72,7 @@ model User {
 
   usages              Usage[]
   verificationSamples VerificationSample[]
+  visitCards          VisitCard[]
 
   @@index([teamCode], name: "users_team_code_idx")
   @@index([lastSeenAt], name: "users_last_seen_at_idx")
@@ -458,5 +459,22 @@ model VerificationSample {
   @@index([status], name: "verification_samples_status_idx")
   @@index([userLabel], name: "verification_samples_user_label_idx")
   @@map("verification_samples")
+}
+
+// 직관카드 — 유저가 만든 직관 사진 카드 (서버 저장 + 공개 공유 링크).
+model VisitCard {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt   @map("user_id")
+  imagePath  String   @map("image_path") // gs://bucket/visit-cards/<userId>/<hash>.<ext>
+  imageHash  String   @map("image_hash")
+  teamCode   String?  @map("team_code")
+  caption    String?
+  shareToken String   @unique @map("share_token") // 공개 공유 링크 토큰
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt], name: "visit_cards_user_created_idx")
+  @@map("visit_cards")
 }
 
