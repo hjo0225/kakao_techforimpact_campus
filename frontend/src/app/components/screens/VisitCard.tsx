@@ -4,6 +4,7 @@ import { useApp } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
+import { CameraPurposeToggle } from '../CameraPurposeToggle';
 import {
   createVisitCard,
   getVisitCards,
@@ -266,15 +267,8 @@ export function VisitCard() {
           gap: 12,
         }}
       >
-        <div style={cardStyle}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--cb-primary-deep)' }}>직관카드</p>
-          <p style={{ marginTop: 4, fontSize: 17, fontWeight: 800, color: '#0F172A', lineHeight: 1.35 }}>
-            오늘의 직관 순간을 카드로
-          </p>
-          <p style={{ marginTop: 5, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
-            아래 중앙 카메라 버튼으로 사진을 촬영하면 시즌 직관 카드가 만들어져요.
-          </p>
-        </div>
+        {/* 맨 위 — 용도 설정 (인증 / 직관카드) */}
+        <CameraPurposeToggle />
 
         {/* 카드 프리뷰 */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>

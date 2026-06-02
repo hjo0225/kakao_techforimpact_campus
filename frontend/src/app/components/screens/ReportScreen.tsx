@@ -4,6 +4,7 @@ import { useApp } from '../../AppContext';
 import { VisitCard } from './VisitCard';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
+import { CameraPurposeToggle } from '../CameraPurposeToggle';
 import { ApiError } from '../../../lib/apiClient';
 import {
   analyzeImage,
@@ -191,6 +192,9 @@ export function ReportScreen() {
           gap: 12,
         }}
       >
+        {/* 맨 위 — 용도 설정 (인증 / 직관카드) */}
+        <CameraPurposeToggle />
+
         {/* 사용/반납 토글 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {MODES.map((m) => {
