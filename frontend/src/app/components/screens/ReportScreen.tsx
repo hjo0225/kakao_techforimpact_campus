@@ -217,9 +217,14 @@ export function ReportScreen() {
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
                   boxShadow: active ? '0 3px 0 0 var(--cb-primary)' : '0 2px 0 0 #430A21',
                 }}
               >
+                <Camera size={18} color={active ? 'var(--cb-primary-deep)' : '#64748B'} />
                 {m.title}
               </button>
             );
