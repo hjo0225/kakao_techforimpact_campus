@@ -101,6 +101,46 @@ CREATE INDEX usages_user_kind_idx ON usages (user_id, kind);
 
 > `lat/lng`는 PRD 상 NUMERIC(9,6)이었으나 Prisma의 `Float` → `DOUBLE PRECISION`으로 매핑됨. PostGIS 도입 시 재검토.
 
+### `verification_samples` (인증 학습 샘플 — 휴먼인더루프)
+
+다회용기 인증 시도 1건 = 학습 샘플 1행. 어떤 판별 결과든(AI/유저) 모두 적재한다. AI 예측과
+유저가 확정한 정답 라벨을 함께 보관해 모델 재학습/평가에 사용한다. 원본 이미지는 GCS에
+저장하고 여기엔 경로만 둔다.
+
+```sql
+CREATE TYPE "ContainerLabel" AS ENUM ('REUSABLE', 'SINGLE_USE');
+CREATE TYPE "SampleStatus"   AS ENUM ('PENDING', 'CONFIRMED');
+
+CREATE TABLE verification_samples (
+  id             BIGSERIAL        PRIMARY KEY,
+  user_id        BIGINT           NOT NULL REFERENCES users(id),
+  kind           "UsageKind"      NOT NULL,                  -- 유저가 의도한 동작 USE/RETURN
+  image_path     TEXT             NOT NULL,                  -- gs://<bucket>/verify/<userId>/<hash>.<ext>
+  image_hash     TEXT             NOT NULL,                  -- sha256(image) — 중복/추적
+  ai_is_reusable BOOLEAN,                                    -- Vision 예측 (다운 시 NULL)
+  ai_class_index INTEGER,
+  ai_confidence  DOUBLE PRECISION,
+  user_label     "ContainerLabel",                          -- 유저 확정 정답 (확정 전 NULL)
+  status         "SampleStatus"   NOT NULL DEFAULT 'PENDING',
+  game_id        BIGINT           REFERENCES games(id),
+  lat            DOUBLE PRECISION,
+  lng            DOUBLE PRECISION,
+  usage_id       BIGINT           REFERENCES usages(id),     -- 점수 행 연결 (REUSABLE일 때만)
+  created_at     TIMESTAMP(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  confirmed_at   TIMESTAMP(3)
+);
+CREATE UNIQUE INDEX verification_samples_usage_id_key ON verification_samples (usage_id);
+CREATE INDEX verification_samples_user_created_idx ON verification_samples (user_id, created_at);
+CREATE INDEX verification_samples_status_idx ON verification_samples (status);
+CREATE INDEX verification_samples_user_label_idx ON verification_samples (user_label);
+```
+
+- 흐름: `POST /verify/analyze` → 이미지 GCS 적재 + Vision 예측 → `PENDING` 행 생성.
+  `POST /verify/confirm` → `user_label` 채우고 `CONFIRMED`. `REUSABLE`이면 `usages` 점수 행 생성 후 `usage_id` 연결.
+- `user_label = SINGLE_USE`(음성 샘플) 또는 RETURN 직전 USE 없음 → 점수 미부여, `usage_id`는 NULL이지만 샘플은 보존.
+- 학습 라벨은 `user_label`(정답), 모델 비교는 `ai_*` 컬럼 사용. Vision 다운 시 `ai_*`는 NULL.
+- 마이그레이션: `20260601000000_add_verification_samples`.
+
 ### `attendances` (경기 선택 = 직관 의향)
 
 ```sql

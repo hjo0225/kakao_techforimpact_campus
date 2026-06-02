@@ -292,6 +292,8 @@ const SLOT_GROUPS: SlotGroupSeed[] = [
       { slotNo: 'A11', name: 'KFC', tenantCategory: 'CHICKEN', slotKind: 'FOOD', isFoodMapVisible: true },
       { slotNo: 'A12', name: '꼬꼬닭', tenantCategory: 'CHICKEN', slotKind: 'FOOD', isFoodMapVisible: true },
       { slotNo: 'A13', name: 'GS25', tenantCategory: 'CONVENIENCE', slotKind: 'CONVENIENCE', isFoodMapVisible: true },
+      // 정오님(jeongoheo) 다회용기 시범 매장 — 목업. 공식 슬롯 번호 미정 → 임시 코드.
+      { slotNo: 'JUNGO_01', name: '정오', tenantCategory: 'CAFE', slotKind: 'CAFE', isFoodMapVisible: true, officialSlotNo: null, isCodeProvisional: true, sourceConfidence: 'LOW', xPct: 50, yPct: 38, landmarkNote: '1층 중앙 복도 다회용기 시범 매장 (목업)', publicNote: '다회용기 사용·반납 인증이 가능한 시범 매장입니다.' },
     ],
   },
   {
@@ -552,13 +554,20 @@ function buildStoreSeedProfile(slot: SlotSeedInput): StoreSeedProfile {
   const isDrinkFocused = slot.slotKind === 'CAFE' || ['BEER', 'DESSERT', 'POPUP'].includes(slot.tenantCategory)
   const isConvenience = slot.tenantCategory === 'CONVENIENCE'
   const isSnackFocused = ['SNACK', 'CONVENIENCE'].includes(slot.tenantCategory)
+  const isJungo = normalizedName.includes('정오') // 다회용기 시범 매장
   const drinkContainer = { usesReusableContainer: true, personalContainerAllowed: true, containerType: '컵' }
   const snackContainer = { usesReusableContainer: true, personalContainerAllowed: false, containerType: '다회용 컵/볼' }
   const mealExceptionContainer = { usesReusableContainer: true, personalContainerAllowed: false, containerType: '다회용 용기' }
   const packagedContainer = { usesReusableContainer: false, personalContainerAllowed: false, containerType: '포장 상품' }
 
   let menus: MenuSeedInput[]
-  if (normalizedName.includes('까페희다')) {
+  if (isJungo) {
+    menus = [
+      menu('다회용컵 아메리카노', 'DRINK', 4500, { isSignature: true, ...drinkContainer }),
+      menu('다회용컵 카페라떼', 'DRINK', 5500, drinkContainer),
+      menu('다회용기 와플', 'DESSERT', 6000, snackContainer),
+    ]
+  } else if (normalizedName.includes('까페희다')) {
     menus = [
       menu('아메리카노', 'DRINK', 4500, { isSignature: true, ...drinkContainer }),
       menu('크림라떼', 'DRINK', 5800, drinkContainer),
@@ -733,8 +742,8 @@ function buildStoreSeedProfile(slot: SlotSeedInput): StoreSeedProfile {
 
   return {
     hoursText: getStoreHoursText(slot),
-    reusableContainerPolicy: isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused || isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
-    personalContainerPolicy: isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused ? 'SUPPORTED' : isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
+    reusableContainerPolicy: isJungo ? 'SUPPORTED' : isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused || isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
+    personalContainerPolicy: isJungo ? 'SUPPORTED' : isConvenience ? 'NOT_SUPPORTED' : isDrinkFocused ? 'SUPPORTED' : isSnackFocused ? 'MENU_DEPENDENT' : 'UNKNOWN',
     publicNote: slot.publicNote ?? '메뉴와 가격은 현장 운영에 따라 달라질 수 있습니다.',
     menus,
   }

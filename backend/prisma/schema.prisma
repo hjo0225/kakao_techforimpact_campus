@@ -70,8 +70,9 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   lastSeenAt   DateTime? @map("last_seen_at")
 
-  usages      Usage[]
-  attendances Attendance[]
+  usages              Usage[]
+  attendances         Attendance[]
+  verificationSamples VerificationSample[]
 
   @@index([teamCode], name: "users_team_code_idx")
   @@index([lastSeenAt], name: "users_last_seen_at_idx")
@@ -389,8 +390,9 @@ model Game {
 
   awayTeam    Team         @relation("AwayGames", fields: [awayTeamCode], references: [code])
   homeTeam    Team         @relation("HomeGames", fields: [homeTeamCode], references: [code])
-  usages      Usage[]
-  attendances Attendance[]
+  usages              Usage[]
+  attendances         Attendance[]
+  verificationSamples VerificationSample[]
 
   @@unique([date, awayTeamCode, homeTeamCode])
   @@index([date])
@@ -410,13 +412,54 @@ model Usage {
   score       Int       @default(0)
   confidence  Float?
 
-  user User  @relation(fields: [userId], references: [id])
-  game Game? @relation(fields: [gameId], references: [id])
+  user   User                @relation(fields: [userId], references: [id])
+  game   Game?               @relation(fields: [gameId], references: [id])
+  sample VerificationSample?
 
   @@index([userId, scannedAt], name: "usages_user_scanned_idx")
   @@index([scannedAt], name: "usages_scanned_idx")
   @@index([userId, kind], name: "usages_user_kind_idx")
   @@map("usages")
+}
+
+// 다회용기 인증 시도 1건 = 학습 샘플 1행. AI 예측과 유저 확정 라벨을 함께 보관.
+// usages(점수 행)와 1:1 연결(usageId) — 유저 라벨이 REUSABLE일 때만 점수 행 생성.
+enum ContainerLabel {
+  REUSABLE
+  SINGLE_USE
+}
+
+enum SampleStatus {
+  PENDING   // 이미지 적재 + AI 예측 완료, 유저 라벨 대기
+  CONFIRMED // 유저가 라벨 확정
+}
+
+model VerificationSample {
+  id           BigInt          @id @default(autoincrement())
+  userId       BigInt          @map("user_id")
+  kind         UsageKind       // 유저가 의도한 동작 (USE/RETURN)
+  imagePath    String          @map("image_path")  // gs://bucket/verify/<userId>/<hash>.<ext>
+  imageHash    String          @map("image_hash")  // sha256(image) — 중복/추적용
+  aiIsReusable Boolean?        @map("ai_is_reusable") // Vision 예측 (다운 시 null)
+  aiClassIndex Int?            @map("ai_class_index")
+  aiConfidence Float?          @map("ai_confidence")
+  userLabel    ContainerLabel? @map("user_label")     // 유저 확정 정답 라벨 (확정 전 null)
+  status       SampleStatus    @default(PENDING)
+  gameId       BigInt?         @map("game_id")
+  lat          Float?
+  lng          Float?
+  usageId      BigInt?         @unique @map("usage_id") // 점수 행 연결 (REUSABLE일 때만)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  confirmedAt  DateTime?       @map("confirmed_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+  game  Game?  @relation(fields: [gameId], references: [id])
+  usage Usage? @relation(fields: [usageId], references: [id])
+
+  @@index([userId, createdAt], name: "verification_samples_user_created_idx")
+  @@index([status], name: "verification_samples_status_idx")
+  @@index([userLabel], name: "verification_samples_user_label_idx")
+  @@map("verification_samples")
 }
 
 // 경기 선택(=직관 의향). 경기 날짜가 지나도록 취소하지 않으면 직관 방문으로 확정.
