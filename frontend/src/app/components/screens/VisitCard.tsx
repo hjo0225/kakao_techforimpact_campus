@@ -41,97 +41,50 @@ function loadImage(src: string) {
   });
 }
 
-function drawCoverImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
-  const scale = Math.max(width / image.width, height / image.height);
-  const w = image.width * scale;
-  const h = image.height * scale;
-  ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
-}
-
-function drawText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  options: { font: string; color: string; align?: CanvasTextAlign },
-) {
-  ctx.font = options.font;
-  ctx.fillStyle = options.color;
-  ctx.textAlign = options.align ?? 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText(text, x, y);
-}
-
 interface CardInput {
   photoUrl: string | null;
   mascotSrc: string;
   visitN: number;
-  teamLabel: string | null;
 }
 
-// 직관카드 프레임 (1080×1080) — 셀카 cover, 좌상단 시즌 카운터, 우상단 팀, 좌하단 마스코트
+// 직관카드 프레임 — 사진을 비율 그대로(짤리지 않게) + 좌하단 토끼 마스코트만.
 async function createCardImage(input: CardInput): Promise<File> {
-  await document.fonts?.ready;
-  const size = 1080;
+  const mascot = await loadImage(input.mascotSrc);
+
+  // 사진이 있으면 캔버스를 사진 비율에 맞춤(크롭 없음). 없으면 1080² 기본.
+  let canvasW = 1080;
+  let canvasH = 1080;
+  let photo: HTMLImageElement | null = null;
+  if (input.photoUrl) {
+    photo = await loadImage(input.photoUrl);
+    const maxSide = 1080;
+    const scale = Math.min(1, maxSide / Math.max(photo.width, photo.height));
+    canvasW = Math.max(1, Math.round(photo.width * scale));
+    canvasH = Math.max(1, Math.round(photo.height * scale));
+  }
+
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = canvasW;
+  canvas.height = canvasH;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is not available.');
 
-  if (input.photoUrl) {
-    const photo = await loadImage(input.photoUrl);
-    drawCoverImage(ctx, photo, size, size);
+  if (photo) {
+    ctx.drawImage(photo, 0, 0, canvasW, canvasH); // 전체 사진, 짤림 없음
   } else {
-    const bg = ctx.createLinearGradient(0, 0, 0, size);
+    const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
     bg.addColorStop(0, '#430A21');
     bg.addColorStop(0.55, '#5E1530');
     bg.addColorStop(1, '#C85C77');
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, canvasW, canvasH);
   }
 
-  const topShade = ctx.createLinearGradient(0, 0, 0, 320);
-  topShade.addColorStop(0, 'rgba(67, 10, 33, 0.62)');
-  topShade.addColorStop(1, 'rgba(67, 10, 33, 0)');
-  ctx.fillStyle = topShade;
-  ctx.fillRect(0, 0, size, 320);
-
-  drawText(ctx, '이번 시즌 잠실 직관', 60, 70, {
-    font: '800 34px "Pretendard Variable", "Noto Sans KR", sans-serif',
-    color: '#FFFFFF',
-  });
-  drawText(ctx, `${input.visitN}번째`, 60, 118, {
-    font: '900 84px "Pretendard Variable", "Noto Sans KR", sans-serif',
-    color: '#FFFAE6',
-  });
-
-  if (input.teamLabel) {
-    const label = input.teamLabel;
-    ctx.font = '900 32px "Pretendard Variable", "Noto Sans KR", sans-serif';
-    const textWidth = ctx.measureText(label).width;
-    const padX = 24;
-    const boxWidth = textWidth + padX * 2;
-    const boxHeight = 68;
-    const boxRight = size - 60;
-    const boxTop = 70;
-    const boxLeft = boxRight - boxWidth;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-    ctx.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
-    ctx.strokeStyle = '#430A21';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
-    drawText(ctx, label, boxLeft + boxWidth / 2, boxTop + 18, {
-      font: '900 32px "Pretendard Variable", "Noto Sans KR", sans-serif',
-      color: '#430A21',
-      align: 'center',
-    });
-  }
-
-  const mascot = await loadImage(input.mascotSrc);
-  const mascotHeight = size * 0.5;
+  // 좌하단 토끼 마스코트만
+  const mascotHeight = canvasH * 0.5;
   const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
-  ctx.drawImage(mascot, 36, size - mascotHeight - 36, mascotWidth, mascotHeight);
+  const pad = Math.round(canvasW * 0.03);
+  ctx.drawImage(mascot, pad, canvasH - mascotHeight - pad, mascotWidth, mascotHeight);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((r) => (r ? resolve(r) : reject(new Error('export failed'))), 'image/png');
@@ -140,7 +93,7 @@ async function createCardImage(input: CardInput): Promise<File> {
 }
 
 export function VisitCard() {
-  const { selectedTeam, registerCameraAction } = useApp();
+  const { registerCameraAction } = useApp();
   const user = useAuthStore((s) => s.user);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [frameKey, setFrameKey] = useState<string>(FRAMES[0].key);
@@ -151,7 +104,6 @@ export function VisitCard() {
   const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const teamLabel = selectedTeam ?? user?.teamCode ?? null;
   const mascotSrc = (FRAMES.find((f) => f.key === frameKey) ?? FRAMES[0]).mascot;
 
   // 중앙 카메라 버튼이 이 화면의 파일 선택을 열도록 등록
@@ -169,7 +121,7 @@ export function VisitCard() {
   // photo/frame/visitN 변경 시 카드 재생성
   useEffect(() => {
     let cancelled = false;
-    createCardImage({ photoUrl: photo?.url ?? null, mascotSrc, visitN, teamLabel })
+    createCardImage({ photoUrl: photo?.url ?? null, mascotSrc, visitN })
       .then((file) => {
         if (cancelled) return;
         const url = URL.createObjectURL(file);
@@ -183,7 +135,7 @@ export function VisitCard() {
     return () => {
       cancelled = true;
     };
-  }, [photo, mascotSrc, visitN, teamLabel]);
+  }, [photo, mascotSrc, visitN]);
 
   useEffect(() => {
     return () => {
@@ -270,13 +222,13 @@ export function VisitCard() {
         {/* 맨 위 — 용도 설정 (인증 / 직관카드) */}
         <CameraPurposeToggle />
 
-        {/* 카드 프리뷰 */}
+        {/* 카드 프리뷰 — 사진 비율 그대로(짤림 없음). 길면 화면이 스크롤됨. */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', minHeight: 200 }}>
             {cardUrl ? (
-              <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: 'auto', display: 'block' }} />
             ) : (
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>카드 생성 중...</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, padding: 40 }}>카드 생성 중...</div>
             )}
             {!photo && cardUrl && (
               <div
