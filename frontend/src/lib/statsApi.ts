@@ -1,7 +1,6 @@
 import { api } from './apiClient'
 
 export interface MyStats {
-  points: number
   useCount: number
   returnCount: number
   totalCount: number

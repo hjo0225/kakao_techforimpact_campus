@@ -10,7 +10,7 @@
 
 | 축 | 규칙 |
 |---|---|
-| **폰트** | `--cb-font-family` = Galmuri11 (본문) / `--cb-font-family-display` = Galmuri14 (헤딩 20px+). `font-weight: 700`만 사용 (Galmuri는 400/700만 제공) |
+| **폰트** | `--cb-font-family` / `--cb-font-family-display` = **Pretendard** (본문·헤딩 공통). 가변 폰트라 100~900 weight 사용 가능 |
 | **모서리** | `border-radius: 0` 절대 원칙. 원형 아바타·점·로딩 스피너만 `9999px` 허용 |
 | **테두리** | `border: var(--cb-border-pixel)` = `2px solid #430a21` 기본. 인라인 스타일에서도 `2px solid` 미만 금지 |
 | **그림자** | hard offset만. `--cb-shadow-xs/sm/md/primary`는 모두 `Xpx Xpx 0 0 #430a21` 형태. blur(`rgba(..., 0.X)` 4th value) 사용 금지 |
@@ -138,13 +138,12 @@ CSS 사용: `background-image: var(--cb-pattern-stadium-dots);`. `background-siz
 
 | Token | Value |
 |---|---|
-| `--cb-font-family` | `'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif` |
-| `--cb-font-family-display` | `'Galmuri14', 'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif` |
+| `--cb-font-family` | `'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif` |
+| `--cb-font-family-display` | `'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif` |
 
-- **Galmuri**: 한글 픽셀 폰트 (OFL, [github.com/quiple/galmuri](https://github.com/quiple/galmuri)). jsDelivr로 self-host
-- Galmuri11(본문) / Galmuri14(헤딩 20px+) / Galmuri9(소형 라벨, 옵션)
-- **사이즈 규칙**: Galmuri는 11/14/9 픽셀 그리드 최적. 11px, 22px, 33px 또는 14px, 28px 사용 권장. 그 외 사이즈는 브라우저 스케일링으로 약간 블러 가능
-- Pretendard fallback: Galmuri에 없는 글리프나 입력 필드에서 사용
+- **Pretendard**: 본문·헤딩 공통 (OFL, [github.com/orioncactus/pretendard](https://github.com/orioncactus/pretendard)). jsDelivr CDN(variable)으로 로드
+- 가변 폰트라 100~900 weight 자유 사용. 한글/라틴/숫자 글리프 모두 커버
+- 임의 px 사이즈 자유롭게 사용 가능 (픽셀 그리드 제약 없음)
 
 ### Font size
 

@@ -9,7 +9,6 @@ import {
   Store,
   UtensilsCrossed,
 } from 'lucide-react'
-import { useApp } from '../../AppContext'
 import { BottomNav } from '../BottomNav'
 import { StatusBar } from '../StatusBar'
 import { StadiumSvgMap } from '../map/StadiumSvgMap'
@@ -105,7 +104,6 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 export function MapScreen() {
-  const { selectedGame, seatInfo } = useApp()
   const [selectedFloor, setSelectedFloor] = useState<StadiumFloor>('2F')
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | StoreCategory>('ALL')
   const [containerFilter, setContainerFilter] = useState<ContainerFilter>('REUSABLE')
@@ -194,14 +192,8 @@ export function MapScreen() {
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73', letterSpacing: '0.04em' }}>잠실야구장 내부 식음료 지도</p>
                 <h2 style={{ margin: '4px 0 0', fontSize: 20, lineHeight: 1.2, color: '#430A21' }}>
-                  {selectedGame?.venue ?? '잠실야구장'} {selectedFloor}
+                  잠실야구장 {selectedFloor}
                 </h2>
-              </div>
-              <div style={{ textAlign: 'right', minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73' }}>좌석 기준</p>
-                <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 800, color: '#430A21', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 132 }}>
-                  {seatInfo.section || '미입력'} {seatInfo.seatNumber || ''}
-                </p>
               </div>
             </div>
           </div>

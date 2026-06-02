@@ -11,20 +11,17 @@ const TeamSelectScreen = lazy(() =>
 const HomeScreen = lazy(() =>
   import('./app/components/screens/HomeScreen').then((m) => ({ default: m.HomeScreen })),
 )
-const GameSelectScreen = lazy(() =>
-  import('./app/components/screens/GameSelectScreen').then((m) => ({ default: m.GameSelectScreen })),
-)
 const MapScreen = lazy(() =>
   import('./app/components/screens/MapScreen').then((m) => ({ default: m.MapScreen })),
 )
 const ReportScreen = lazy(() =>
   import('./app/components/screens/ReportScreen').then((m) => ({ default: m.ReportScreen })),
 )
-const RecordScreen = lazy(() =>
-  import('./app/components/screens/RecordScreen').then((m) => ({ default: m.RecordScreen })),
+const CalendarScreen = lazy(() =>
+  import('./app/components/screens/CalendarScreen').then((m) => ({ default: m.CalendarScreen })),
 )
-const RankingScreen = lazy(() =>
-  import('./app/components/screens/RankingScreen').then((m) => ({ default: m.RankingScreen })),
+const ProfileScreen = lazy(() =>
+  import('./app/components/screens/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
 )
 const AdminStoresScreen = lazy(() =>
   import('./app/components/screens/AdminStoresScreen').then((m) => ({ default: m.AdminStoresScreen })),
@@ -74,12 +71,10 @@ export default function App() {
           <Route element={<PrivateLayout />}>
             <Route path="/onboarding" element={<TeamSelectScreen />} />
             <Route path="/home" element={<HomeScreen />} />
-            <Route path="/game-select" element={<GameSelectScreen />} />
             <Route path="/map" element={<MapScreen />} />
             <Route path="/report" element={<ReportScreen />} />
-            <Route path="/record" element={<RecordScreen />} />
-            <Route path="/ranking" element={<RankingScreen />} />
-            <Route path="/account" element={<RecordScreen />} />
+            <Route path="/calendar" element={<CalendarScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/admin/stores" element={<AdminStoresScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />

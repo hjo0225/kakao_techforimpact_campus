@@ -6,12 +6,10 @@ export type Route =
   | 'login'
   | 'onboarding'
   | 'home'
-  | 'game-select'
   | 'map'
   | 'report'
-  | 'record'
-  | 'ranking'
-  | 'account'
+  | 'calendar'
+  | 'profile'
   | 'admin-stores';
 
 interface NavigationState {
@@ -25,12 +23,10 @@ export const ROUTE_PATHS: Record<Route, string> = {
   login: '/login',
   onboarding: '/onboarding',
   home: '/home',
-  'game-select': '/game-select',
   map: '/map',
   report: '/report',
-  record: '/record',
-  ranking: '/ranking',
-  account: '/account',
+  calendar: '/calendar',
+  profile: '/profile',
   'admin-stores': '/admin/stores',
 };
 

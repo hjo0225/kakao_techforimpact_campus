@@ -1,4 +1,7 @@
 import { apiFetch, ApiError } from './apiClient'
+import { useAuthStore } from '../store/authStore'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export type CertificationMode = 'use' | 'return'
 export type ContainerLabel = 'REUSABLE' | 'SINGLE_USE'
@@ -70,6 +73,30 @@ export async function confirmLabel(
     method: 'POST',
     body: { sampleId, userLabel },
   })
+}
+
+// --- 캘린더용 인증 이력 ---
+export interface VerificationHistoryItem {
+  id: string
+  kind: 'USE' | 'RETURN'
+  userLabel: ContainerLabel | null
+  status: 'PENDING' | 'CONFIRMED'
+  confidence: number | null
+  createdAt: string
+}
+
+export async function getVerificationHistory(): Promise<VerificationHistoryItem[]> {
+  return apiFetch<VerificationHistoryItem[]>('/verify/history')
+}
+
+// 인증 사진을 bearer로 받아 blob URL 생성 (img src용). 호출측에서 URL.revokeObjectURL 책임.
+export async function fetchVerificationImageUrl(id: string): Promise<string> {
+  const token = useAuthStore.getState().token
+  const res = await fetch(`${API_BASE}/verify/history/${id}/image`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new ApiError(res.status, '이미지를 불러오지 못했습니다')
+  return URL.createObjectURL(await res.blob())
 }
 
 export { ApiError }

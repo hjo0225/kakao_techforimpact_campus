@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../AppContext';
-import { LockedScreen } from './LockedScreen';
+import { VisitCard } from './VisitCard';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import { Camera, CheckCircle, RotateCcw, ScanLine } from 'lucide-react';
@@ -127,10 +127,6 @@ const srOnlyStyle = {
   border: 0,
 } as const;
 
-function isTimeSaleInning(inning: string) {
-  return inning.includes('7회') || inning.includes('8회');
-}
-
 function tonePalette(tone: ResultTone) {
   if (tone === 'success') {
     return {
@@ -177,10 +173,10 @@ function formatNowLabel() {
 
 export function ReportScreen() {
   const {
-    selectedGame,
     addCertification,
     totalCertCount,
     ecoImpact,
+    cameraPurpose,
   } = useApp();
   const [mode, setMode] = useState<CertificationMode>('use');
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
@@ -198,7 +194,10 @@ export function ReportScreen() {
     timersRef.current = [];
   }, []);
 
-  const timeSaleActive = selectedGame ? isTimeSaleInning(selectedGame.inning) : false;
+  // 홈에서 '직관카드'로 카메라 용도를 바꾼 경우 — 직관카드 캡처 화면
+  if (cameraPurpose === 'visit-card') return <VisitCard />;
+
+  const timeSaleActive = false;
   const successCount = totalCertCount;
 
   const modeMeta = CERTIFICATION_MODES.find((item) => item.id === mode) ?? CERTIFICATION_MODES[0];
@@ -207,8 +206,6 @@ export function ReportScreen() {
   const isSubmitting = analysisState === 'submitting';
   const isBusy = isAnalyzing || isSubmitting;
   const isLabeling = analysisState === 'labeling' || analysisState === 'submitting';
-
-  if (!selectedGame) return <LockedScreen tabName="인증" />;
 
   const clearTimers = () => {
     timersRef.current.forEach((timerId) => window.clearTimeout(timerId));
@@ -479,13 +476,11 @@ export function ReportScreen() {
               boxShadow: `0 2px 0 0 ${timeSaleActive ? '#B45309' : '#1D4ED8'}`,
             }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, color: timeSaleActive ? '#B45309' : '#1D4ED8' }}>
-              {selectedGame.inning ? `${selectedGame.venue} ${selectedGame.inning}` : selectedGame.venue}
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8' }}>
+              잠실야구장 다회용기 인증
             </p>
             <p style={{ marginTop: 4, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
-              {timeSaleActive
-                ? '7~8회 조기 반납 시간대입니다. 대기 줄이 짧을 때 반납 인증을 완료해보세요.'
-                : '경기 중 촬영한 실사용 사진만 인정됩니다.'}
+              실제 사용한 다회용기를 촬영해 인증해주세요.
             </p>
           </div>
         </div>

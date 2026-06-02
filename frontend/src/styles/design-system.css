@@ -1,6 +1,6 @@
 :root {
-  --cb-font-family: 'Galmuri11', 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --cb-font-family-display: 'Galmuri14', 'Galmuri11', 'Pretendard Variable', 'Noto Sans KR', sans-serif;
+  --cb-font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --cb-font-family-display: 'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
   /* Surface / Background — Vintage Cream */
   --cb-bg: #faf5ef;

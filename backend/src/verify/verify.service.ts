@@ -214,6 +214,55 @@ export class VerifyService {
     };
   }
 
+  /** 캘린더용 — 유저의 인증 시도 이력 (최신순, 이미지 메타 포함). */
+  async getHistory(userId: string) {
+    const samples = await this.prisma.verificationSample.findMany({
+      where: { userId: BigInt(userId) },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        kind: true,
+        userLabel: true,
+        status: true,
+        aiConfidence: true,
+        createdAt: true,
+      },
+    });
+    return samples.map((s) => ({
+      id: s.id.toString(),
+      kind: s.kind,
+      userLabel: s.userLabel,
+      status: s.status,
+      confidence: s.aiConfidence,
+      createdAt: s.createdAt.toISOString(),
+    }));
+  }
+
+  /** 캘린더용 — 본인 샘플의 GCS 이미지 바이트. */
+  async getImage(
+    userId: string,
+    sampleId: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    const sample = await this.prisma.verificationSample.findUnique({
+      where: { id: BigInt(sampleId) },
+      select: { userId: true, imagePath: true },
+    });
+    if (!sample) {
+      throw new NotFoundException({
+        code: 'SAMPLE_NOT_FOUND',
+        message: '인증 샘플을 찾을 수 없습니다',
+      });
+    }
+    if (sample.userId !== BigInt(userId)) {
+      throw new ForbiddenException({
+        code: 'NOT_OWNER',
+        message: '본인의 인증 이미지만 볼 수 있습니다',
+      });
+    }
+    return this.storage.downloadVerificationImage(sample.imagePath);
+  }
+
   private async hasRecentUse(userId: string): Promise<boolean> {
     const cutoff = new Date(Date.now() - RETURN_WINDOW_HOURS * 60 * 60 * 1000);
     const recentUse = await this.prisma.usage.findFirst({

@@ -2,14 +2,18 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
+  Param,
   Post,
   Request,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AnalyzeDto, ConfirmDto } from './dto/verify.dto';
 import { UploadedImage, VerifyService } from './verify.service';
@@ -52,5 +56,27 @@ export class VerifyController {
       body.sampleId,
       body.userLabel,
     );
+  }
+
+  // 캘린더용 — 본인 인증 이력 (최신순)
+  @Get('history')
+  async history(@Request() req: AuthedRequest) {
+    return this.verifyService.getHistory(req.user.userId);
+  }
+
+  // 캘린더용 — 본인 샘플 이미지 스트리밍 (프론트는 bearer로 fetch → blob URL)
+  @Get('history/:id/image')
+  async historyImage(
+    @Request() req: AuthedRequest,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, contentType } = await this.verifyService.getImage(
+      req.user.userId,
+      id,
+    );
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
   }
 }
