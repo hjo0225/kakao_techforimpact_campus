@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### feat: 리그/포인트/경기선택 제거 + BeReal 네비 + 캘린더 (Breaking)
+
+- **제거된 엔드포인트**: `GET /rankings/teams`(리그), `GET /attendance/me`·`POST /attendance`·`DELETE /attendance/:gameId`(경기선택). `attendances` 테이블 drop(마이그레이션 `20260602000000_drop_attendances`)
+- **`GET /stats/me` 응답 변경**: `points` 필드 제거 → `{ useCount, returnCount, totalCount }`
+- **추가**: `GET /verify/history`(본인 인증 이력), `GET /verify/history/:id/image`(GCS 이미지 스트리밍, JWT+소유자) — 캘린더 사진용
+- 프론트: 하단탭 BeReal 재구성(홈·지도·중앙 카메라·캘린더·프로필), 인증 화면 경기선택 게이트 제거(항상 사용 가능), CalendarScreen/ProfileScreen 신규, 홈 카메라 용도 토글(인증↔직관카드), 직관카드(VisitCard) MVP
+- 폰트 전체 Pretendard 전환
+
 ### feat(api): 인증을 휴먼인더루프 2단계로 변경 + 학습데이터 적재 (Breaking)
 
 - **API 교체**: `POST /verify/use`·`/verify/return` 제거 → `POST /verify/analyze` + `POST /verify/confirm`
