@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, RotateCcw, Download, Share2 } from 'lucide-react';
+import { Camera, Download, Share2 } from 'lucide-react';
 import { useApp } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { BottomNav } from '../BottomNav';
@@ -12,8 +12,16 @@ import {
 import winMascot from '../../../assets/share-win.png';
 import loseMascot from '../../../assets/share-lose.png';
 
-type GameResult = 'win' | 'lose';
-const MASCOT: Record<GameResult, string> = { win: winMascot, lose: loseMascot };
+// 프레임 목록 — 앞으로 계속 추가될 수 있게 배열로 관리 (여기에 항목만 추가하면 됨)
+interface CardFrame {
+  key: string;
+  label: string;
+  mascot: string;
+}
+const FRAMES: CardFrame[] = [
+  { key: 'win', label: '🏆 승리', mascot: winMascot },
+  { key: 'lose', label: '😢 패배', mascot: loseMascot },
+];
 
 const cardStyle: React.CSSProperties = {
   background: '#fff',
@@ -55,12 +63,12 @@ function drawText(
 
 interface CardInput {
   photoUrl: string | null;
-  result: GameResult;
+  mascotSrc: string;
   visitN: number;
   teamLabel: string | null;
 }
 
-// 기존 직관카드 프레임 (1080×1080) — 셀카 cover, 좌상단 시즌 카운터, 우상단 팀, 좌하단 마스코트
+// 직관카드 프레임 (1080×1080) — 셀카 cover, 좌상단 시즌 카운터, 우상단 팀, 좌하단 마스코트
 async function createCardImage(input: CardInput): Promise<File> {
   await document.fonts?.ready;
   const size = 1080;
@@ -88,7 +96,6 @@ async function createCardImage(input: CardInput): Promise<File> {
   ctx.fillStyle = topShade;
   ctx.fillRect(0, 0, size, 320);
 
-  // 좌상단 — 시즌 카운터
   drawText(ctx, '이번 시즌 잠실 직관', 60, 70, {
     font: '800 34px "Pretendard Variable", "Noto Sans KR", sans-serif',
     color: '#FFFFFF',
@@ -98,7 +105,6 @@ async function createCardImage(input: CardInput): Promise<File> {
     color: '#FFFAE6',
   });
 
-  // 우상단 — 응원팀 박스
   if (input.teamLabel) {
     const label = input.teamLabel;
     ctx.font = '900 32px "Pretendard Variable", "Noto Sans KR", sans-serif';
@@ -121,8 +127,7 @@ async function createCardImage(input: CardInput): Promise<File> {
     });
   }
 
-  // 좌하단 — 마스코트
-  const mascot = await loadImage(MASCOT[input.result]);
+  const mascot = await loadImage(input.mascotSrc);
   const mascotHeight = size * 0.5;
   const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
   ctx.drawImage(mascot, 36, size - mascotHeight - 36, mascotWidth, mascotHeight);
@@ -134,10 +139,10 @@ async function createCardImage(input: CardInput): Promise<File> {
 }
 
 export function VisitCard() {
-  const { selectedTeam } = useApp();
+  const { selectedTeam, registerCameraAction } = useApp();
   const user = useAuthStore((s) => s.user);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
-  const [result, setResult] = useState<GameResult>('win');
+  const [frameKey, setFrameKey] = useState<string>(FRAMES[0].key);
   const [visitN, setVisitN] = useState(1);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
   const [cardFile, setCardFile] = useState<File | null>(null);
@@ -146,34 +151,38 @@ export function VisitCard() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const teamLabel = selectedTeam ?? user?.teamCode ?? null;
+  const mascotSrc = (FRAMES.find((f) => f.key === frameKey) ?? FRAMES[0]).mascot;
 
-  // 시즌 직관 카드 수 → N번째
+  // 중앙 카메라 버튼이 이 화면의 파일 선택을 열도록 등록
+  useEffect(() => {
+    registerCameraAction(() => fileInputRef.current?.click());
+    return () => registerCameraAction(null);
+  }, [registerCameraAction]);
+
   useEffect(() => {
     getVisitCards()
       .then((cards) => setVisitN(cards.length + 1))
       .catch(() => {});
   }, []);
 
-  // photo/result/visitN 변경 시 카드 재생성
+  // photo/frame/visitN 변경 시 카드 재생성
   useEffect(() => {
     let cancelled = false;
-    let createdUrl: string | null = null;
-    createCardImage({ photoUrl: photo?.url ?? null, result, visitN, teamLabel })
+    createCardImage({ photoUrl: photo?.url ?? null, mascotSrc, visitN, teamLabel })
       .then((file) => {
         if (cancelled) return;
-        createdUrl = URL.createObjectURL(file);
+        const url = URL.createObjectURL(file);
         setCardFile(file);
         setCardUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
-          return createdUrl;
+          return url;
         });
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-    // teamLabel은 photo/visitN와 함께 안정적이라 deps 최소화
-  }, [photo, result, visitN, teamLabel]);
+  }, [photo, mascotSrc, visitN, teamLabel]);
 
   useEffect(() => {
     return () => {
@@ -205,28 +214,27 @@ export function VisitCard() {
     a.click();
   };
 
-  const handleSaveAndShare = async () => {
+  const handleShare = async () => {
     if (!cardFile || busy) return;
     setBusy(true);
     try {
       const created = await createVisitCard(cardFile, { teamCode: user?.teamCode ?? undefined });
       const url = shareUrlForToken(created.shareToken);
-      setVisitN((n) => n); // 유지
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share({ title: '직관카드', text: '오늘의 직관 인증!', url });
           showToast('공유했어요');
         } catch {
-          showToast('저장 완료');
+          showToast('완료');
         }
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
         showToast('공유 링크를 복사했어요');
       } else {
-        showToast('저장 완료');
+        showToast('완료');
       }
     } catch {
-      showToast('저장에 실패했어요. 다시 시도해주세요');
+      showToast('실패했어요. 다시 시도해주세요');
     } finally {
       setBusy(false);
     }
@@ -264,67 +272,88 @@ export function VisitCard() {
             오늘의 직관 순간을 카드로
           </p>
           <p style={{ marginTop: 5, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
-            사진을 올리면 시즌 직관 카드가 만들어져요. 저장하면 공유 링크가 생깁니다.
+            아래 중앙 카메라 버튼으로 사진을 촬영하면 시즌 직관 카드가 만들어져요.
           </p>
         </div>
 
-        {/* 카드 프리뷰 (생성된 1:1 카드) */}
+        {/* 카드 프리뷰 */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ width: '100%', aspectRatio: '1 / 1', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {cardUrl ? (
               <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>카드 생성 중...</div>
             )}
+            {!photo && cardUrl && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  background: 'rgba(67, 10, 33, 0.28)',
+                  color: '#fff',
+                  pointerEvents: 'none',
+                }}
+              >
+                <Camera size={30} />
+                <p style={{ fontSize: 12, fontWeight: 700 }}>중앙 카메라 버튼으로 촬영</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 승패 토글 */}
+        {/* 프레임 선택 (가로 스크롤 — 항목 추가 가능) */}
         <div style={cardStyle}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>오늘 경기 결과</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
-            {([['win', '🏆 승리'], ['lose', '😢 패배']] as [GameResult, string][]).map(([key, label]) => {
-              const active = result === key;
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>프레임</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
+            {FRAMES.map((f) => {
+              const active = frameKey === f.key;
               return (
                 <button
-                  key={key}
+                  key={f.key}
                   type="button"
-                  onClick={() => setResult(key)}
+                  onClick={() => setFrameKey(f.key)}
                   aria-pressed={active}
                   style={{
+                    flexShrink: 0,
                     borderRadius: 'var(--cb-radius-md)',
                     border: active ? '2px solid var(--cb-primary)' : '2px solid #430A21',
                     background: active ? 'var(--cb-primary-soft)' : '#fff',
                     color: active ? 'var(--cb-primary-deep)' : '#0F172A',
-                    padding: '12px 0',
+                    padding: '12px 18px',
                     fontSize: 14,
                     fontWeight: 700,
                     cursor: 'pointer',
                     boxShadow: active ? '0 3px 0 0 var(--cb-primary)' : '0 2px 0 0 #430A21',
                   }}
                 >
-                  {label}
+                  {f.label}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 액션 */}
+        {/* 저장하기 + 공유하기 (한 줄) */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={handleDownload}
+            disabled={!cardUrl}
             style={{
               flex: 1,
               borderRadius: 'var(--cb-radius-md)',
               border: '2px solid #430A21',
-              background: photo ? '#fff' : 'var(--cb-primary)',
-              color: photo ? '#430A21' : '#fff',
+              background: '#fff',
+              color: '#430A21',
               padding: '14px 12px',
               fontSize: 14,
               fontWeight: 700,
-              cursor: 'pointer',
+              cursor: cardUrl ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -332,51 +361,34 @@ export function VisitCard() {
               boxShadow: '0 3px 0 0 #430A21',
             }}
           >
-            {photo ? <RotateCcw size={16} /> : <Camera size={18} />}
-            {photo ? '다시 찍기' : '사진 촬영'}
+            <Download size={16} />
+            저장하기
           </button>
           <button
             type="button"
-            onClick={handleDownload}
-            disabled={!cardUrl}
-            aria-label="카드 저장"
+            onClick={handleShare}
+            disabled={!cardFile || busy}
             style={{
+              flex: 1,
               borderRadius: 'var(--cb-radius-md)',
               border: '2px solid #430A21',
-              background: '#fff',
-              color: '#430A21',
-              padding: '14px 16px',
-              cursor: cardUrl ? 'pointer' : 'not-allowed',
-              boxShadow: '0 3px 0 0 #430A21',
+              background: !cardFile || busy ? '#CBD5E1' : 'var(--cb-primary)',
+              color: '#fff',
+              padding: '14px 12px',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: !cardFile || busy ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
             }}
           >
-            <Download size={18} />
+            <Share2 size={16} />
+            {busy ? '공유 중...' : '공유하기'}
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={handleSaveAndShare}
-          disabled={!cardFile || busy}
-          style={{
-            borderRadius: 'var(--cb-radius-md)',
-            border: '2px solid #430A21',
-            background: !cardFile || busy ? '#CBD5E1' : 'var(--cb-primary)',
-            color: '#fff',
-            padding: '15px 12px',
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: !cardFile || busy ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
-          }}
-        >
-          <Share2 size={18} />
-          {busy ? '저장 중...' : '서버 저장 & 공유'}
-        </button>
 
         {toast && (
           <div

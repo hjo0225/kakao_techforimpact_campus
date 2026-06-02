@@ -1,5 +1,6 @@
 import { Home, Map, Calendar, UserRound, Camera, type LucideIcon } from 'lucide-react';
 import { useNavigation, type Route } from '../navigation';
+import { useApp } from '../AppContext';
 
 interface Tab {
   label: string;
@@ -19,6 +20,16 @@ const RIGHT_TABS: Tab[] = [
 
 export function BottomNav() {
   const { currentRoute, navigate } = useNavigation();
+  const { cameraPurpose, triggerCameraAction } = useApp();
+
+  const handleCamera = () => {
+    // 직관카드 화면에 이미 있으면 촬영(파일 선택)을 트리거, 아니면 카메라 화면으로 이동
+    if (currentRoute === 'report' && cameraPurpose === 'visit-card') {
+      triggerCameraAction();
+    } else {
+      navigate('report');
+    }
+  };
 
   const renderTab = (tab: Tab) => {
     const active = currentRoute === tab.path;
@@ -70,7 +81,7 @@ export function BottomNav() {
           type="button"
           aria-label="카메라"
           aria-current={currentRoute === 'report' ? 'page' : undefined}
-          onClick={() => navigate('report')}
+          onClick={handleCamera}
           style={{
             width: 62,
             height: 62,
