@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Download, SwitchCamera, Frame, Smile, RotateCcw, Video, X } from 'lucide-react';
-import { useApp } from '../../AppContext';
+import { useApp, type CameraPurpose } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
-import { CameraPurposeToggle } from '../CameraPurposeToggle';
 import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
 import winMascot from '../../../assets/share-win.png';
 import loseMascot from '../../../assets/share-lose.png';
@@ -20,7 +19,12 @@ const FRAMES: CardFrame[] = [
   { key: 'lose', label: '😢 패배', mascot: loseMascot },
 ];
 
-// 촬영 버튼 하늘색 — 카메라 컨트롤 한정(DESIGN.md 토큰 외, 추후 토큰화 가능)
+const MODES: Array<{ v: CameraPurpose; t: string }> = [
+  { v: 'verify', t: '인증' },
+  { v: 'visit-card', t: '직관카드' },
+];
+
+// 촬영/활성 강조 하늘색 — 카메라 컨트롤 한정(DESIGN.md 토큰 외, 추후 토큰화 가능)
 const SKY = '#5BA7E5';
 
 function loadImage(src: string) {
@@ -64,7 +68,6 @@ async function createCardImage(input: CardInput): Promise<File> {
     ctx.fillRect(0, 0, size, size);
   }
 
-  // 좌하단 토끼 마스코트
   const mascotHeight = size * 0.5;
   const mascotWidth = (mascot.width / mascot.height) * mascotHeight;
   const pad = Math.round(size * 0.03);
@@ -80,7 +83,7 @@ type View = 'camera' | 'result';
 type BottomMode = 'controls' | 'frames';
 
 export function VisitCard() {
-  const { registerCameraAction } = useApp();
+  const { registerCameraAction, cameraPurpose, setCameraPurpose, setCaptureMode } = useApp();
   const user = useAuthStore((s) => s.user);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,16 +111,13 @@ export function VisitCard() {
     window.setTimeout(() => setToast(null), 2200);
   }, []);
 
-  // ── 라이브 카메라: camera 뷰일 때만 스트림 on, result/언마운트 시 off ──
+  // ── 라이브 카메라: camera 뷰일 때만 스트림 on ──
   useEffect(() => {
     if (view !== 'camera') return;
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing },
-          audio: false,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -135,6 +135,12 @@ export function VisitCard() {
       streamRef.current = null;
     };
   }, [view, facing]);
+
+  // 카메라 뷰 = 촬영 모드 → BottomNav 선 제거 + FAB 하늘색 촬영 링
+  useEffect(() => {
+    setCaptureMode(view === 'camera');
+    return () => setCaptureMode(false);
+  }, [view, setCaptureMode]);
 
   useEffect(() => {
     getVisitCards()
@@ -184,7 +190,6 @@ export function VisitCard() {
     const w = vw * scale;
     const h = vh * scale;
     if (facing === 'user') {
-      // 프리뷰 미러링과 동일하게 좌우 반전
       ctx.translate(size, 0);
       ctx.scale(-1, 1);
     }
@@ -202,14 +207,13 @@ export function VisitCard() {
     }, 'image/png');
   }, [facing]);
 
-  // 중앙 네비 카메라 버튼: 카메라 뷰에서 촬영 트리거
+  // 중앙 네비 FAB(촬영 링): 카메라 뷰에서 촬영 트리거
   useEffect(() => {
     if (view === 'camera') registerCameraAction(() => capture());
     else registerCameraAction(null);
     return () => registerCameraAction(null);
   }, [view, capture, registerCameraAction]);
 
-  // 카메라 불가 시 파일 선택 폴백
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -272,20 +276,45 @@ export function VisitCard() {
       />
       <StatusBar centerLabel="직관카드" />
 
-      {/* 상단바 — 모드 토글(중앙) + 전/후면 전환(우, 카메라 뷰만) */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px 6px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <CameraPurposeToggle />
+      {/* 상단바 — 모드 세그먼트(중앙) + 전/후면 전환(우) */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 12px 8px' }}>
+        <div style={{ width: 48, flexShrink: 0 }} aria-hidden />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'inline-flex', border: '2px solid #430A21', background: '#F0E8E7', boxShadow: '0 2px 0 0 #430A21' }}>
+            {MODES.map((o, i) => {
+              const active = cameraPurpose === o.v;
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setCameraPurpose(o.v)}
+                  aria-pressed={active}
+                  style={{
+                    border: 'none',
+                    borderLeft: i === 0 ? 'none' : '2px solid #430A21',
+                    padding: '8px 20px',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    background: active ? 'var(--cb-primary)' : 'transparent',
+                    color: active ? '#fff' : '#8C6B73',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {o.t}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        {view === 'camera' && !camError && (
+        {view === 'camera' && !camError ? (
           <button
             type="button"
             onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
             aria-label="전후면 전환"
             style={{
-              flexShrink: 0,
               width: 48,
               height: 48,
+              flexShrink: 0,
               border: '2px solid #430A21',
               background: '#fff',
               display: 'flex',
@@ -297,6 +326,8 @@ export function VisitCard() {
           >
             <SwitchCamera size={20} color="#430A21" strokeWidth={2.4} />
           </button>
+        ) : (
+          <div style={{ width: 48, flexShrink: 0 }} aria-hidden />
         )}
       </div>
 
@@ -326,20 +357,7 @@ export function VisitCard() {
         >
           {view === 'camera' ? (
             camError ? (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 12,
-                  padding: 20,
-                  textAlign: 'center',
-                  color: '#fff',
-                }}
-              >
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
                 <Camera size={30} strokeWidth={2.2} />
                 <p style={{ fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5 }}>
                   카메라를 열 수 없어요.
@@ -349,15 +367,7 @@ export function VisitCard() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    border: '2px solid #fff',
-                    background: 'transparent',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 800,
-                    padding: '10px 16px',
-                    cursor: 'pointer',
-                  }}
+                  style={{ border: '2px solid #fff', background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 800, padding: '10px 16px', cursor: 'pointer' }}
                 >
                   사진 선택
                 </button>
@@ -368,50 +378,32 @@ export function VisitCard() {
                 autoPlay
                 muted
                 playsInline
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                  transform: facing === 'user' ? 'scaleX(-1)' : 'none',
-                }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
               />
             )
           ) : cardUrl ? (
-            <img
-              src={cardUrl}
-              alt="직관카드 미리보기"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
+            <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           ) : (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'rgba(255,255,255,0.8)',
-                fontSize: 12,
-              }}
-            >
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
               카드 생성 중...
             </div>
           )}
         </div>
       </div>
 
-      {/* 하단 촬영 제어부 */}
-      <div style={{ flexShrink: 0, borderTop: '2px solid #430A21', background: '#fff', padding: '10px 14px 12px' }}>
+      {/* 하단 촬영 제어부 — 카메라 뷰는 선 없이 네비와 연결 */}
+      <div
+        style={{
+          flexShrink: 0,
+          borderTop: view === 'camera' ? 'none' : '2px solid #430A21',
+          background: '#fff',
+          padding: view === 'camera' ? '8px 14px 0' : '10px 14px 12px',
+        }}
+      >
         {view === 'result' ? (
           // 촬영 후 — 다시 찍기 / 저장
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <button
-              type="button"
-              onClick={retake}
-              aria-label="다시 찍기"
-              style={ctrlSquareStyle}
-            >
+            <button type="button" onClick={retake} aria-label="다시 찍기" style={ctrlSquareStyle}>
               <RotateCcw size={20} color="#430A21" strokeWidth={2.4} />
               <span style={ctrlLabelStyle}>다시</span>
             </button>
@@ -442,15 +434,10 @@ export function VisitCard() {
           </div>
         ) : bottomMode === 'frames' ? (
           // 프레임 선택 모드
-          <div>
+          <div style={{ paddingBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: '#430A21' }}>프레임</span>
-              <button
-                type="button"
-                onClick={() => setBottomMode('controls')}
-                aria-label="프레임 닫기"
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}
-              >
+              <button type="button" onClick={() => setBottomMode('controls')} aria-label="프레임 닫기" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
                 <X size={18} color="#430A21" strokeWidth={2.6} />
               </button>
             </div>
@@ -488,10 +475,10 @@ export function VisitCard() {
             </div>
           </div>
         ) : (
-          // 기본 — 촬영/비디오 탭 + 프레임 / 촬영 / 이모지
+          // 기본 — 촬영/비디오 탭 + 프레임 / (중앙 네비 FAB 촬영) / 이모지
           <>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#430A21' }}>촬영</span>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: SKY }}>촬영</span>
               <button
                 type="button"
                 onClick={() => showToast('2초 비디오는 준비 중이에요')}
@@ -501,32 +488,13 @@ export function VisitCard() {
                 비디오
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {/* 프레임 (좌) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px' }}>
               <button type="button" onClick={() => setBottomMode('frames')} aria-label="프레임" style={ctrlSquareStyle}>
                 <Frame size={20} color="#430A21" strokeWidth={2.4} />
                 <span style={ctrlLabelStyle}>프레임</span>
               </button>
-
-              {/* 촬영 (중앙, 하늘색 원형) */}
-              <button
-                type="button"
-                onClick={capture}
-                disabled={camError}
-                aria-label="촬영"
-                style={{
-                  width: 74,
-                  height: 74,
-                  borderRadius: '9999px',
-                  border: '4px solid #fff',
-                  background: camError ? '#CBD5E1' : SKY,
-                  cursor: camError ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 0 0 2px #430A21, 0 4px 10px rgba(67,10,33,0.3)',
-                  flexShrink: 0,
-                }}
-              />
-
-              {/* 이모지 (우) — Phase 2 */}
+              {/* 중앙 — 네비 FAB(하늘색 촬영 링)가 올라오는 자리 */}
+              <div style={{ width: 84 }} aria-hidden />
               <button type="button" onClick={() => showToast('이모지는 준비 중이에요')} aria-label="이모지" style={ctrlSquareStyle}>
                 <Smile size={20} color="#B59CA3" strokeWidth={2.4} />
                 <span style={{ ...ctrlLabelStyle, color: '#B59CA3' }}>이모지</span>
