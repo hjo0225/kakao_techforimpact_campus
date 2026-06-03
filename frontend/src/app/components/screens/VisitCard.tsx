@@ -559,6 +559,7 @@ export function VisitCard() {
 
 const ctrlSquareStyle: React.CSSProperties = {
   width: 56, height: 56, flexShrink: 0, border: '2px solid #430A21', background: '#fff',
+  borderRadius: 16,
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
   cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21',
 };
