@@ -20,14 +20,6 @@ const FRAMES: CardFrame[] = [
   { key: 'lose', label: '😢 패배', mascot: loseMascot },
 ];
 
-const cardStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 'var(--cb-radius-lg)',
-  padding: 16,
-  border: '2px solid #430A21',
-  boxShadow: '0 3px 0 0 #430A21, 0 4px 6px rgba(67, 10, 33, 0.18)',
-};
-
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -92,7 +84,7 @@ export function VisitCard() {
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // 서버에 1회 저장된 카드(저장/공유 중복 생성 방지). 카드가 바뀌면 null로 리셋.
+  // 서버에 1회 저장된 카드(저장 중복 생성 방지). 카드가 바뀌면 null로 리셋.
   const [savedCard, setSavedCard] = useState<{ id: string; shareToken: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -113,7 +105,7 @@ export function VisitCard() {
   // photo/frame/visitN 변경 시 카드 재생성
   useEffect(() => {
     let cancelled = false;
-    setSavedCard(null); // 카드 내용이 바뀌면 이전 저장본 무효 → 다음 저장/공유 시 새로 저장
+    setSavedCard(null); // 카드 내용이 바뀌면 이전 저장본 무효 → 다음 저장 시 새로 저장
     createCardImage({ photoUrl: photo?.url ?? null, mascotSrc, visitN })
       .then((file) => {
         if (cancelled) return;
@@ -179,8 +171,10 @@ export function VisitCard() {
     setBusy(false);
   };
 
+  const canSave = !!cardUrl && !busy;
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -193,124 +187,189 @@ export function VisitCard() {
       />
       <StatusBar centerLabel="직관카드" />
 
+      {/* 헤더 — 용도 토글(좌) + 저장(우상단) */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px 6px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <CameraPurposeToggle />
+        </div>
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={!canSave}
+          aria-label="저장"
+          style={{
+            flexShrink: 0,
+            height: 48,
+            padding: '0 16px',
+            border: '2px solid #430A21',
+            background: canSave ? 'var(--cb-primary)' : '#CBD5E1',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 800,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: canSave ? 'pointer' : 'not-allowed',
+            boxShadow: '0 3px 0 0 #430A21',
+          }}
+        >
+          <Download size={16} strokeWidth={2.6} />
+          {busy ? '저장 중' : '저장'}
+        </button>
+      </div>
+
+      {/* 카드 프리뷰 — 가운데, 가변 영역 */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          padding: '14px 16px 18px',
           display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px 16px 10px',
         }}
       >
-        {/* 맨 위 — 용도 설정 (인증 / 직관카드) */}
-        <CameraPurposeToggle />
-
-        {/* 프레임 선택 — 탭 바로 아래 (가로 스크롤, 항목 추가 가능) */}
-        <div style={{ ...cardStyle, flexShrink: 0 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>프레임</p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
-            {FRAMES.map((f) => {
-              const active = frameKey === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setFrameKey(f.key)}
-                  aria-pressed={active}
-                  style={{
-                    flexShrink: 0,
-                    borderRadius: 'var(--cb-radius-md)',
-                    border: active ? '2px solid var(--cb-primary)' : '2px solid #430A21',
-                    background: active ? 'var(--cb-primary-soft)' : '#fff',
-                    color: active ? 'var(--cb-primary-deep)' : '#0F172A',
-                    padding: '12px 18px',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: active ? '0 3px 0 0 var(--cb-primary)' : '0 2px 0 0 #430A21',
-                  }}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            aspectRatio: '1 / 1',
+            border: '2px solid #430A21',
+            boxShadow: '4px 4px 0 0 #430A21',
+            overflow: 'hidden',
+            background: '#000',
+          }}
+        >
+          {cardUrl ? (
+            <img
+              src={cardUrl}
+              alt="직관카드 미리보기"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: 12,
+              }}
+            >
+              카드 생성 중...
+            </div>
+          )}
+          {!photo && cardUrl && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: 'rgba(67, 10, 33, 0.28)',
+                color: '#fff',
+                pointerEvents: 'none',
+              }}
+            >
+              <Camera size={30} strokeWidth={2.4} />
+              <p style={{ fontSize: 12, fontWeight: 700, margin: 0 }}>중앙 카메라 버튼으로 촬영</p>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* 카드 프리뷰 — 사진 비율 그대로(짤림 없음). 길면 화면이 스크롤됨. */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', minHeight: 200 }}>
-            {cardUrl ? (
-              <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: 'auto', display: 'block' }} />
-            ) : (
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, padding: 40 }}>카드 생성 중...</div>
-            )}
-            {!photo && cardUrl && (
-              <div
+      {/* 프레임 캐러셀 — 네비 위, 가로 스크롤로 프레임 전환 */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: '10px 12px',
+          borderTop: '2px solid #430A21',
+          background: '#fff',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            scrollSnapType: 'x mandatory',
+            paddingBottom: 2,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {FRAMES.map((f) => {
+            const active = frameKey === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFrameKey(f.key)}
+                aria-pressed={active}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
+                  flexShrink: 0,
+                  scrollSnapAlign: 'center',
+                  width: 76,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  background: 'rgba(67, 10, 33, 0.28)',
-                  color: '#fff',
-                  pointerEvents: 'none',
+                  gap: 4,
+                  padding: '8px 6px',
+                  border: active ? '2px solid var(--cb-primary)' : '2px solid #430A21',
+                  background: active ? 'var(--cb-primary-soft)' : '#fff',
+                  boxShadow: active ? '0 3px 0 0 var(--cb-primary)' : '0 2px 0 0 #430A21',
+                  cursor: 'pointer',
                 }}
               >
-                <Camera size={30} />
-                <p style={{ fontSize: 12, fontWeight: 700 }}>중앙 카메라 버튼으로 촬영</p>
-              </div>
-            )}
-          </div>
+                <img src={f.mascot} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: active ? 'var(--cb-primary-deep)' : '#430A21',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {f.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        {/* 저장하기 (서버 저장 → 캘린더 반영 + 기기 다운로드) */}
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={!cardUrl || busy}
+      {/* 토스트 — 캐러셀/네비 위에 잠깐 떠오름 */}
+      {toast && (
+        <div
           style={{
-            flexShrink: 0,
-            borderRadius: 'var(--cb-radius-md)',
-            border: '2px solid #430A21',
-            background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)',
-            color: '#fff',
-            padding: '15px 12px',
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: cardUrl && !busy ? 'pointer' : 'not-allowed',
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 150,
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
-            boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
+            pointerEvents: 'none',
           }}
         >
-          <Download size={16} />
-          {busy ? '저장 중...' : '저장하기'}
-        </button>
-
-        {toast && (
           <div
             style={{
-              ...cardStyle,
-              textAlign: 'center',
+              background: '#430A21',
+              color: '#fff',
               fontSize: 13,
               fontWeight: 700,
-              color: 'var(--cb-primary-deep)',
-              padding: '12px 14px',
+              padding: '10px 16px',
+              border: '2px solid #430A21',
+              boxShadow: '3px 3px 0 0 rgba(67,10,33,0.25)',
             }}
           >
             {toast}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
