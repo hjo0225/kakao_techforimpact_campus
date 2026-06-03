@@ -218,21 +218,23 @@ export function VisitCard() {
         </button>
       </div>
 
-      {/* 카드 프리뷰 — 가운데, 가변 영역 */}
+      {/* 카드 프리뷰 — 가운데, 가변 영역. 가용 폭/높이 중 작은 쪽에 맞춰 정사각이 항상 들어가게(넘침 방지). */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
+          containerType: 'size',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '4px 16px 10px',
+          overflow: 'hidden',
         }}
       >
         <div
           style={{
             position: 'relative',
-            width: '100%',
+            width: 'min(100%, 100cqh)',
             aspectRatio: '1 / 1',
             border: '2px solid #430A21',
             boxShadow: '4px 4px 0 0 #430A21',
