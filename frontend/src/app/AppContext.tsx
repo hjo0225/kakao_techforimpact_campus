@@ -50,6 +50,9 @@ interface AppState {
   // 중앙 카메라 버튼이 호출할 화면별 촬영 액션 (예: 직관카드 파일 선택)
   registerCameraAction: (fn: (() => void) | null) => void;
   triggerCameraAction: () => void;
+  // 라이브 카메라 촬영 모드 — true면 BottomNav가 선을 없애고 FAB를 하늘색 촬영 링으로 전환
+  captureMode: boolean;
+  setCaptureMode: (v: boolean) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -105,6 +108,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>([]);
   const [shareCardShared, setShareCardShared] = useState(false);
   const [cameraPurpose, setCameraPurpose] = useState<CameraPurpose>('verify');
+  const [captureMode, setCaptureMode] = useState(false);
 
   const cameraActionRef = useRef<(() => void) | null>(null);
   const registerCameraAction = useCallback((fn: (() => void) | null) => {
@@ -196,6 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     shareCardShared, setShareCardShared,
     cameraPurpose, setCameraPurpose,
     registerCameraAction, triggerCameraAction,
+    captureMode, setCaptureMode,
   }), [
     addCertification,
     certificationLogs,
@@ -210,6 +215,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     cameraPurpose,
     registerCameraAction,
     triggerCameraAction,
+    captureMode,
   ]);
 
   return (

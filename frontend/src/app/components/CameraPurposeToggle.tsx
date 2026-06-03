@@ -3,7 +3,7 @@ import { useApp, type CameraPurpose } from '../AppContext';
 
 const PURPOSES: Array<{ value: CameraPurpose; title: string; desc: string; icon: LucideIcon }> = [
   { value: 'verify', title: '인증', desc: '다회용기 사용·반납 사진을 찍어 AI로 인증해요', icon: ScanLine },
-  { value: 'visit-card', title: '직관카드', desc: '오늘 직관 사진으로 카드를 만들고 공유해요', icon: ImageIcon },
+  { value: 'visit-card', title: '직관카드', desc: '오늘 직관 사진으로 카드를 만들어 저장해요', icon: ImageIcon },
 ];
 
 // 맨 위 용도 설정 — 인증 / 직관카드 (테두리 있는 세그먼트 탭)
