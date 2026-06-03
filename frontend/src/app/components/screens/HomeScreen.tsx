@@ -1,7 +1,7 @@
-import { ReportScreen } from './ReportScreen';
+import { VisitCard } from './VisitCard';
 
-// 홈 = 카메라 화면. 맨 위 용도 설정(인증/직관카드) + 아래 카메라 프레임.
-// ReportScreen이 용도에 따라 인증 플로우 / 직관카드 플로우를 보여준다.
+// 홈 = 통합 카메라 화면. 상단 토글(인증/직관카드)로 같은 카메라에서 모드 전환.
+// 인증: 촬영 → AI 분석/확정 / 직관카드: 촬영 → 프레임 합성 → 저장.
 export function HomeScreen() {
-  return <ReportScreen />;
+  return <VisitCard />;
 }
