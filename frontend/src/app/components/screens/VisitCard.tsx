@@ -133,10 +133,17 @@ export function VisitCard() {
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facing } },
+          audio: false,
+        });
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // iOS Safari: autoPlay가 막히는 경우가 있어 명시적으로 재생
+          videoRef.current.play().catch(() => {});
+        }
         setCamError(false);
       } catch {
         if (!cancelled) setCamError(true);
