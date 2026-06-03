@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Camera, Download, SwitchCamera, Frame, Smile, RotateCcw, Video, X, ScanLine, CheckCircle,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useApp, type CameraPurpose } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
@@ -21,7 +22,7 @@ const FRAMES: CardFrame[] = [
 ];
 
 const MODES: Array<{ v: CameraPurpose; t: string }> = [
-  { v: 'verify', t: '인증' },
+  { v: 'verify', t: '다회용기 인증' },
   { v: 'visit-card', t: '직관카드' },
 ];
 
@@ -193,19 +194,16 @@ export function VisitCard() {
   const capture = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
-    const size = 1080;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // 뷰파인더에 보이는 전체 프레임을 그대로 촬영 (직관카드는 합성 시 1:1 cover crop)
     const vw = video.videoWidth;
     const vh = video.videoHeight;
-    const scale = Math.max(size / vw, size / vh);
-    const w = vw * scale;
-    const h = vh * scale;
-    if (facing === 'user') { ctx.translate(size, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(video, (size - w) / 2, (size - h) / 2, w, h);
+    const canvas = document.createElement('canvas');
+    canvas.width = vw;
+    canvas.height = vh;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (facing === 'user') { ctx.translate(vw, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0, vw, vh);
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], 'shot.png', { type: 'image/png' });
@@ -336,14 +334,14 @@ export function VisitCard() {
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} style={{ display: 'none' }} aria-hidden tabIndex={-1} />
-      <StatusBar centerLabel={isCard ? '직관카드' : '인증'} />
+      <StatusBar bg="#fff" />
 
-      {/* 헤더 — 흰색 풀폭: 중앙 토글 + 우측 전후면 전환 */}
-      <div style={{ flexShrink: 0, background: '#fff', borderBottom: '2px solid #430A21', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
-        <div style={{ width: 44, flexShrink: 0 }} aria-hidden />
+      {/* 헤더 — 흰색 풀폭(상태바까지): 중앙 토글 + 우측 전후면 전환. 크기 통일 + 둥근 테두리 */}
+      <div style={{ flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px 10px' }}>
+        <div style={{ width: 40, flexShrink: 0 }} aria-hidden />
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ display: 'inline-flex', border: '2px solid #430A21', boxShadow: '0 2px 0 0 #430A21' }}>
-            {MODES.map((o, i) => {
+          <div style={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 4px', gap: 2, border: '2px solid #430A21', borderRadius: 9999, background: '#F0E8E7' }}>
+            {MODES.map((o) => {
               const active = cameraPurpose === o.v;
               return (
                 <button
@@ -352,10 +350,10 @@ export function VisitCard() {
                   onClick={() => setCameraPurpose(o.v)}
                   aria-pressed={active}
                   style={{
-                    border: 'none', borderLeft: i === 0 ? 'none' : '2px solid #430A21',
-                    padding: '8px 20px', fontSize: 13, fontWeight: 800,
-                    background: active ? 'var(--cb-primary)' : '#fff',
-                    color: active ? '#fff' : '#8C6B73', cursor: 'pointer',
+                    height: 32, padding: '0 14px', border: 'none', borderRadius: 9999,
+                    fontSize: 13, fontWeight: 800,
+                    background: active ? 'var(--cb-primary)' : 'transparent',
+                    color: active ? '#fff' : '#8C6B73', cursor: 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
                   {o.t}
@@ -369,30 +367,29 @@ export function VisitCard() {
             type="button"
             onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
             aria-label="전후면 전환"
-            style={{ width: 44, height: 44, flexShrink: 0, border: '2px solid #430A21', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21' }}
+            style={{ width: 40, height: 40, flexShrink: 0, border: '2px solid #430A21', borderRadius: 9999, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
-            <SwitchCamera size={20} color="#430A21" strokeWidth={2.4} />
+            <SwitchCamera size={19} color="#430A21" strokeWidth={2.4} />
           </button>
         ) : (
-          <div style={{ width: 44, flexShrink: 0 }} aria-hidden />
+          <div style={{ width: 40, flexShrink: 0 }} aria-hidden />
         )}
       </div>
 
       {/* ── 카메라 뷰 ── */}
       {view === 'camera' && (
         <>
-          <div style={{ flex: 1, minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', overflow: 'hidden' }}>
-            <div style={{ position: 'relative', width: 'min(100%, 100cqh)', aspectRatio: '1 / 1', border: '2px solid #430A21', boxShadow: '4px 4px 0 0 #430A21', overflow: 'hidden', background: '#000' }}>
-              {camError ? (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
-                  <Camera size={30} strokeWidth={2.2} />
-                  <p style={{ fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5 }}>카메라를 열 수 없어요.<br />권한을 허용하거나 사진을 선택해 주세요.</p>
-                  <button type="button" onClick={() => fileInputRef.current?.click()} style={{ border: '2px solid #fff', background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 800, padding: '10px 16px', cursor: 'pointer' }}>사진 선택</button>
-                </div>
-              ) : (
-                <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
-              )}
-            </div>
+          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 */}
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', background: '#000' }}>
+            {camError ? (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
+                <Camera size={30} strokeWidth={2.2} />
+                <p style={{ fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5 }}>카메라를 열 수 없어요.<br />권한을 허용하거나 사진을 선택해 주세요.</p>
+                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ border: '2px solid #fff', background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 800, padding: '10px 16px', cursor: 'pointer' }}>사진 선택</button>
+              </div>
+            ) : (
+              <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
+            )}
           </div>
 
           {/* 촬영 제어부 — 풀폭, 카메라 뷰는 선 없이 네비와 연결 */}
@@ -421,7 +418,9 @@ export function VisitCard() {
             ) : isCard ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)' }}>촬영</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <ImageIcon size={14} strokeWidth={2.4} /> 사진
+                  </span>
                   <button type="button" onClick={() => showToast('2초 비디오는 준비 중이에요')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#B59CA3', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Video size={14} strokeWidth={2.4} /> 비디오
                   </button>
