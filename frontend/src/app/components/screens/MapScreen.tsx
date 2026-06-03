@@ -1,20 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  Beer,
-  Coffee,
-  Info,
-  MapPin,
-  Search,
-  Store,
-  UtensilsCrossed,
-} from 'lucide-react'
+import { Beer, Coffee, Search, Store, UtensilsCrossed, X } from 'lucide-react'
 import { BottomNav } from '../BottomNav'
 import { StatusBar } from '../StatusBar'
-import { StadiumSvgMap } from '../map/StadiumSvgMap'
+import { KakaoStadiumMap } from '../map/KakaoStadiumMap'
 import {
   CATEGORY_LABELS,
   JAMSIL_FLOOR_FIXTURE,
+  JAMSIL_STORE_FIXTURE,
   getStadiumFloors,
   getStadiumStores,
   type StadiumFloor,
@@ -22,53 +15,34 @@ import {
   type StoreCategory,
 } from '../../../lib/storesApi'
 
-const floorButtonBaseStyle = {
-  borderRadius: '9999px',
-  padding: '10px 14px',
-  border: '2px solid #430A21',
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-} as const
-
-const categories: Array<{ key: 'ALL' | StoreCategory; label: string; icon: typeof UtensilsCrossed }> = [
-  { key: 'ALL', label: '전체', icon: Store },
-  { key: 'MEAL', label: CATEGORY_LABELS.MEAL, icon: UtensilsCrossed },
-  { key: 'CAFE', label: CATEGORY_LABELS.CAFE, icon: Coffee },
-  { key: 'CONVENIENCE', label: CATEGORY_LABELS.CONVENIENCE, icon: Store },
-  { key: 'BEVERAGE', label: CATEGORY_LABELS.BEVERAGE, icon: Beer },
+// ── 카테고리 목록 ─────────────────────────────────────────────────────────────
+const categories: Array<{ key: 'ALL' | StoreCategory; label: string; icon: typeof Store }> = [
+  { key: 'ALL',          label: '전체',                        icon: Store          },
+  { key: 'MEAL',         label: CATEGORY_LABELS.MEAL,         icon: UtensilsCrossed },
+  { key: 'CAFE',         label: CATEGORY_LABELS.CAFE,         icon: Coffee         },
+  { key: 'CONVENIENCE',  label: CATEGORY_LABELS.CONVENIENCE,  icon: Store          },
+  { key: 'BEVERAGE',     label: CATEGORY_LABELS.BEVERAGE,     icon: Beer           },
 ]
 
-type ContainerFilter = 'REUSABLE' | 'PERSONAL' | 'ALL'
-
+// ── 용기 필터 ─────────────────────────────────────────────────────────────────
+type ContainerFilter = 'ALL' | 'REUSABLE' | 'PERSONAL'
 const containerFilters: Array<{ key: ContainerFilter; label: string }> = [
-  { key: 'REUSABLE', label: '다회용기 가능' },
-  { key: 'PERSONAL', label: '개인용기 가능' },
-  { key: 'ALL', label: '용기 전체' },
+  { key: 'ALL',      label: '용기 전체'      },
+  { key: 'REUSABLE', label: '다회용기 가능'  },
+  { key: 'PERSONAL', label: '개인용기 가능'  },
 ]
 
-function normalizeSearch(value: string) {
-  return value.trim().toLowerCase()
-}
+function normalizeSearch(v: string) { return v.trim().toLowerCase() }
 
 function matchesSearch(store: StadiumStore, rawQuery: string) {
-  const query = normalizeSearch(rawQuery)
-  if (!query) return true
-
-  const searchTargets = [
-    store.name,
-    store.slotNo,
-    store.nearestGate,
-    store.gate,
-    ...store.featuredMenus,
-  ]
-
-  return searchTargets.some((target) => target.toLowerCase().includes(query))
+  const q = normalizeSearch(rawQuery)
+  if (!q) return true
+  return [store.name, store.slotNo, store.nearestGate, store.gate, ...store.featuredMenus]
+    .some((t) => t.toLowerCase().includes(q))
 }
 
-function isCategoryMatch(store: StadiumStore, category: 'ALL' | StoreCategory) {
-  return category === 'ALL' ? true : store.category === category
+function isCategoryMatch(store: StadiumStore, cat: 'ALL' | StoreCategory) {
+  return cat === 'ALL' ? true : store.category === cat
 }
 
 function isContainerMatch(store: StadiumStore, filter: ContainerFilter) {
@@ -77,38 +51,25 @@ function isContainerMatch(store: StadiumStore, filter: ContainerFilter) {
   return true
 }
 
-function getFoodOnly(category: 'ALL' | StoreCategory) {
-  return category !== 'ALL' && category !== 'CONVENIENCE'
+function getFoodOnly(cat: 'ALL' | StoreCategory) {
+  return cat !== 'ALL' && cat !== 'CONVENIENCE'
 }
 
-function getCategoryTone(category: StoreCategory) {
-  switch (category) {
-    case 'MEAL':
-      return { background: 'var(--cb-primary-soft)', color: 'var(--cb-primary-deep)', border: 'var(--cb-primary-border)' }
-    case 'CAFE':
-      return { background: '#FFF4D6', color: '#8C5A00', border: '#E3B34B' }
-    case 'CONVENIENCE':
-      return { background: '#E8F5EB', color: '#2F6B3A', border: '#8AC39A' }
-    case 'BEVERAGE':
-      return { background: '#E8F1FF', color: '#1F4B8F', border: '#8FAFE8' }
-  }
+// ── 전층 검색 결과 (fixture 기준) ─────────────────────────────────────────────
+function searchAllFloors(query: string): StadiumStore[] {
+  if (!normalizeSearch(query)) return []
+  return JAMSIL_STORE_FIXTURE.filter((s) => matchesSearch(s, query)).slice(0, 20)
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
-      <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73', letterSpacing: '0.04em' }}>{label}</p>
-      <p style={{ margin: 0, fontSize: 13, color: '#430A21', lineHeight: 1.45, minWidth: 0, wordBreak: 'keep-all' }}>{value}</p>
-    </div>
-  )
-}
-
+// ── MapScreen ─────────────────────────────────────────────────────────────────
 export function MapScreen() {
-  const [selectedFloor, setSelectedFloor] = useState<StadiumFloor>('2F')
+  const [selectedFloor, setSelectedFloor] = useState<StadiumFloor | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | StoreCategory>('ALL')
-  const [containerFilter, setContainerFilter] = useState<ContainerFilter>('REUSABLE')
+  const [containerFilter, setContainerFilter] = useState<ContainerFilter>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
+  const [pinnedStore, setPinnedStore] = useState<StadiumStore | null>(null)
+  const [showStoreList, setShowStoreList] = useState(false)
 
   const foodOnly = getFoodOnly(selectedCategory)
 
@@ -119,372 +80,295 @@ export function MapScreen() {
 
   const storesQuery = useQuery({
     queryKey: ['stadium-stores', 'JAMSIL', selectedFloor, foodOnly],
-    queryFn: () => getStadiumStores({ stadiumCode: 'JAMSIL', floor: selectedFloor, foodOnly }),
+    queryFn: () => getStadiumStores({
+      stadiumCode: 'JAMSIL',
+      floor: selectedFloor ?? '2F',
+      foodOnly,
+    }),
+    enabled: selectedFloor !== null,
   })
 
   const floorOptions = floorsQuery.data?.data.floors ?? JAMSIL_FLOOR_FIXTURE
   const queriedStores = storesQuery.data?.data.items ?? []
 
-  useEffect(() => {
-    if (!floorOptions.some((floor) => floor.code === selectedFloor)) {
-      setSelectedFloor(floorOptions[0]?.code ?? '2F')
-    }
-  }, [floorOptions, selectedFloor])
-
   const visibleStores = useMemo(
     () => queriedStores
-      .filter((store) => isCategoryMatch(store, selectedCategory))
-      .filter((store) => isContainerMatch(store, containerFilter))
-      .filter((store) => matchesSearch(store, searchQuery)),
-    [containerFilter, queriedStores, searchQuery, selectedCategory],
+      .filter((s) => isCategoryMatch(s, selectedCategory))
+      .filter((s) => isContainerMatch(s, containerFilter))
+      .filter((s) => matchesSearch(s, searchQuery)),
+    [queriedStores, searchQuery, selectedCategory, containerFilter],
   )
 
+  // 층이 바뀌면 선택/핀 초기화 (층 버튼으로 직접 변경 시)
   useEffect(() => {
-    if (!visibleStores.length) {
-      setSelectedStoreId(null)
-      return
-    }
-
-    if (!selectedStoreId || !visibleStores.some((store) => store.id === selectedStoreId)) {
-      setSelectedStoreId(visibleStores[0].id)
-    }
-  }, [selectedStoreId, visibleStores])
-
-  const selectedStore = useMemo(
-    () => visibleStores.find((store) => store.id === selectedStoreId) ?? visibleStores[0] ?? null,
-    [selectedStoreId, visibleStores],
-  )
-
-  const hasFallbackData = floorsQuery.data?.source === 'fallback' || storesQuery.data?.source === 'fallback'
-  const isLoading = floorsQuery.isLoading || storesQuery.isLoading
+    setSelectedStoreId(null)
+    setPinnedStore(null)
+  }, [selectedFloor])
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#fff' }}>
       <StatusBar centerLabel="지도" />
 
-      <div
-        style={{
-          flex: '1 1 0',
-          height: 0,
-          minHeight: 0,
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain',
-          touchAction: 'pan-y',
-          padding: '10px 16px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <section
-          style={{
-            background: '#fff',
-            border: '3px solid #430A21',
-            borderRadius: '18px',
-            boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(67, 10, 33, 0.18)',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ padding: '14px 14px 12px', background: 'linear-gradient(180deg, #FFF6F8 0%, #FFFFFF 100%)', borderBottom: '2px solid #430A21' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73', letterSpacing: '0.04em' }}>잠실야구장 내부 식음료 지도</p>
-                <h2 style={{ margin: '4px 0 0', fontSize: 20, lineHeight: 1.2, color: '#430A21' }}>
-                  잠실야구장 {selectedFloor}
-                </h2>
-              </div>
+      {/* ── 검색바 ── */}
+      <div style={{ padding: '8px 12px', borderBottom: '1.5px solid #EDD5DC', background: '#fff', position: 'relative' }}>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#FFFDF8', border: '2px solid #430A21',
+          borderRadius: 12, boxShadow: '0 2px 0 0 #430A21',
+          padding: '0 12px', minHeight: 42,
+        }}>
+          <Search size={15} color="#5E1530" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="전체 층 가게명, 메뉴, 게이트 검색"
+            style={{
+              flex: 1, minWidth: 0, border: 0, outline: 'none',
+              background: 'transparent', color: '#430A21',
+              fontSize: 13, fontWeight: 600, padding: '10px 0',
+            }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', display: 'flex' }}
+            >
+              <X size={15} color="#8C6B73" />
+            </button>
+          )}
+        </label>
+
+        {/* 전층 검색 결과 드롭다운 */}
+        {searchQuery && (() => {
+          const results = searchAllFloors(searchQuery)
+          if (!results.length) return (
+            <div style={{
+              position: 'absolute', top: '100%', left: 12, right: 12, zIndex: 50,
+              background: '#fff', border: '2px solid #430A21', borderRadius: 12,
+              boxShadow: '0 4px 16px rgba(67,10,33,0.18)',
+              padding: '12px 14px', fontSize: 13, color: '#8C6B73', fontWeight: 700,
+            }}>
+              검색 결과가 없습니다.
             </div>
-          </div>
-
-          <div style={{ padding: 14, display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-              <div style={{ background: 'var(--cb-bg-soft)', border: '2px solid #430A21', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 0 0 #430A21' }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#8C6B73' }}>현재 층 매장</p>
-                <p style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 900, color: '#430A21' }}>{visibleStores.length}곳</p>
-              </div>
-              <div style={{ background: 'var(--cb-primary-soft)', border: '2px solid var(--cb-primary-border)', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 0 0 var(--cb-primary-border)' }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: 'var(--cb-primary-deep)' }}>데이터 소스</p>
-                <p style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 900, color: '#430A21' }}>{hasFallbackData ? 'Fixture' : 'API'}</p>
-              </div>
+          )
+          return (
+            <div style={{
+              position: 'absolute', top: '100%', left: 12, right: 12, zIndex: 50,
+              background: '#fff', border: '2px solid #430A21', borderRadius: 12,
+              boxShadow: '0 4px 16px rgba(67,10,33,0.18)',
+              maxHeight: 280, overflowY: 'auto',
+            }}>
+              {results.map((store) => (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() => {
+                    setPinnedStore(store)
+                    setSelectedFloor(store.floor)
+                    setSelectedStoreId(store.id)
+                    setSearchQuery('')
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    padding: '10px 14px',
+                    background: 'none', border: 'none',
+                    borderBottom: '1px solid #F0E4E8',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                  }}
+                >
+                  <span style={{
+                    flexShrink: 0, fontSize: 10, fontWeight: 900,
+                    background: '#430A21', color: '#FFF8F9',
+                    borderRadius: 6, padding: '2px 6px',
+                  }}>
+                    {store.floor}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#430A21' }}>{store.name}</span>
+                    <span style={{ fontSize: 11, color: '#8C6B73', marginLeft: 6 }}>{store.slotNo} · {store.nearestGate}</span>
+                  </span>
+                </button>
+              ))}
             </div>
+          )
+        })()}
+      </div>
 
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-              {floorOptions.map((floor) => {
-                const isActive = floor.code === selectedFloor
-
-                return (
-                  <button
-                    key={floor.code}
-                    type="button"
-                    onClick={() => setSelectedFloor(floor.code)}
-                    style={{
-                      ...floorButtonBaseStyle,
-                      background: isActive ? 'var(--cb-primary-soft)' : '#fff',
-                      color: isActive ? 'var(--cb-primary-deep)' : '#5E1530',
-                      borderColor: isActive ? 'var(--cb-primary-border)' : '#430A21',
-                      boxShadow: isActive ? '0 2px 0 0 var(--cb-primary-border)' : '0 2px 0 0 #430A21',
-                    }}
-                    aria-pressed={isActive}
-                  >
-                    {floor.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-              {categories.map((category) => {
-                const Icon = category.icon
-                const isActive = selectedCategory === category.key
-
-                return (
-                  <button
-                    key={category.key}
-                    type="button"
-                    onClick={() => setSelectedCategory(category.key)}
-                    style={{
-                      ...floorButtonBaseStyle,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: isActive ? '#430A21' : '#fff',
-                      color: isActive ? '#FFF8F9' : '#430A21',
-                      boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
-                    }}
-                    aria-pressed={isActive}
-                  >
-                    <Icon size={14} />
-                    {category.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-              {containerFilters.map((filter) => {
-                const isActive = containerFilter === filter.key
-
-                return (
-                  <button
-                    key={filter.key}
-                    type="button"
-                    onClick={() => setContainerFilter(filter.key)}
-                    style={{
-                      ...floorButtonBaseStyle,
-                      background: isActive ? '#430A21' : '#fff',
-                      color: isActive ? '#FFF8F9' : '#430A21',
-                      boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
-                    }}
-                    aria-pressed={isActive}
-                  >
-                    {filter.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <label
+      {/* ── 카테고리 칩 ── */}
+      <div style={{
+        display: 'flex', gap: 8, overflowX: 'auto',
+        padding: '8px 12px', borderBottom: '1.5px solid #EDD5DC',
+        background: '#fff', scrollbarWidth: 'none',
+      }}>
+        {categories.map((cat) => {
+          const Icon = cat.icon
+          const isActive = selectedCategory === cat.key
+          return (
+            <button
+              key={cat.key}
+              type="button"
+              onClick={() => {
+                setSelectedCategory(cat.key)
+                setShowStoreList(true)
+              }}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: '#FFFDF8',
-                border: '2px solid #430A21',
-                borderRadius: '12px',
-                boxShadow: '0 2px 0 0 #430A21',
-                padding: '0 12px',
-                minHeight: 46,
+                flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                borderRadius: 999, padding: '7px 13px',
+                border: '2px solid #430A21', cursor: 'pointer',
+                fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+                background: isActive ? '#430A21' : '#fff',
+                color: isActive ? '#FFF8F9' : '#430A21',
+                boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
+              }}
+              aria-pressed={isActive}
+            >
+              <Icon size={13} />
+              {cat.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── 용기 필터 ── */}
+      <div style={{
+        display: 'flex', gap: 6,
+        padding: '6px 12px', borderBottom: '1.5px solid #EDD5DC',
+        background: '#fff', scrollbarWidth: 'none',
+      }}>
+        {containerFilters.map((f) => {
+          const isActive = containerFilter === f.key
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setContainerFilter(f.key)}
+              aria-pressed={isActive}
+              style={{
+                flexShrink: 0,
+                borderRadius: 999, padding: '5px 12px',
+                border: `1.5px solid ${isActive ? '#430A21' : '#C8A8B4'}`,
+                cursor: 'pointer',
+                fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+                background: isActive ? '#430A21' : '#fff',
+                color: isActive ? '#FFF8F9' : '#8C6B73',
               }}
             >
-              <Search size={16} color="#5E1530" />
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="가게명, 메뉴명, 매장번호, 가까운 게이트"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  border: 0,
-                  outline: 'none',
-                  background: 'transparent',
-                  color: '#430A21',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '12px 0',
-                }}
-              />
-            </label>
-
-            {hasFallbackData && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: '#FFF4D6', border: '2px solid #B07800', borderRadius: '12px', boxShadow: '0 2px 0 0 #B07800', padding: '10px 12px' }}>
-                <Info size={16} color="#8C5A00" style={{ flexShrink: 0, marginTop: 1 }} />
-                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: '#8C5A00' }}>
-                  백엔드 응답이 없거나 형식이 맞지 않아 로컬 fixture로 표시 중입니다.
-                </p>
-              </div>
-            )}
-
-            <StadiumSvgMap
-              floor={selectedFloor}
-              stores={visibleStores}
-              selectedStoreId={selectedStore?.id ?? null}
-              onSelectStore={(store) => setSelectedStoreId(store.id)}
-            />
-
-            {isLoading && (
-              <div style={{ background: 'var(--cb-bg-soft)', border: '2px solid #430A21', borderRadius: '12px', boxShadow: '0 2px 0 0 #430A21', padding: '12px 14px' }}>
-                <p style={{ margin: 0, fontSize: 12, color: '#5E1530', fontWeight: 700 }}>잠실야구장 매장을 불러오는 중입니다.</p>
-              </div>
-            )}
-
-            {selectedStore ? (
-              <section style={{ background: '#fff', border: '3px solid #430A21', borderRadius: '16px', boxShadow: '0 3px 0 0 #430A21, 0 5px 10px rgba(67, 10, 33, 0.16)', padding: 14, display: 'grid', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      flexShrink: 0,
-                      display: 'grid',
-                      placeItems: 'center',
-                      borderRadius: '12px',
-                      background: getCategoryTone(selectedStore.category).background,
-                      border: `2px solid ${getCategoryTone(selectedStore.category).border}`,
-                    }}
-                  >
-                    <MapPin size={18} color={getCategoryTone(selectedStore.category).color} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <h3
-                        title={selectedStore.name}
-                        style={{
-                          margin: 0,
-                          fontSize: 18,
-                          lineHeight: 1.25,
-                          color: '#430A21',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {selectedStore.name}
-                      </h3>
-                      <span
-                        style={{
-                          flexShrink: 0,
-                          padding: '4px 8px',
-                          borderRadius: '9999px',
-                          background: getCategoryTone(selectedStore.category).background,
-                          border: `1.5px solid ${getCategoryTone(selectedStore.category).border}`,
-                          color: getCategoryTone(selectedStore.category).color,
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {CATEGORY_LABELS[selectedStore.category]}
-                      </span>
-                    </div>
-                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#8C6B73', fontWeight: 700 }}>
-                      Slot {selectedStore.slotNo} · {selectedStore.nearestGate}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <DetailRow label="층" value={selectedStore.floor} />
-                  <DetailRow label="게이트" value={selectedStore.gate} />
-                  <DetailRow label="구역" value={selectedStore.zone} />
-                  <DetailRow label="영업시간" value={selectedStore.businessHours} />
-                  <DetailRow label="대표 메뉴" value={selectedStore.featuredMenus.join(', ')} />
-                  <DetailRow
-                    label="용기 여부"
-                    value={`다회용기 ${selectedStore.reusableContainer ? '가능' : '불가'} / 개인용기 ${selectedStore.personalCupAllowed ? '가능' : '불가'}`}
-                  />
-                  <DetailRow label="비고" value={selectedStore.note ?? '-'} />
-                </div>
-              </section>
-            ) : (
-              <div style={{ background: '#fff', border: '2px solid #430A21', borderRadius: '14px', boxShadow: '0 2px 0 0 #430A21', padding: '16px 14px' }}>
-                <p style={{ margin: 0, fontSize: 13, color: '#5E1530', fontWeight: 700 }}>
-                  현재 필터에 맞는 매장이 없습니다. 층이나 카테고리를 바꿔 보세요.
-                </p>
-              </div>
-            )}
-
-            <section style={{ display: 'grid', gap: 8 }}>
-              {visibleStores.map((store) => {
-                const tone = getCategoryTone(store.category)
-                const isActive = store.id === selectedStore?.id
-
-                return (
-                  <button
-                    key={store.id}
-                    type="button"
-                    onClick={() => setSelectedStoreId(store.id)}
-                    style={{
-                      textAlign: 'left',
-                      background: isActive ? '#FFF6F8' : '#fff',
-                      border: isActive ? '2px solid var(--cb-primary-border)' : '2px solid #430A21',
-                      borderRadius: '14px',
-                      boxShadow: isActive ? '0 2px 0 0 var(--cb-primary-border)' : '0 2px 0 0 #430A21',
-                      padding: '12px 14px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <div
-                        style={{
-                          marginTop: 1,
-                          minWidth: 38,
-                          height: 38,
-                          borderRadius: '10px',
-                          background: tone.background,
-                          border: `2px solid ${tone.border}`,
-                          display: 'grid',
-                          placeItems: 'center',
-                        }}
-                      >
-                        <Store size={16} color={tone.color} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
-                          <p
-                            title={store.name}
-                            style={{
-                              margin: 0,
-                              flex: 1,
-                              minWidth: 0,
-                              fontSize: 14,
-                              fontWeight: 800,
-                              color: '#430A21',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {store.name}
-                          </p>
-                          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: tone.color }}>{store.slotNo}</span>
-                        </div>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#8C6B73', fontWeight: 700 }}>
-                          {store.nearestGate} · {store.zone}
-                        </p>
-                        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#5E1530', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          대표 메뉴: {store.featuredMenus.join(', ')}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </section>
-          </div>
-        </section>
-
+              {f.label}
+            </button>
+          )
+        })}
       </div>
+
+      {/* ── 지도 (나머지 전체) ── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <KakaoStadiumMap
+          floors={floorOptions}
+          selectedFloor={selectedFloor}
+          stores={pinnedStore ? [pinnedStore] : visibleStores}
+          selectedStoreId={selectedStoreId}
+          onFloorSelect={(floor) => {
+            setSelectedFloor((prev) => prev === floor ? null : floor)
+            setSelectedStoreId(null)
+            setPinnedStore(null)
+          }}
+          onStoreSelect={(store) => setSelectedStoreId(store.id)}
+          onStoreCardClose={() => {
+            setSelectedStoreId(null)
+            setPinnedStore(null)
+          }}
+        />
+      </div>
+
+      {/* ── 매장 목록 하단 시트 ── */}
+      {showStoreList && (
+        <div style={{
+          background: '#fff',
+          borderTop: '2px solid #EDD5DC',
+          maxHeight: '40%',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 -4px 16px rgba(67,10,33,0.12)',
+        }}>
+          {/* 시트 헤더 */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 16px 8px',
+            borderBottom: '1px solid #F0E4E8',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#430A21' }}>
+              {selectedFloor ? `${selectedFloor} · ` : ''}
+              {selectedCategory === 'ALL' ? '전체' : CATEGORY_LABELS[selectedCategory as StoreCategory]}
+              {' '}매장 {visibleStores.length}곳
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowStoreList(false)}
+              style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', display: 'flex' }}
+            >
+              <X size={16} color="#8C6B73" />
+            </button>
+          </div>
+
+          {/* 매장 목록 */}
+          <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+            {visibleStores.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', fontSize: 13, color: '#8C6B73', fontWeight: 700 }}>
+                {selectedFloor ? '현재 층에 해당 매장이 없습니다.' : '층을 먼저 선택해 주세요.'}
+              </div>
+            ) : visibleStores.map((store) => {
+              const isSelected = store.id === selectedStoreId
+              return (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedStoreId(store.id)
+                    setShowStoreList(false)
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    padding: '10px 16px',
+                    background: isSelected ? '#FFF6F8' : 'none',
+                    border: 'none',
+                    borderBottom: '1px solid #F5EAED',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}
+                >
+                  <span style={{
+                    flexShrink: 0, fontSize: 10, fontWeight: 900,
+                    background: isSelected ? '#430A21' : '#EDD5DC',
+                    color: isSelected ? '#FFF8F9' : '#430A21',
+                    borderRadius: 6, padding: '2px 7px',
+                  }}>
+                    {store.slotNo}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 800, color: '#430A21',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {store.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#8C6B73', marginTop: 2 }}>
+                      {store.nearestGate} · {store.zone}
+                    </div>
+                  </span>
+                  <span style={{
+                    flexShrink: 0, fontSize: 10, fontWeight: 700,
+                    color: store.reusableContainer ? '#4F7E4D' : '#C8A8B4',
+                  }}>
+                    {store.reusableContainer ? '다회용기 ✓' : ''}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
