@@ -22,7 +22,7 @@ const FRAMES: CardFrame[] = [
 ];
 
 const MODES: Array<{ v: CameraPurpose; t: string }> = [
-  { v: 'verify', t: '다회용기 인증' },
+  { v: 'verify', t: '용기인증' },
   { v: 'visit-card', t: '직관카드' },
 ];
 
