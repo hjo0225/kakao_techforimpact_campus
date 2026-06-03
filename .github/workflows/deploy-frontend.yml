@@ -1,0 +1,68 @@
+name: Deploy Frontend (Firebase Hosting)
+
+# main에 프론트 변경이 푸시되면 키를 주입해 빌드 후 Firebase Hosting에 배포.
+# 누가 푸시하든 동일하게 시크릿의 키로 빌드되므로 "로컬 .env.production 누락" 사고가 재발하지 않음.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation에 필요
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build (inject keys from secrets)
+        working-directory: frontend
+        env:
+          # 키 — 시크릿 (클라이언트 공개 값이지만 관리 일원화)
+          VITE_KAKAO_REST_API_KEY: ${{ secrets.VITE_KAKAO_REST_API_KEY }}
+          VITE_KAKAO_MAPS_JS_KEY: ${{ secrets.VITE_KAKAO_MAPS_JS_KEY }}
+          # prod 상수 — 비밀 아님
+          VITE_KAKAO_REDIRECT_URI: https://cleanballtrio.web.app/oauth/callback
+          VITE_KAKAO_LOGOUT_REDIRECT_URI: https://cleanballtrio.web.app/login
+          VITE_API_BASE_URL: https://cleanballtrio-api-1076044788885.asia-northeast3.run.app
+        run: npm run build
+
+      # 지난 사고(키 누락 → SDK 로더가 죽은 코드로 제거) 재발 방지 가드
+      - name: Verify Kakao Maps SDK embedded
+        working-directory: frontend
+        run: |
+          if ! grep -rq "dapi.kakao.com" dist/assets; then
+            echo "::error::Kakao Maps SDK loader missing from build — VITE_KAKAO_MAPS_JS_KEY secret likely empty"
+            exit 1
+          fi
+          echo "Kakao Maps SDK loader present in build."
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Deploy to Firebase Hosting
+        run: npx --yes firebase-tools@latest deploy --only hosting --project cleanballtrio --non-interactive
