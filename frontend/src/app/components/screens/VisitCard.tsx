@@ -386,10 +386,10 @@ export function VisitCard() {
       {/* ── 카메라 뷰 ── */}
       {view === 'camera' && (
         <>
-          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 */}
-          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', background: '#000' }}>
+          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
             {camError ? (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
+              <div style={{ position: 'absolute', inset: 0, background: '#430A21', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
                 <Camera size={30} strokeWidth={2.2} />
                 <p style={{ fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5 }}>카메라를 열 수 없어요.<br />권한을 허용하거나 사진을 선택해 주세요.</p>
                 <button type="button" onClick={() => fileInputRef.current?.click()} style={{ border: '2px solid #fff', background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 800, padding: '10px 16px', cursor: 'pointer' }}>사진 선택</button>
@@ -464,7 +464,7 @@ export function VisitCard() {
               )}
             </div>
           </div>
-          <div style={{ flexShrink: 0, background: '#fff', borderTop: '2px solid #430A21', padding: '10px 16px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flexShrink: 0, background: '#fff', padding: '10px 16px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <button type="button" onClick={retake} aria-label="다시 찍기" style={ctrlSquareStyle}>
               <RotateCcw size={20} color="#430A21" strokeWidth={2.4} />
               <span style={ctrlLabelStyle}>다시</span>
