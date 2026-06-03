@@ -96,6 +96,8 @@ export function VisitCard() {
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // 서버에 1회 저장된 카드(저장/공유 중복 생성 방지). 카드가 바뀌면 null로 리셋.
+  const [savedCard, setSavedCard] = useState<{ id: string; shareToken: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const mascotSrc = (FRAMES.find((f) => f.key === frameKey) ?? FRAMES[0]).mascot;
@@ -115,6 +117,7 @@ export function VisitCard() {
   // photo/frame/visitN 변경 시 카드 재생성
   useEffect(() => {
     let cancelled = false;
+    setSavedCard(null); // 카드 내용이 바뀌면 이전 저장본 무효 → 다음 저장/공유 시 새로 저장
     createCardImage({ photoUrl: photo?.url ?? null, mascotSrc, visitN })
       .then((file) => {
         if (cancelled) return;
@@ -153,20 +156,40 @@ export function VisitCard() {
     e.target.value = '';
   };
 
-  const handleDownload = () => {
-    if (!cardUrl) return;
+  // 카드를 서버에 1회 저장(캘린더에 노출). 이미 저장됐으면 그대로 재사용해 중복 생성 방지.
+  const ensureSaved = useCallback(async () => {
+    if (savedCard) return savedCard;
+    if (!cardFile) return null;
+    const created = await createVisitCard(cardFile, { teamCode: user?.teamCode ?? undefined });
+    const rec = { id: created.id, shareToken: created.shareToken };
+    setSavedCard(rec);
+    return rec;
+  }, [savedCard, cardFile, user]);
+
+  const handleDownload = async () => {
+    if (!cardUrl || busy) return;
+    setBusy(true);
+    let saved = true;
+    try {
+      await ensureSaved(); // 서버 저장 → 캘린더 직관카드 탭에 노출
+    } catch {
+      saved = false;
+    }
     const a = document.createElement('a');
     a.href = cardUrl;
     a.download = `직관카드_${visitN}.png`;
     a.click();
+    showToast(saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
+    setBusy(false);
   };
 
   const handleShare = async () => {
     if (!cardFile || busy) return;
     setBusy(true);
     try {
-      const created = await createVisitCard(cardFile, { teamCode: user?.teamCode ?? undefined });
-      const url = shareUrlForToken(created.shareToken);
+      const saved = await ensureSaved();
+      if (!saved) throw new Error('save-failed');
+      const url = shareUrlForToken(saved.shareToken);
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share({ title: '직관카드', text: '오늘의 직관 인증!', url });
@@ -283,7 +306,7 @@ export function VisitCard() {
           <button
             type="button"
             onClick={handleDownload}
-            disabled={!cardUrl}
+            disabled={!cardUrl || busy}
             style={{
               flex: 1,
               borderRadius: 'var(--cb-radius-md)',
@@ -293,7 +316,7 @@ export function VisitCard() {
               padding: '14px 12px',
               fontSize: 14,
               fontWeight: 700,
-              cursor: cardUrl ? 'pointer' : 'not-allowed',
+              cursor: cardUrl && !busy ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
