@@ -5,11 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import { CameraPurposeToggle } from '../CameraPurposeToggle';
-import {
-  createVisitCard,
-  getVisitCards,
-  shareUrlForToken,
-} from '../../../lib/visitCardApi';
+import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
 import winMascot from '../../../assets/share-win.png';
 import loseMascot from '../../../assets/share-lose.png';
 
@@ -187,21 +183,39 @@ export function VisitCard() {
     if (!cardFile || busy) return;
     setBusy(true);
     try {
-      const saved = await ensureSaved();
-      if (!saved) throw new Error('save-failed');
-      const url = shareUrlForToken(saved.shareToken);
-      if (typeof navigator !== 'undefined' && navigator.share) {
+      // 저장은 동일 — 서버에 저장해 캘린더에 남김
+      await ensureSaved();
+
+      const file = cardFile;
+      const canShareImage =
+        typeof navigator !== 'undefined' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] });
+
+      if (canShareImage) {
+        // 이미지 자체를 OS 공유 시트로 — 사용자가 인스타(스토리/피드)·카톡 선택
         try {
-          await navigator.share({ title: '직관카드', text: '오늘의 직관 인증!', url });
+          await navigator.share({
+            files: [file],
+            title: '직관카드',
+            text: '오늘의 직관 인증! 🐰',
+          });
           showToast('공유했어요');
-        } catch {
-          showToast('완료');
+        } catch (err) {
+          // 공유 시트 취소(AbortError)는 조용히 무시
+          if ((err as Error)?.name !== 'AbortError') {
+            showToast('공유를 완료하지 못했어요');
+          }
         }
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url);
-        showToast('공유 링크를 복사했어요');
+      } else if (cardUrl) {
+        // 이미지 직접 공유 미지원(주로 데스크톱) → 이미지 다운로드로 폴백
+        const a = document.createElement('a');
+        a.href = cardUrl;
+        a.download = `직관카드_${visitN}.png`;
+        a.click();
+        showToast('이미지를 저장했어요. 인스타·카톡에 올려보세요');
       } else {
-        showToast('완료');
+        showToast('이 기기에서는 직접 공유를 지원하지 않아요');
       }
     } catch {
       showToast('실패했어요. 다시 시도해주세요');
