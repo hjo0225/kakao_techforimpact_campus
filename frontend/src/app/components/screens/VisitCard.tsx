@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Download, Share2 } from 'lucide-react';
+import { Camera, Download } from 'lucide-react';
 import { useApp } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { BottomNav } from '../BottomNav';
@@ -179,51 +179,6 @@ export function VisitCard() {
     setBusy(false);
   };
 
-  const handleShare = async () => {
-    if (!cardFile || busy) return;
-    setBusy(true);
-    try {
-      // 저장은 동일 — 서버에 저장해 캘린더에 남김
-      await ensureSaved();
-
-      const file = cardFile;
-      const canShareImage =
-        typeof navigator !== 'undefined' &&
-        typeof navigator.canShare === 'function' &&
-        navigator.canShare({ files: [file] });
-
-      if (canShareImage) {
-        // 이미지 자체를 OS 공유 시트로 — 사용자가 인스타(스토리/피드)·카톡 선택
-        try {
-          await navigator.share({
-            files: [file],
-            title: '직관카드',
-            text: '오늘의 직관 인증! 🐰',
-          });
-          showToast('공유했어요');
-        } catch (err) {
-          // 공유 시트 취소(AbortError)는 조용히 무시
-          if ((err as Error)?.name !== 'AbortError') {
-            showToast('공유를 완료하지 못했어요');
-          }
-        }
-      } else if (cardUrl) {
-        // 이미지 직접 공유 미지원(주로 데스크톱) → 이미지 다운로드로 폴백
-        const a = document.createElement('a');
-        a.href = cardUrl;
-        a.download = `직관카드_${visitN}.png`;
-        a.click();
-        showToast('이미지를 저장했어요. 인스타·카톡에 올려보세요');
-      } else {
-        showToast('이 기기에서는 직접 공유를 지원하지 않아요');
-      }
-    } catch {
-      showToast('실패했어요. 다시 시도해주세요');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input
@@ -315,57 +270,31 @@ export function VisitCard() {
           </div>
         </div>
 
-        {/* 저장하기 + 공유하기 (한 줄) */}
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={!cardUrl || busy}
-            style={{
-              flex: 1,
-              borderRadius: 'var(--cb-radius-md)',
-              border: '2px solid #430A21',
-              background: '#fff',
-              color: '#430A21',
-              padding: '14px 12px',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: cardUrl && !busy ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              boxShadow: '0 3px 0 0 #430A21',
-            }}
-          >
-            <Download size={16} />
-            저장하기
-          </button>
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={!cardFile || busy}
-            style={{
-              flex: 1,
-              borderRadius: 'var(--cb-radius-md)',
-              border: '2px solid #430A21',
-              background: !cardFile || busy ? '#CBD5E1' : 'var(--cb-primary)',
-              color: '#fff',
-              padding: '14px 12px',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: !cardFile || busy ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
-            }}
-          >
-            <Share2 size={16} />
-            {busy ? '공유 중...' : '공유하기'}
-          </button>
-        </div>
+        {/* 저장하기 (서버 저장 → 캘린더 반영 + 기기 다운로드) */}
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={!cardUrl || busy}
+          style={{
+            flexShrink: 0,
+            borderRadius: 'var(--cb-radius-md)',
+            border: '2px solid #430A21',
+            background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)',
+            color: '#fff',
+            padding: '15px 12px',
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: cardUrl && !busy ? 'pointer' : 'not-allowed',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200, 92, 119, 0.32)',
+          }}
+        >
+          <Download size={16} />
+          {busy ? '저장 중...' : '저장하기'}
+        </button>
 
         {toast && (
           <div
