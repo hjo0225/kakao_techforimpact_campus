@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Camera, Download, SwitchCamera, Frame, RotateCcw, Video, X, ScanLine, CheckCircle,
+  ArrowLeftRight, FlipHorizontal, Move, RefreshCcw, RotateCw, Trash2, ZoomIn,
   Image as ImageIcon,
 } from 'lucide-react';
 import { useApp, type CameraPurpose } from '../../AppContext';
@@ -88,7 +89,15 @@ function loadImage(src: string) {
   });
 }
 
-interface CardPhoto { file: File; url: string }
+interface CardPhoto {
+  file: File;
+  url: string;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  flipped: boolean;
+}
 interface CardInput { photos: CardPhoto[]; frame: CardFrame; visitN: number }
 
 function makeEmptyCardPhotos(frame: CardFrame): Array<CardPhoto | null> {
@@ -99,13 +108,42 @@ function revokeCardPhoto(photo: CardPhoto | null) {
   if (photo) URL.revokeObjectURL(photo.url);
 }
 
-function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, slot: CardSlot) {
-  const scale = Math.max(slot.w / image.width, slot.h / image.height);
-  const sw = slot.w / scale;
-  const sh = slot.h / scale;
-  const sx = (image.width - sw) / 2;
-  const sy = (image.height - sh) / 2;
-  ctx.drawImage(image, sx, sy, sw, sh, slot.x, slot.y, slot.w, slot.h);
+function createCardPhoto(file: File): CardPhoto {
+  return {
+    file,
+    url: URL.createObjectURL(file),
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
+    flipped: false,
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function drawPhoto(ctx: CanvasRenderingContext2D, image: HTMLImageElement, photo: CardPhoto, slot: CardSlot) {
+  const quarterTurn = Math.abs(photo.rotation % 180) === 90;
+  const orientedWidth = quarterTurn ? image.height : image.width;
+  const orientedHeight = quarterTurn ? image.width : image.height;
+  const coverScale = Math.max(slot.w / orientedWidth, slot.h / orientedHeight) * photo.scale;
+  const drawW = image.width * coverScale;
+  const drawH = image.height * coverScale;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(slot.x, slot.y, slot.w, slot.h);
+  ctx.clip();
+  ctx.translate(
+    slot.x + slot.w / 2 + photo.offsetX * slot.w,
+    slot.y + slot.h / 2 + photo.offsetY * slot.h,
+  );
+  ctx.rotate((photo.rotation * Math.PI) / 180);
+  ctx.scale(photo.flipped ? -1 : 1, 1);
+  ctx.drawImage(image, -drawW / 2, -drawH / 2, drawW, drawH);
+  ctx.restore();
 }
 
 async function createCardImage(input: CardInput): Promise<File> {
@@ -120,7 +158,7 @@ async function createCardImage(input: CardInput): Promise<File> {
   if (!ctx) throw new Error('Canvas is not available.');
   ctx.fillStyle = input.frame.bg;
   ctx.fillRect(0, 0, input.frame.width, input.frame.height);
-  photos.forEach((photo, index) => drawCover(ctx, photo, input.frame.slots[index]));
+  photos.forEach((photo, index) => drawPhoto(ctx, photo, input.photos[index], input.frame.slots[index]));
   ctx.drawImage(frame, 0, 0, input.frame.width, input.frame.height);
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((r) => (r ? resolve(r) : reject(new Error('export failed'))), 'image/png');
@@ -143,6 +181,13 @@ export function VisitCard() {
   const slotInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const cardPhotosRef = useRef<Array<CardPhoto | null>>(makeEmptyCardPhotos(FRAMES[0]));
   const cardUrlRef = useRef<string | null>(null);
+  const dragRef = useRef<{
+    index: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
 
   const [view, setView] = useState<View>('camera');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
@@ -155,6 +200,7 @@ export function VisitCard() {
   const [bottomMode, setBottomMode] = useState<BottomMode>('controls');
   const [frameKey, setFrameKey] = useState<string>(FRAMES[0].key);
   const [cardPhotos, setCardPhotos] = useState<Array<CardPhoto | null>>(() => makeEmptyCardPhotos(FRAMES[0]));
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [visitN, setVisitN] = useState(1);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
   const [cardFile, setCardFile] = useState<File | null>(null);
@@ -172,6 +218,7 @@ export function VisitCard() {
   const isCard = cameraPurpose === 'visit-card';
   const cardPhotoCount = cardPhotos.filter(Boolean).length;
   const isCardComplete = cardPhotoCount === currentFrame.slots.length;
+  const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -236,6 +283,7 @@ export function VisitCard() {
     setAi(null);
     setVResult(null);
     setPhoto((cur) => { if (cur) URL.revokeObjectURL(cur.url); return null; });
+    setSelectedSlotIndex(null);
     setCardPhotos((cur) => {
       cur.forEach(revokeCardPhoto);
       return makeEmptyCardPhotos(FRAMES[0]);
@@ -253,25 +301,31 @@ export function VisitCard() {
   useEffect(() => {
     if (!isCard) return;
     let cancelled = false;
+    let timer: number | null = null;
     setSavedCard(null);
     if (!isCardComplete) {
       setCardFile(null);
       setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
       return () => { cancelled = true; };
     }
-    createCardImage({ photos: cardPhotos as CardPhoto[], frame: currentFrame, visitN })
-      .then((file) => {
-        if (cancelled) return;
-        const url = URL.createObjectURL(file);
-        setCardFile(file);
-        setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setCardFile(null);
-        setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
-      });
-    return () => { cancelled = true; };
+    timer = window.setTimeout(() => {
+      createCardImage({ photos: cardPhotos as CardPhoto[], frame: currentFrame, visitN })
+        .then((file) => {
+          if (cancelled) return;
+          const url = URL.createObjectURL(file);
+          setCardFile(file);
+          setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setCardFile(null);
+          setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+        });
+    }, 180);
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
   }, [cardPhotos, currentFrame, isCard, isCardComplete, visitN]);
 
   useEffect(() => {
@@ -296,12 +350,15 @@ export function VisitCard() {
     const next = [...cardPhotos];
     let cursor = next.findIndex((item) => !item);
     if (cursor === -1) cursor = 0;
+    let selectedIndex = cursor;
     images.slice(0, currentFrame.slots.length).forEach((file) => {
       const target = cursor % currentFrame.slots.length;
       revokeCardPhoto(next[target]);
-      next[target] = { file, url: URL.createObjectURL(file) };
+      next[target] = createCardPhoto(file);
+      selectedIndex = target;
       cursor += 1;
     });
+    setSelectedSlotIndex(selectedIndex);
     updateCardPhotos(next);
   }, [cardPhotos, currentFrame.slots.length, updateCardPhotos]);
 
@@ -309,7 +366,8 @@ export function VisitCard() {
     if (!file.type.startsWith('image/')) return;
     const next = [...cardPhotos];
     revokeCardPhoto(next[index]);
-    next[index] = { file, url: URL.createObjectURL(file) };
+    next[index] = createCardPhoto(file);
+    setSelectedSlotIndex(index);
     updateCardPhotos(next);
   }, [cardPhotos, updateCardPhotos]);
 
@@ -323,6 +381,7 @@ export function VisitCard() {
     if (frame.key === frameKey) return;
     setFrameKey(frame.key);
     setSavedCard(null);
+    setSelectedSlotIndex((index) => (index !== null && index < frame.slots.length ? index : null));
     setCardPhotos((cur) => {
       const next = frame.slots.map((_, index) => cur[index] ?? null);
       cur.forEach((item, index) => {
@@ -340,10 +399,99 @@ export function VisitCard() {
       cur.forEach(revokeCardPhoto);
       return makeEmptyCardPhotos(currentFrame);
     });
+    setSelectedSlotIndex(null);
     setCardFile(null);
     setCardUrl((cur) => { if (cur) URL.revokeObjectURL(cur); return null; });
     setSavedCard(null);
   };
+
+  const updateCardPhotoEdit = useCallback((index: number, updater: (photo: CardPhoto) => CardPhoto) => {
+    setCardPhotos((cur) => {
+      const current = cur[index];
+      if (!current) return cur;
+      const next = [...cur];
+      next[index] = updater(current);
+      return next;
+    });
+    setSavedCard(null);
+  }, []);
+
+  const handleSlotClick = (index: number) => {
+    if (cardPhotos[index]) {
+      setSelectedSlotIndex(index);
+      setBottomMode('controls');
+      return;
+    }
+    setSelectedSlotIndex(index);
+    slotInputRefs.current[index]?.click();
+  };
+
+  const handleSlotPointerDown = (index: number, event: React.PointerEvent<HTMLButtonElement>) => {
+    const slotPhoto = cardPhotos[index];
+    if (!slotPhoto) return;
+    setSelectedSlotIndex(index);
+    dragRef.current = {
+      index,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: slotPhoto.offsetX,
+      offsetY: slotPhoto.offsetY,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleSlotPointerMove = (index: number, event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.index !== index) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const dx = (event.clientX - drag.startX) / rect.width;
+    const dy = (event.clientY - drag.startY) / rect.height;
+    updateCardPhotoEdit(index, (item) => ({
+      ...item,
+      offsetX: clamp(drag.offsetX + dx, -0.9, 0.9),
+      offsetY: clamp(drag.offsetY + dy, -0.9, 0.9),
+    }));
+  };
+
+  const handleSlotPointerEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const updateSelectedPhoto = (updater: (photo: CardPhoto) => CardPhoto) => {
+    if (selectedSlotIndex === null || !cardPhotos[selectedSlotIndex]) return;
+    updateCardPhotoEdit(selectedSlotIndex, updater);
+  };
+
+  const resetSelectedPhoto = () => {
+    updateSelectedPhoto((item) => ({
+      ...item,
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      flipped: false,
+    }));
+  };
+
+  const swapSelectedSlot = (targetIndex: number) => {
+    if (selectedSlotIndex === null || selectedSlotIndex === targetIndex || !cardPhotos[selectedSlotIndex]) return;
+    setCardPhotos((cur) => {
+      const next = [...cur];
+      [next[selectedSlotIndex], next[targetIndex]] = [next[targetIndex], next[selectedSlotIndex]];
+      return next;
+    });
+    setSelectedSlotIndex(targetIndex);
+    setSavedCard(null);
+    showToast(`${targetIndex + 1}번 슬롯으로 옮겼어요`);
+  };
+
+  const getPhotoTransform = (photoItem: CardPhoto) => (
+    `translate(${photoItem.offsetX * 100}%, ${photoItem.offsetY * 100}%) rotate(${photoItem.rotation}deg) scaleX(${photoItem.flipped ? -1 : 1}) scale(${photoItem.scale})`
+  );
 
   // 촬영
   const capture = useCallback(() => {
@@ -541,16 +689,28 @@ export function VisitCard() {
               />
               <button
                 type="button"
-                onClick={() => slotInputRefs.current[index]?.click()}
-                aria-label={`${index + 1}번째 사진 ${slotPhoto ? '바꾸기' : '선택'}`}
+                onClick={() => handleSlotClick(index)}
+                onPointerDown={(e) => handleSlotPointerDown(index, e)}
+                onPointerMove={(e) => handleSlotPointerMove(index, e)}
+                onPointerUp={handleSlotPointerEnd}
+                onPointerCancel={handleSlotPointerEnd}
+                aria-label={`${index + 1}번째 사진 ${slotPhoto ? '편집' : '선택'}`}
                 style={{
                   ...cardSlotButtonStyle,
                   borderStyle: slotPhoto ? 'solid' : 'dashed',
-                  borderColor: slotPhoto ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.82)',
+                  borderColor: selectedSlotIndex === index ? '#fff' : slotPhoto ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.82)',
+                  touchAction: slotPhoto ? 'none' : 'manipulation',
                 }}
               >
                 {slotPhoto ? (
-                  <img src={slotPhoto.url} alt="" style={cardSlotImageStyle} />
+                  <img
+                    src={slotPhoto.url}
+                    alt=""
+                    style={{
+                      ...cardSlotImageStyle,
+                      transform: getPhotoTransform(slotPhoto),
+                    }}
+                  />
                 ) : (
                   <span style={cardSlotEmptyStyle}>
                     <ImageIcon size={22} strokeWidth={2.4} />
@@ -562,6 +722,18 @@ export function VisitCard() {
           );
         })}
         <img src={currentFrame.src} alt="" style={cardFrameOverlayStyle} />
+        {selectedSlotIndex !== null && cardPhotos[selectedSlotIndex] && currentFrame.slots[selectedSlotIndex] && (
+          <div
+            aria-hidden
+            style={{
+              ...cardSelectedSlotStyle,
+              left: `${(currentFrame.slots[selectedSlotIndex].x / currentFrame.width) * 100}%`,
+              top: `${(currentFrame.slots[selectedSlotIndex].y / currentFrame.height) * 100}%`,
+              width: `${(currentFrame.slots[selectedSlotIndex].w / currentFrame.width) * 100}%`,
+              height: `${(currentFrame.slots[selectedSlotIndex].h / currentFrame.height) * 100}%`,
+            }}
+          />
+        )}
       </div>
       {camError && (
         <p style={cardCameraHintStyle}>카메라를 열 수 없어요. 슬롯을 눌러 사진을 선택해 주세요.</p>
@@ -670,36 +842,123 @@ export function VisitCard() {
                 </div>
               </div>
             ) : isCard ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame.slots.length}
-                  </span>
-                  <button type="button" onClick={() => showToast('2초 비디오는 준비 중이에요')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#B59CA3', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Video size={14} strokeWidth={2.4} /> 비디오
-                  </button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-                  <button type="button" onClick={() => setBottomMode('frames')} aria-label="프레임" style={ctrlSquareStyle}>
-                    <Frame size={20} color="#430A21" strokeWidth={2.4} />
-                    <span style={ctrlLabelStyle}>프레임</span>
-                  </button>
-                  {captureBtn}
-	                  <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="사진 선택" style={ctrlSquareStyle}>
-	                    <ImageIcon size={20} color="#430A21" strokeWidth={2.4} />
-	                    <span style={ctrlLabelStyle}>사진</span>
-	                  </button>
-                </div>
-                {isCardComplete && (
-                  <div style={{ padding: '8px 24px 0' }}>
-                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
-                      style={{ width: '100%', height: 48, border: '2px solid #430A21', borderRadius: 14, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: cardUrl && !busy ? 'pointer' : 'not-allowed', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
-                      <Download size={18} strokeWidth={2.6} />
-                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+              selectedPhoto && selectedSlotIndex !== null ? (
+                <div style={cardToolPanelStyle}>
+                  <div style={cardToolHeaderStyle}>
+                    <span style={cardToolTitleStyle}>
+                      <Move size={15} strokeWidth={2.5} />
+                      위치 · {selectedSlotIndex + 1}번 슬롯
+                    </span>
+                    <button type="button" onClick={() => setSelectedSlotIndex(null)} aria-label="편집 닫기" style={iconOnlyButtonStyle}>
+                      <X size={17} color="#430A21" strokeWidth={2.6} />
                     </button>
                   </div>
-                )}
-              </>
+
+                  <div style={zoomControlStyle}>
+                    <ZoomIn size={17} color="#430A21" strokeWidth={2.6} />
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.05}
+                      value={selectedPhoto.scale}
+                      onChange={(e) => updateSelectedPhoto((item) => ({ ...item, scale: Number(e.currentTarget.value) }))}
+                      aria-label="확대"
+                      style={zoomSliderStyle}
+                    />
+                    <span style={zoomValueStyle}>{Math.round(selectedPhoto.scale * 100)}%</span>
+                  </div>
+
+                  <div style={cardToolScrollerStyle}>
+                    <button type="button" onClick={() => slotInputRefs.current[selectedSlotIndex]?.click()} aria-label="사진 바꾸기" style={cardToolButtonStyle}>
+                      <ImageIcon size={18} strokeWidth={2.4} />
+                      <span>바꾸기</span>
+                    </button>
+                    <button type="button" onClick={() => updateSelectedPhoto((item) => ({ ...item, rotation: (item.rotation + 90) % 360 }))} aria-label="90도 회전" style={cardToolButtonStyle}>
+                      <RotateCw size={18} strokeWidth={2.4} />
+                      <span>90도</span>
+                    </button>
+                    <button type="button" onClick={() => updateSelectedPhoto((item) => ({ ...item, flipped: !item.flipped }))} aria-label="좌우 반전" style={cardToolButtonStyle}>
+                      <FlipHorizontal size={18} strokeWidth={2.4} />
+                      <span>반전</span>
+                    </button>
+                    <button type="button" onClick={resetSelectedPhoto} aria-label="사진 편집 초기화" style={cardToolButtonStyle}>
+                      <RefreshCcw size={18} strokeWidth={2.4} />
+                      <span>리셋</span>
+                    </button>
+                    <button type="button" onClick={() => { clearCard(); showToast('전체 초기화했어요'); }} aria-label="전체 초기화" style={cardToolButtonStyle}>
+                      <Trash2 size={18} strokeWidth={2.4} />
+                      <span>초기화</span>
+                    </button>
+                  </div>
+
+                  <div style={slotSwapRowStyle}>
+                    <span style={slotSwapLabelStyle}>
+                      <ArrowLeftRight size={15} strokeWidth={2.5} />
+                      슬롯 교체
+                    </span>
+                    <div style={slotSwapButtonsStyle}>
+                      {currentFrame.slots.map((_, index) => (
+                        index === selectedSlotIndex ? null : (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => swapSelectedSlot(index)}
+                            aria-label={`${index + 1}번 슬롯과 교체`}
+                            style={slotSwapButtonStyle}
+                          >
+                            {index + 1}
+                          </button>
+                        )
+                      ))}
+                    </div>
+                  </div>
+
+                  {isCardComplete && (
+                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
+                      style={{ ...cardSaveButtonStyle, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
+                      <Download size={17} strokeWidth={2.6} />
+                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame.slots.length}
+                    </span>
+                    <button type="button" onClick={() => showToast('2초 비디오는 준비 중이에요')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#B59CA3', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Video size={14} strokeWidth={2.4} /> 비디오
+                    </button>
+                    {cardPhotoCount > 0 && (
+                      <button type="button" onClick={() => { clearCard(); showToast('전체 초기화했어요'); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#8C6B73', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Trash2 size={14} strokeWidth={2.4} /> 초기화
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
+                    <button type="button" onClick={() => setBottomMode('frames')} aria-label="프레임" style={ctrlSquareStyle}>
+                      <Frame size={20} color="#430A21" strokeWidth={2.4} />
+                      <span style={ctrlLabelStyle}>프레임</span>
+                    </button>
+                    {captureBtn}
+                    <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="사진 선택" style={ctrlSquareStyle}>
+                      <ImageIcon size={20} color="#430A21" strokeWidth={2.4} />
+                      <span style={ctrlLabelStyle}>사진</span>
+                    </button>
+                  </div>
+                  {isCardComplete && (
+                    <div style={{ padding: '8px 24px 0' }}>
+                      <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
+                        style={{ ...cardSaveButtonStyle, height: 48, width: '100%', background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
+                        <Download size={18} strokeWidth={2.6} />
+                        {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
             ) : (
               // 인증 — 촬영 버튼만
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
@@ -865,6 +1124,8 @@ const cardSlotImageStyle: React.CSSProperties = {
   height: '100%',
   objectFit: 'cover',
   display: 'block',
+  transformOrigin: 'center',
+  willChange: 'transform',
 };
 
 const cardSlotEmptyStyle: React.CSSProperties = {
@@ -890,6 +1151,15 @@ const cardFrameOverlayStyle: React.CSSProperties = {
   pointerEvents: 'none',
 };
 
+const cardSelectedSlotStyle: React.CSSProperties = {
+  position: 'absolute',
+  zIndex: 3,
+  pointerEvents: 'none',
+  boxSizing: 'border-box',
+  border: '2px solid #fff',
+  boxShadow: 'inset 0 0 0 2px rgba(67,10,33,0.72), 0 0 0 2px rgba(255,255,255,0.48)',
+};
+
 const cardCameraHintStyle: React.CSSProperties = {
   margin: 0,
   padding: '7px 10px',
@@ -900,4 +1170,144 @@ const cardCameraHintStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 800,
   textAlign: 'center',
+};
+
+const cardToolPanelStyle: React.CSSProperties = {
+  padding: '0 14px 8px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+};
+
+const cardToolHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
+};
+
+const cardToolTitleStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  minWidth: 0,
+  color: '#430A21',
+  fontSize: 12,
+  fontWeight: 900,
+};
+
+const iconOnlyButtonStyle: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  border: '2px solid #430A21',
+  borderRadius: 9999,
+  background: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+};
+
+const zoomControlStyle: React.CSSProperties = {
+  height: 38,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 9,
+  padding: '0 10px',
+  border: '2px solid #430A21',
+  borderRadius: 12,
+  background: '#F8F1F2',
+  boxSizing: 'border-box',
+};
+
+const zoomSliderStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  accentColor: 'var(--cb-primary)',
+};
+
+const zoomValueStyle: React.CSSProperties = {
+  width: 42,
+  textAlign: 'right',
+  color: '#430A21',
+  fontSize: 11,
+  fontWeight: 900,
+};
+
+const cardToolScrollerStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch',
+  paddingBottom: 2,
+};
+
+const cardToolButtonStyle: React.CSSProperties = {
+  minWidth: 62,
+  height: 52,
+  flexShrink: 0,
+  border: '2px solid #430A21',
+  borderRadius: 14,
+  background: '#fff',
+  color: '#430A21',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 2,
+  fontSize: 10,
+  fontWeight: 900,
+  cursor: 'pointer',
+  boxShadow: '0 2px 0 0 #430A21',
+};
+
+const slotSwapRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
+};
+
+const slotSwapLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  color: '#430A21',
+  fontSize: 11,
+  fontWeight: 900,
+  whiteSpace: 'nowrap',
+};
+
+const slotSwapButtonsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  overflowX: 'auto',
+};
+
+const slotSwapButtonStyle: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  flexShrink: 0,
+  border: '2px solid #430A21',
+  borderRadius: 9999,
+  background: '#fff',
+  color: '#430A21',
+  fontSize: 13,
+  fontWeight: 900,
+  cursor: 'pointer',
+  boxShadow: '0 2px 0 0 #430A21',
+};
+
+const cardSaveButtonStyle: React.CSSProperties = {
+  height: 44,
+  border: '2px solid #430A21',
+  borderRadius: 14,
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: 900,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)',
 };
