@@ -92,6 +92,8 @@ function loadImage(src: string) {
 interface CardPhoto {
   file: File;
   url: string;
+  naturalWidth?: number;
+  naturalHeight?: number;
   scale: number;
   offsetX: number;
   offsetY: number;
@@ -112,6 +114,8 @@ function createCardPhoto(file: File): CardPhoto {
   return {
     file,
     url: URL.createObjectURL(file),
+    naturalWidth: undefined,
+    naturalHeight: undefined,
     scale: 1,
     offsetX: 0,
     offsetY: 0,
@@ -489,9 +493,46 @@ export function VisitCard() {
     showToast(`${targetIndex + 1}번 슬롯으로 옮겼어요`);
   };
 
-  const getPhotoTransform = (photoItem: CardPhoto) => (
-    `translate(${photoItem.offsetX * 100}%, ${photoItem.offsetY * 100}%) rotate(${photoItem.rotation}deg) scaleX(${photoItem.flipped ? -1 : 1}) scale(${photoItem.scale})`
-  );
+  const updateCardPhotoSize = useCallback((index: number, naturalWidth: number, naturalHeight: number) => {
+    if (naturalWidth <= 0 || naturalHeight <= 0) return;
+    setCardPhotos((cur) => {
+      const current = cur[index];
+      if (!current || (current.naturalWidth === naturalWidth && current.naturalHeight === naturalHeight)) return cur;
+      const next = [...cur];
+      next[index] = { ...current, naturalWidth, naturalHeight };
+      return next;
+    });
+  }, []);
+
+  const getPhotoPreviewStyle = (photoItem: CardPhoto, slot: CardSlot): React.CSSProperties => {
+    if (!photoItem.naturalWidth || !photoItem.naturalHeight) {
+      return {
+        ...cardSlotImageStyle,
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+      };
+    }
+
+    const quarterTurn = Math.abs(photoItem.rotation % 180) === 90;
+    const orientedWidth = quarterTurn ? photoItem.naturalHeight : photoItem.naturalWidth;
+    const orientedHeight = quarterTurn ? photoItem.naturalWidth : photoItem.naturalHeight;
+    const coverScale = Math.max(slot.w / orientedWidth, slot.h / orientedHeight) * photoItem.scale;
+    const previewWidth = (photoItem.naturalWidth * coverScale) / slot.w;
+
+    return {
+      ...cardSlotImageStyle,
+      position: 'absolute',
+      left: `${50 + photoItem.offsetX * 100}%`,
+      top: `${50 + photoItem.offsetY * 100}%`,
+      width: `${previewWidth * 100}%`,
+      height: 'auto',
+      maxWidth: 'none',
+      maxHeight: 'none',
+      objectFit: 'contain',
+      transform: `translate(-50%, -50%) rotate(${photoItem.rotation}deg) scaleX(${photoItem.flipped ? -1 : 1})`,
+    };
+  };
 
   // 촬영
   const capture = useCallback(() => {
@@ -661,7 +702,7 @@ export function VisitCard() {
       <div
         style={{
           ...cardFramePreviewStyle,
-          width: `min(100%, ${(currentFrame.width / currentFrame.height) * 100}cqh)`,
+          height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)`,
           aspectRatio: `${currentFrame.width} / ${currentFrame.height}`,
           background: currentFrame.bg,
         }}
@@ -706,10 +747,8 @@ export function VisitCard() {
                   <img
                     src={slotPhoto.url}
                     alt=""
-                    style={{
-                      ...cardSlotImageStyle,
-                      transform: getPhotoTransform(slotPhoto),
-                    }}
+                    onLoad={(e) => updateCardPhotoSize(index, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+                    style={getPhotoPreviewStyle(slotPhoto, slot)}
                   />
                 ) : (
                   <span style={cardSlotEmptyStyle}>
@@ -862,7 +901,10 @@ export function VisitCard() {
                       max={3}
                       step={0.05}
                       value={selectedPhoto.scale}
-                      onChange={(e) => updateSelectedPhoto((item) => ({ ...item, scale: Number(e.currentTarget.value) }))}
+                      onChange={(e) => {
+                        const scale = Number(e.currentTarget.value);
+                        updateSelectedPhoto((item) => ({ ...item, scale }));
+                      }}
                       aria-label="확대"
                       style={zoomSliderStyle}
                     />
@@ -1102,13 +1144,17 @@ const cardEditorShellStyle: React.CSSProperties = {
 
 const cardFramePreviewStyle: React.CSSProperties = {
   position: 'relative',
+  boxSizing: 'border-box',
+  flexShrink: 1,
   maxHeight: '100%',
+  maxWidth: '100%',
   overflow: 'hidden',
-  border: '2px solid rgba(255,255,255,0.72)',
+  outline: '2px solid rgba(255,255,255,0.72)',
   boxShadow: '0 5px 0 0 #430A21, 0 10px 20px rgba(0,0,0,0.24)',
 };
 
 const cardSlotButtonStyle: React.CSSProperties = {
+  position: 'relative',
   width: '100%',
   height: '100%',
   borderWidth: 2,
