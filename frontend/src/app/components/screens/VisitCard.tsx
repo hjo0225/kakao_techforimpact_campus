@@ -14,7 +14,25 @@ import {
   type AiPrediction, type ContainerLabel, type CertificationMode,
 } from '../../../lib/verifyApi';
 import lotteFrame from '../../../assets/card-frames/2cutlotte.png';
+import doosan2Frame from '../../../assets/card-frames/2cutdoosan.png';
+import hanhwa2Frame from '../../../assets/card-frames/2cuthanhwa.png';
+import kia2Frame from '../../../assets/card-frames/2cutkia.png';
+import kiwoom2Frame from '../../../assets/card-frames/2cutkiwoom.png';
+import kt2Frame from '../../../assets/card-frames/2cutkt.png';
+import lg2Frame from '../../../assets/card-frames/2cutlg.png';
+import nc2Frame from '../../../assets/card-frames/2cutnc.png';
+import samsung2Frame from '../../../assets/card-frames/2cutsamsung.png';
+import ssg2Frame from '../../../assets/card-frames/2cutssg.png';
 import doosanFrame from '../../../assets/card-frames/3cutdoosan.png';
+import hanhwa3Frame from '../../../assets/card-frames/3cuthanhwa.png';
+import kia3Frame from '../../../assets/card-frames/3cutkia.png';
+import kiwoom3Frame from '../../../assets/card-frames/3cutkiwoom.png';
+import kt3Frame from '../../../assets/card-frames/3cutkt.png';
+import lg3Frame from '../../../assets/card-frames/3cutlg.png';
+import lotte3Frame from '../../../assets/card-frames/3cutlotte.png';
+import nc3Frame from '../../../assets/card-frames/3cutnc.png';
+import samsung3Frame from '../../../assets/card-frames/3cutsamsung.png';
+import ssg3Frame from '../../../assets/card-frames/3cutssg.png';
 
 interface CardSlot { x: number; y: number; w: number; h: number }
 interface CardFrame {
@@ -28,36 +46,37 @@ interface CardFrame {
   accent: string;
   slots: CardSlot[];
 }
+const SLOTS_2CUT: CardSlot[] = [
+  { x: 77, y: 186, w: 929, h: 801 },
+  { x: 77, y: 1053, w: 929, h: 801 },
+];
+const SLOTS_3CUT: CardSlot[] = [
+  { x: 40, y: 41, w: 1000, h: 550 },
+  { x: 40, y: 632, w: 1000, h: 550 },
+  { x: 40, y: 1223, w: 1000, h: 550 },
+];
+
 const FRAMES: CardFrame[] = [
-  {
-    key: 'lotte-2cut',
-    label: '롯데 2컷',
-    countLabel: '2장',
-    src: lotteFrame,
-    width: 1084,
-    height: 1924,
-    bg: '#fff',
-    accent: '#C9152E',
-    slots: [
-      { x: 77, y: 186, w: 929, h: 801 },
-      { x: 77, y: 1053, w: 929, h: 801 },
-    ],
-  },
-  {
-    key: 'doosan-3cut',
-    label: '두산 3컷',
-    countLabel: '3장',
-    src: doosanFrame,
-    width: 1080,
-    height: 1920,
-    bg: '#0D073A',
-    accent: '#151047',
-    slots: [
-      { x: 40, y: 41, w: 1000, h: 550 },
-      { x: 40, y: 632, w: 1000, h: 550 },
-      { x: 40, y: 1223, w: 1000, h: 550 },
-    ],
-  },
+  { key: 'lotte-2cut',   label: '롯데 2컷',  countLabel: '2장', src: lotteFrame,    width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'doosan-2cut',  label: '두산 2컷',  countLabel: '2장', src: doosan2Frame,  width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'hanhwa-2cut',  label: '한화 2컷',  countLabel: '2장', src: hanhwa2Frame,  width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'kia-2cut',     label: '기아 2컷',  countLabel: '2장', src: kia2Frame,     width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'kiwoom-2cut',  label: '키움 2컷',  countLabel: '2장', src: kiwoom2Frame,  width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'kt-2cut',      label: 'KT 2컷',    countLabel: '2장', src: kt2Frame,      width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'lg-2cut',      label: 'LG 2컷',    countLabel: '2장', src: lg2Frame,      width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'nc-2cut',      label: 'NC 2컷',    countLabel: '2장', src: nc2Frame,      width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'samsung-2cut', label: '삼성 2컷',  countLabel: '2장', src: samsung2Frame, width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'ssg-2cut',     label: 'SSG 2컷',   countLabel: '2장', src: ssg2Frame,     width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
+  { key: 'doosan-3cut',  label: '두산 3컷',  countLabel: '3장', src: doosanFrame,   width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'hanhwa-3cut',  label: '한화 3컷',  countLabel: '3장', src: hanhwa3Frame,  width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'kia-3cut',     label: '기아 3컷',  countLabel: '3장', src: kia3Frame,     width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'kiwoom-3cut',  label: '키움 3컷',  countLabel: '3장', src: kiwoom3Frame,  width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'kt-3cut',      label: 'KT 3컷',    countLabel: '3장', src: kt3Frame,      width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'lg-3cut',      label: 'LG 3컷',    countLabel: '3장', src: lg3Frame,      width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'lotte-3cut',   label: '롯데 3컷',  countLabel: '3장', src: lotte3Frame,   width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'nc-3cut',      label: 'NC 3컷',    countLabel: '3장', src: nc3Frame,      width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'samsung-3cut', label: '삼성 3컷',  countLabel: '3장', src: samsung3Frame, width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
+  { key: 'ssg-3cut',     label: 'SSG 3컷',   countLabel: '3장', src: ssg3Frame,     width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
 ];
 
 const MODES: Array<{ v: CameraPurpose; t: string }> = [
