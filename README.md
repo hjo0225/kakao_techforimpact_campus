@@ -1,189 +1,80 @@
-# 용기낼깡 (카카오\_환경많이된다)
-<img width="341" height="763" alt="image" src="https://github.com/user-attachments/assets/19edbfa8-5018-4913-8fed-ed70fe4631df" />
-
-[![Deploy](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml)
+# 용기낼깡 (Clean Ball Trio)
 
 > **야구장 일회용기 쓰레기 문제를, 응원 팀 경쟁으로 푼다.**
 
-## 1. Problem — 왜 이 프로젝트인가
+<div align="center">
 
-KBO 한 시즌 약 800만 명이 직관하고, 경기당 수만 개의 일회용 컵·용기가 발생한다. 구장 다회용기 시범 운영은 이미 존재하지만, 실제 회수율은 낮다.
+<img src="docs/readme-assets/screen-landing.png" width="280" alt="용기낼깡 랜딩" />
 
-관찰된 원인:
+[![Deploy](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hjo0225/kakao_techforimpact_campus/actions/workflows/deploy.yml)
+![React](https://img.shields.io/badge/React_+_Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
+![PyTorch](https://img.shields.io/badge/MobileNetV2-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![GCP](https://img.shields.io/badge/Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 
-- **반납 동기 부재** — 다회용기를 받아도 반납할 이유가 약하다. "그냥 버리는 게 더 빠르다."
-- **인증 수단 부재** — 사용자가 "내가 환경에 기여했다"는 사실을 데이터로 확인할 방법이 없다.
-- **개인 행동 → 가시적 임팩트로 연결되지 않음** — 한 사람의 다회용기 한 개는 통계 속에서 사라진다.
+**Live**: <https://cleanballtrio.web.app>
 
-기존 환경 앱들은 보상(포인트/현금)에 의존하는데, 야구 직관러에게는 **응원 팀 정체성**이 더 강한 동기일 수 있다. 이 가설을 검증한다.
-
-## 2. Solution — 어떻게 푸는가
-
-**핵심 아이디어**: 다회용기 사용/반납을 *팀 응원 행위*로 재정의한다.
-
-```
-[다회용기 사용 사진] → [Vision AI 분류] → [내 점수 + 응원 팀 누적 점수]
-[반납 사진]                                       ↓
-                                       [팀별 누적 랭킹]
-                                                  ↓
-                                       [다음 경기 인증 동기]
-```
-
-### 게임 루프
-
-| 단계 | 사용자 행동                                   | 시스템 반응                                  |
-| ---- | --------------------------------------------- | -------------------------------------------- |
-| 1    | 카카오 로그인 + 응원 팀 1개 선택              | JWT 발급, 팀 소속 확정 (`PATCH /me/team`)    |
-| 2    | 구장에서 다회용기 받아 사용 후 사진 촬영      | Vision AI 분류 → USE 50점 (`/verify/use`)    |
-| 3    | 반납하면서 사진 촬영                          | Vision AI 분류 + USE 12h 가드 → RETURN 100점 |
-| 4    | 점수 적립 + 팀 누적 점수 갱신                 | PostgreSQL aggregate (Redis ZSET 예정)       |
-| 5    | 랭킹·감축 기여·공유 이미지 확인               | 다음 경기 인증 동기 형성                     |
-
-### 기존 접근 대비 베팅
-
-- **현금성 보상 대신 팀 경쟁** — 외재적 동기보다 내재적(소속감) 동기가 지속된다는 가설
-- **QR 대신 AI 이미지 분류** — 운영사 QR 포맷 협의 의존성 제거, 사용자는 사진 1장만 찍으면 됨 (MobileNetV2 자체 모델)
-- **WebView 우선** — 네이티브 앱 다운로드 장벽을 우회. 카카오톡 공유 → 즉시 사용
+</div>
 
 ---
 
-## 3. 현재 구현 상태
+## 1. 프로젝트 개요
 
-| 기능                                  | 상태    | 비고                                                   |
-| ------------------------------------- | ------- | ------------------------------------------------------ |
-| F1. 카카오 로그인 + JWT               | 구현됨  | refresh 흐름은 미구현                                  |
-| F2. 팀 선택 (온보딩)                  | 구현됨  | 아바타는 폐기, 팀-only 온보딩                          |
-| F3. Vision AI 사용·반납 인증          | 구현됨  | MobileNetV2 + `/verify/use`·`/verify/return`           |
-| F4. 팀별 누적 랭킹                    | 구현됨  | PG aggregate. 트래픽 증가 시 Redis ZSET                |
-| F5. 통계 / 공유 이미지                | 구현됨  | `/stats/me` + Canvas 2D 공유 카드. 등급은 폐기         |
-| F6. 잠실야구장 내부 식음료 지도       | 구현됨  | DB/API 기반 슬롯·입점·메뉴 구조 + 관리자 MVP           |
-| F7. 디자인 시스템 (Vintage + Pixel)   | 구현됨  | cream/burgundy/rose + Galmuri 픽셀 폰트 + NES 컴포넌트 |
+KBO 한 시즌 약 800만 명이 직관하며 경기마다 수만 개의 일회용기가 쏟아지지만, 구장 다회용기 시범 운영의 회수율은 낮다. 원인은 **반납 동기 부재**와 **기여를 확인할 인증 수단의 부재** — "그냥 버리는 게 빠르다"를 이기지 못한다. 용기낼깡은 다회용기 사용·반납을 *응원 팀 경쟁*으로 재정의해, 현금성 보상이 아닌 **팀 정체성(소속감)** 이라는 내재적 동기로 반납 행동을 끌어내는지 검증하는 프로젝트다. 사용자는 사진 한 장만 찍으면 AI가 인증하고, 점수는 곧 응원 팀의 누적 랭킹으로 환산된다.
 
-상세: [`docs/PRD.md`](docs/PRD.md) · 진행 중 plan: [`docs/plans/active/`](docs/plans/active/)
+## 2. 주요 기능 (기술적 난이도 중심)
 
-### Open Questions (검증 필요)
+### 🤖 Vision AI 이미지 분류 인증 (USE / RETURN)
+QR 대신 다회용기 사진을 **MobileNetV2 2-class 모델**로 실시간 분류해, 운영사 QR 포맷 협의 의존성을 제거하고 사용자 UX를 사진 1장으로 단순화했다. 반납 인증은 동일 사용자의 최근 12시간 USE 기록이 있어야만 통과하는 비즈니스 가드를 둬 어뷰징을 차단한다. Vision은 별도 Cloud Run 서비스(FastAPI+PyTorch)로 분리하고 NestJS가 multipart 이미지를 server-to-server로 포워드한다.
 
-- Vision 모델 오판 시 사용자 피드백 채널 (현재는 단순 에러)
-- 점수 산정 알고리즘 재검토 (USE 50 / RETURN 100 고정이 적절한가)
-- 시즌 리셋 정책 (영구 누적 vs 시즌별)
-- 팀 랭킹 1·2위 격차가 너무 벌어졌을 때 동기 유지 방법
-- 매장 메뉴·가격·다회용기·개인용기 정책 수동 검수 및 운영자 입력
+### 🏆 팀별 누적 랭킹
+현재는 PostgreSQL aggregate(`teams ⋈ users ⋈ usages`)로 매 요청마다 10개 팀을 점수순 정렬해 반환하며, 동점은 팀코드로 결정적 정렬한다. 트래픽 증가 시 Redis ZSET(`ranking:teams:season:{year}`)으로 전환할 수 있도록 읽기 경로를 격리해 두었다.
 
----
+### 🔐 카카오 OAuth → 팀 온보딩 → JWT 발급
+카카오 OAuth code를 백엔드에서 토큰 교환·프로필 조회 후 `kakao_id`로 자동 upsert하고, JWT `sub`를 카카오 ID가 아닌 **백엔드 DB user.id** 로 설정해 식별자를 일원화(추후 인증 수단 확장 대비)했다. 첫 로그인 시 응원 팀 선택을 강제한다.
 
-### 잠실야구장 식음료 지도 통합 메모
+## 3. 시스템 아키텍처
 
-- 지도 데이터는 `StoreSlot`(고정 위치), `TenantStore`(입점 가게), `StoreAssignment`(시즌/기간별 배정), `TenantMenuItem`, `StoreMenuOffering`, `StoreOperatingRule`로 분리되어 있다. 슬롯 번호는 가게가 아니라 위치의 속성이다.
-- 마이그레이션 `backend/prisma/migrations/20260522090000_add_stadium_store_domain_and_user_role/`에는 한 슬롯에 `ACTIVE` 배정이 2개 생기지 않도록 하는 partial unique index가 포함되어 있다.
-- seed는 `backend/prisma/seed.ts`의 `JAMSIL` 데이터로 들어간다. 1F/2F/2.5F/3F는 구조도 슬롯 번호를 사용하고, 4F는 공식 번호 미확인으로 `F4_01`, `F4_02` 임시 코드를 쓴다.
-- 좌표는 `ref/*구조도.png`를 OCR/수동 검수해 뽑은 `xPct/yPct` 정규화 좌표다. `ref/`는 로컬 원본 자료라 gitignore 대상이고, 런타임 지도 이미지는 `frontend/public/maps/`에 커밋된다.
-- 실제 DB 반영 순서는 `cd backend && npm run prisma:generate && npm run db:migrate:deploy && npm run db:seed`다. 로컬에서 seed를 실행하려면 `DATABASE_URL`이 필요하다.
-- 프론트 `/map`은 백엔드 `/stores`, `/stadiums/:stadiumCode/floors` 응답을 우선 사용하고, API가 없으면 구조도 기반 fixture로 표시한다. 로컬 카카오 로그인은 `/login`의 `로컬 QA로 지도 보기` 버튼으로 우회할 수 있다.
-- 관리자 MVP는 `/admin/stores`에 있다. 메뉴, 가격, 다회용기/개인용기 정책, 영업시간은 초기 seed에서 placeholder 상태이므로 운영자가 이 화면에서 보강해야 한다.
+프론트(React/Vite)는 Firebase Hosting CDN, API(NestJS)와 Vision(FastAPI)은 각각 Cloud Run에 분리 배포된다. 카카오 OAuth로 인증하고, 이미지 인증 요청만 NestJS → Vision으로 내부 포워드한다.
 
----
+![시스템 아키텍처](docs/readme-assets/architecture.png)
 
-## 4. Live
+> 선택 근거: [`docs/adr/0001-firebase-hosting-and-cloud-run.md`](docs/adr/0001-firebase-hosting-and-cloud-run.md)
 
-|                                  | URL                                                       |
-| -------------------------------- | --------------------------------------------------------- |
-| 앱 (Firebase Hosting)            | https://cleanballtrio.web.app                             |
-| API (Cloud Run, asia-northeast3) | https://cleanballtrio-api-fpvvjohnta-du.a.run.app         |
-| Firebase Console                 | https://console.firebase.google.com/project/cleanballtrio |
+## 4. ERD
+
+`users`는 응원 팀(`teams`)에 소속되고, 인증 행위는 `usages`(USE/RETURN, 점수)로 경기(`games`)와 함께 적재된다. `verification_samples`는 AI 판정 + 사용자 라벨을 모으는 휴먼-인-더-루프 학습 테이블이다.
+
+![ERD](docs/readme-assets/erd.png)
+
+## 5. 기술적 의사결정
+
+| 결정 | 선택 | 왜 |
+|---|---|---|
+| 소셜 로그인 | **카카오 OAuth** | 야구 직관러가 이미 쓰는 생태계 — 회원가입 마찰 최소화 |
+| 토큰 | **JWT (HS256, 7일)** + `sub = DB user.id` | stateless 검증, 식별자 일원화로 인증 수단 확장 대비 (refresh는 만료 시 재로그인) |
+| 인증 방식 | **Vision AI (MobileNetV2)** vs QR | QR 포맷 협의 의존성 제거 + 학습 데이터 축적(`verification_samples`) |
+| 랭킹 | **PG aggregate** (Redis 보류) | MVP 행 수에서는 충분, 지연 발생 시 Redis ZSET 전환 |
+| 호스팅 | **Firebase Hosting + Cloud Run** | 단일 GCP 프로젝트로 통합 관리, 무료 티어로 학생 프로젝트 운영 부담 최소화 |
+| CI/CD | **GitHub Actions + Workload Identity Federation** | 장기 키 없이 OIDC + repo 조건부 SA 가장으로 보안 강화, 변경 영역만 자동 배포 |
 
 ---
 
-## 5. 아키텍처 한눈에
+### Live & 인프라
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Mobile (Expo)   │    │ Web (Vite+React) │    │ 카카오 OAuth     │
-│ react-native-   │───▶│ Firebase Hosting │───▶│                  │
-│ webview         │    └────────┬─────────┘    └─────────────────┘
-└─────────────────┘             │
-                                ▼
-                    ┌──────────────────────┐    multipart   ┌────────────────────┐
-                    │ NestJS API           │ ─────────────▶ │ Vision (FastAPI)   │
-                    │ Cloud Run (asia-ne3) │                │ Cloud Run          │
-                    │ cleanballtrio-api    │                │ MobileNetV2 (2cls) │
-                    └──────┬───────────────┘                └────────────────────┘
-                           │
-                ┌──────────▼─┐
-                │ Cloud SQL  │   (users, teams, games, usages)
-                │ Postgres   │
-                └────────────┘
-                           ↑
-                 (Redis Memorystore — 트래픽 증가 시 도입 예정)
-```
+| | URL |
+|---|---|
+| 앱 (Firebase Hosting) | https://cleanballtrio.web.app |
+| API (Cloud Run, asia-northeast3) | https://cleanballtrio-api-fpvvjohnta-du.a.run.app |
 
-선택 근거: [`docs/adr/0001-firebase-hosting-and-cloud-run.md`](docs/adr/0001-firebase-hosting-and-cloud-run.md) · 상세: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-
-### 디렉토리
-
-```
-.
-├── frontend/        Vite + React + TS  (→ Firebase Hosting)
-├── backend/         NestJS + TS         (→ Cloud Run, cleanballtrio-api)
-├── vision/          FastAPI + PyTorch   (→ Cloud Run, cleanballtrio-vision)
-├── docs/            PRD, ARCHITECTURE, plans, ADR, runbooks
-├── scripts/         배포 / 셋업 스크립트
-└── .github/workflows/  CI/CD (GitHub Actions)
-```
-
----
-
-## 6. 개발 시작
-
-**사전 요구**: Node.js 22+, pwsh 또는 PowerShell 5.1, gcloud CLI(배포 시), `npm i -g firebase-tools`
+### 로컬 실행 (요약)
 
 ```bash
-# Backend
-cd backend
-npm install
-cp .env.example .env       # KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET, JWT_SECRET, DATABASE_URL, VISION_API_URL
-npm run start:dev          # http://localhost:3002 (PORT=3002 in .env)
-
-# Frontend
-cd frontend
-npm install
-cp .env.example .env       # VITE_KAKAO_REST_API_KEY, VITE_KAKAO_REDIRECT_URI, VITE_API_BASE_URL
-npm run dev                # http://localhost:5173 ⚠️ 포트 고정 — 카카오 redirect_uri / CORS와 일치해야 함
-
-# Vision (선택 — 이미지 인증 기능 테스트 시)
-cd vision
-python -m venv .venv && .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app:app --port 8000   # http://localhost:8000
+cd backend  && npm install && cp .env.example .env && npm run start:dev   # :3002
+cd frontend && npm install && cp .env.example .env && npm run dev          # :5173 (포트 고정 — 카카오 redirect_uri/CORS)
+cd vision   && pip install -r requirements.txt && uvicorn app:app --port 8000  # 이미지 인증 테스트 시
 ```
 
-> **포트 주의**: 프론트는 반드시 `5173`. 5173이 점유돼서 Vite가 5174/5175로 떨어지면 카카오 OAuth 콜백을 못 받고 CORS도 거부됨.
+### 문서
 
----
-
-## 7. 배포
-
-`main` push → GitHub Actions가 변경 영역만 자동 배포 (`frontend/**` → Firebase, `backend/**` → Cloud Run). PR 단계에서는 build/typecheck만 실행.
-
-수동 배포가 필요하면:
-
-```powershell
-powershell -File scripts/deploy-backend.ps1     # Backend → Cloud Run
-cd frontend; npm run build; cd ..               # Frontend → Firebase
-firebase deploy --only hosting
-```
-
-CI/CD는 Workload Identity Federation(long-lived 키 없음) 기반. 1회 셋업: `powershell -File scripts/setup-github-wif.ps1` 후 GitHub Secrets 3개 등록. 상세: [`docs/plans/active/setup-github-cicd.md`](docs/plans/active/setup-github-cicd.md)
-
----
-
-## 8. 문서 / 컨벤션
-
-- [`CLAUDE.md`](CLAUDE.md) — AI 에이전트 작업 컨벤션 (워크플로 6단계)
-- [`DESIGN.md`](DESIGN.md) — 디자인 토큰 SSOT (UI 작업 시 필독)
-- [`docs/PRD.md`](docs/PRD.md) — 제품 요구사항
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 모듈 경계, 데이터 흐름
-- [`docs/api-spec.md`](docs/api-spec.md) — API 스키마
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — DB 스키마
-- [`docs/adr/`](docs/adr/) — 설계 결정 기록
-
-**작업 룰 (요약)** — Plan 먼저(`docs/plans/active/<slug>.md`), 브랜치 prefix(`feat/fix/chore/refactor/hotfix`), DESIGN.md 토큰만 사용, `docs`와 코드 어긋나면 docs 먼저, `--no-verify`·master 직접 커밋 금지.
+[`docs/PRD.md`](docs/PRD.md) · [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/api-spec.md`](docs/api-spec.md) · [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) · [`docs/adr/`](docs/adr/) · [`DESIGN.md`](DESIGN.md)
