@@ -20,7 +20,7 @@ export default function SharedCardPage() {
         background: 'linear-gradient(180deg, #430A21 0%, #5E1530 55%, #C85C77 100%)',
       }}
     >
-      <p style={{ color: '#FFFAE6', fontSize: 14, fontWeight: 800 }}>잠실 직관카드</p>
+      <p style={{ color: '#FFFAE6', fontSize: 14, fontWeight: 800 }}>잠실 야구네컷</p>
 
       <div
         style={{
@@ -42,7 +42,7 @@ export default function SharedCardPage() {
         ) : (
           <img
             src={sharedCardImageUrl(token)}
-            alt="직관카드"
+            alt="야구네컷"
             onError={() => setFailed(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />

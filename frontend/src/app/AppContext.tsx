@@ -107,7 +107,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<MyStats>(EMPTY_STATS);
   const [certificationLogs, setCertificationLogs] = useState<CertificationLog[]>([]);
   const [shareCardShared, setShareCardShared] = useState(false);
-  const [cameraPurpose, setCameraPurpose] = useState<CameraPurpose>('verify');
+  // 기본 토글: 야구네컷(visit-card). 단, 용기인증을 해야 잠금 해제됨.
+  const [cameraPurpose, setCameraPurpose] = useState<CameraPurpose>('visit-card');
   const [captureMode, setCaptureMode] = useState(false);
 
   const cameraActionRef = useRef<(() => void) | null>(null);

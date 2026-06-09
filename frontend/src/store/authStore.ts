@@ -16,7 +16,6 @@ interface AuthStore {
   teamsByUserId: Record<string, string>
   setAuth: (user: User, token: string) => void
   setTeam: (teamName: string) => void
-  getTeamFor: (userId: string) => string | null
   logout: () => void
 }
 
@@ -34,7 +33,6 @@ export const useAuthStore = create<AuthStore>()(
           teamsByUserId: { ...state.teamsByUserId, [user.id]: teamName },
         }))
       },
-      getTeamFor: (userId) => get().teamsByUserId[userId] ?? null,
       logout: () => set({ user: null, token: null }),
     }),
     {

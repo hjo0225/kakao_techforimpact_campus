@@ -4,11 +4,15 @@ import landingLogo from '../assets/landing-logo.svg'
 import { Button } from '../app/components/design-system'
 import { getKakaoLoginUrl } from '../lib/kakaoAuth'
 import { useAuthStore } from '../store/authStore'
+import { useTutorialStore } from '../store/tutorialStore'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
   const setTeam = useAuthStore((state) => state.setTeam)
+  const requestTutorial = useTutorialStore((state) => state.requestShow)
+
+  // 개발 전용: 백엔드 없이 가짜 로그인으로 진입 (배포본에는 노출되지 않음)
   const isLocalDev =
     import.meta.env.DEV &&
     (window.location.hostname === '127.0.0.1' ||
@@ -25,7 +29,8 @@ export default function LoginPage() {
       'dev-local-token',
     )
     setTeam('LG')
-    navigate('/map')
+    requestTutorial()
+    navigate('/home')
   }
 
   return (
@@ -52,7 +57,7 @@ export default function LoginPage() {
         </Button>
         {isLocalDev && (
           <Button onClick={enterLocalQa} variant="secondary" size="lg" fullWidth>
-            로컬 QA로 지도 보기
+            로컬 QA로 들어가기 (개발용)
           </Button>
         )}
       </div>
