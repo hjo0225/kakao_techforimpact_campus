@@ -263,6 +263,17 @@ export function MapScreen() {
 
       {/* ── 지도 (나머지 전체) ── */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {/* 잠실야구장 라벨 — SDK 로드 여부와 무관하게 항상 표시 */}
+        <div style={{
+          position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 10, pointerEvents: 'none',
+          background: 'rgba(255,253,248,0.95)', border: '2px solid #430A21',
+          borderRadius: 999, padding: '5px 14px', boxShadow: '0 2px 0 0 #430A21',
+          fontSize: 12, fontWeight: 900, color: '#430A21',
+          display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+        }}>
+          ⚾ 잠실야구장
+        </div>
         <KakaoStadiumMap
           floors={floorOptions}
           selectedFloor={selectedFloor}

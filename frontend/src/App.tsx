@@ -1,22 +1,17 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import MobileFrame from './app/MobileFrame'
+import { TutorialOverlay } from './app/components/tutorial/TutorialOverlay'
 import LoginPage from './pages/LoginPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
 import SharedCardPage from './pages/SharedCardPage'
 
-const TeamSelectScreen = lazy(() =>
-  import('./app/components/screens/TeamSelectScreen').then((m) => ({ default: m.TeamSelectScreen })),
-)
 const HomeScreen = lazy(() =>
   import('./app/components/screens/HomeScreen').then((m) => ({ default: m.HomeScreen })),
 )
 const MapScreen = lazy(() =>
   import('./app/components/screens/MapScreen').then((m) => ({ default: m.MapScreen })),
-)
-const ReportScreen = lazy(() =>
-  import('./app/components/screens/ReportScreen').then((m) => ({ default: m.ReportScreen })),
 )
 const CalendarScreen = lazy(() =>
   import('./app/components/screens/CalendarScreen').then((m) => ({ default: m.CalendarScreen })),
@@ -34,31 +29,19 @@ function ScreenFallback() {
 
 function PrivateLayout() {
   const token = useAuthStore((s) => s.token)
-  const user = useAuthStore((s) => s.user)
-  const teamsByUserId = useAuthStore((s) => s.teamsByUserId)
-  const location = useLocation()
   if (!token) return <Navigate to="/login" replace />
-  const team = user ? teamsByUserId[user.id] : null
-  if (!team && location.pathname !== '/onboarding') {
-    return <Navigate to="/onboarding" replace />
-  }
-  if (team && location.pathname === '/onboarding') {
-    return <Navigate to="/home" replace />
-  }
   return (
     <div className="cb-app-bg">
       <Outlet />
+      <TutorialOverlay />
     </div>
   )
 }
 
 function RootRedirect() {
   const token = useAuthStore((s) => s.token)
-  const user = useAuthStore((s) => s.user)
-  const teamsByUserId = useAuthStore((s) => s.teamsByUserId)
   if (!token) return <Navigate to="/login" replace />
-  const team = user ? teamsByUserId[user.id] : null
-  return <Navigate to={team ? '/home' : '/onboarding'} replace />
+  return <Navigate to="/home" replace />
 }
 
 export default function App() {
@@ -71,10 +54,8 @@ export default function App() {
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
           <Route path="/card/:token" element={<SharedCardPage />} />
           <Route element={<PrivateLayout />}>
-            <Route path="/onboarding" element={<TeamSelectScreen />} />
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/map" element={<MapScreen />} />
-            <Route path="/report" element={<ReportScreen />} />
             <Route path="/calendar" element={<CalendarScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/admin/stores" element={<AdminStoresScreen />} />

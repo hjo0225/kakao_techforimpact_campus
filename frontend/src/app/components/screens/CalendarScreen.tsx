@@ -32,7 +32,7 @@ type ViewMode = 'grid' | 'list';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'reuse', label: '다회용기 인증' },
-  { id: 'card', label: '직관카드' },
+  { id: 'card', label: '야구네컷' },
 ];
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -653,7 +653,7 @@ export function CalendarScreen() {
           <p style={emptyTextStyle}>
             {tab === 'reuse'
               ? '아직 인증 사진이 없습니다. 카메라로 첫 인증을 남겨보세요.'
-              : '아직 직관카드가 없습니다. 카메라로 첫 카드를 만들어보세요.'}
+              : '아직 야구네컷이 없습니다. 카메라로 첫 야구네컷을 만들어보세요.'}
           </p>
         )}
 

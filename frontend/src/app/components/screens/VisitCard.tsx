@@ -6,9 +6,13 @@ import {
 } from 'lucide-react';
 import { useApp, type CameraPurpose } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
+import { useVerifyGateStore, todayKey } from '../../../store/verifyGateStore';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
+import lockedMascot from '../../../assets/feedback/locked.png';
+import reusableMascot from '../../../assets/feedback/reusable.png';
+import singleMascot from '../../../assets/feedback/single.png';
 import {
   analyzeImage, confirmLabel, ApiError,
   type AiPrediction, type ContainerLabel, type CertificationMode,
@@ -81,12 +85,7 @@ const FRAMES: CardFrame[] = [
 
 const MODES: Array<{ v: CameraPurpose; t: string }> = [
   { v: 'verify', t: '용기인증' },
-  { v: 'visit-card', t: '직관카드' },
-];
-
-const V_MODES: Array<{ id: CertificationMode; t: string }> = [
-  { id: 'use', t: '사용 인증' },
-  { id: 'return', t: '반납 인증' },
+  { v: 'visit-card', t: '야구네컷' },
 ];
 
 const LABELS: Array<{ value: ContainerLabel; t: string; tone: string }> = [
@@ -229,16 +228,25 @@ export function VisitCard() {
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [savedCard, setSavedCard] = useState<{ id: string; shareToken: string } | null>(null);
 
-  // 인증(verify)
-  const [vMode, setVMode] = useState<CertificationMode>('use');
+  // 인증(verify) — 반납 인증 제거, 사용(use) 인증만
+  const vMode: CertificationMode = 'use';
   const [vStep, setVStep] = useState<VStep>('idle');
   const [sampleId, setSampleId] = useState<string | null>(null);
   const [ai, setAi] = useState<AiPrediction | null>(null);
   const [label, setLabel] = useState<ContainerLabel>('REUSABLE');
   const [vResult, setVResult] = useState<VResult | null>(null);
+  // 일/다회용기 선택 후 감정 피드백 모달
+  const [feedback, setFeedback] = useState<ContainerLabel | null>(null);
+
+  // 야구네컷 게이트 — 오늘 용기인증을 했으면(=lastVerifiedDate가 오늘) 해제
+  const lastVerifiedDate = useVerifyGateStore((s) => s.lastVerifiedDate);
+  const markVerifiedToday = useVerifyGateStore((s) => s.markVerifiedToday);
+  const cardUnlocked = lastVerifiedDate === todayKey();
 
   const currentFrame = FRAMES.find((f) => f.key === frameKey) ?? FRAMES[0];
   const isCard = cameraPurpose === 'visit-card';
+  // 야구네컷은 오늘 용기인증을 해야 사용 가능 (그날 24시까지)
+  const cardLocked = isCard && !cardUnlocked;
   const cardPhotoCount = cardPhotos.filter(Boolean).length;
   const isCardComplete = cardPhotoCount === currentFrame.slots.length;
   const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
@@ -261,9 +269,10 @@ export function VisitCard() {
     if (cardUrlRef.current) URL.revokeObjectURL(cardUrlRef.current);
   }, []);
 
-  // 라이브 카메라 — camera 뷰일 때만
+  // 라이브 카메라 — camera 뷰일 때만 (잠긴 야구네컷에서는 카메라를 켜지 않음)
   useEffect(() => {
     if (view !== 'camera') return;
+    if (isCard && !cardUnlocked) return;
     let cancelled = false;
     (async () => {
       try {
@@ -288,7 +297,7 @@ export function VisitCard() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, [view, facing]);
+  }, [view, facing, isCard, cardUnlocked]);
 
   // 카메라 뷰 = 촬영 모드 → BottomNav 선 제거
   useEffect(() => {
@@ -581,7 +590,7 @@ export function VisitCard() {
       setSampleId(null);
       setAi(null);
       setVResult(null);
-      setView('result');
+      setView('camera'); // 결과 화면으로 점프하지 않고 카메라 UI 유지
     }, 'image/png');
   }, [addCardFiles, facing, cameraPurpose]);
 
@@ -600,7 +609,7 @@ export function VisitCard() {
       setSampleId(null);
       setAi(null);
       setVResult(null);
-      setView('result');
+      setView('camera'); // 카메라 UI 유지 (사진 미리보기 + AI 인증/다시)
     }
     e.target.value = '';
   };
@@ -638,7 +647,7 @@ export function VisitCard() {
     try { await ensureSaved(); } catch { saved = false; }
     const a = document.createElement('a');
     a.href = cardUrl;
-    a.download = `직관카드_${visitN}.png`;
+    a.download = `야구네컷_${visitN}.png`;
     a.click();
     showToast(saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
     setBusy(false);
@@ -659,6 +668,7 @@ export function VisitCard() {
     if (!photo || busy) return;
     setBusy(true);
     setVResult(null);
+    setView('result'); // AI 인증을 누르면 결과(라벨 선택) 화면으로 이동
     setVStep('analyzing');
     try {
       const res = await analyzeImage(vMode, photo.file);
@@ -681,14 +691,18 @@ export function VisitCard() {
     try {
       const res = await confirmLabel(sampleId, label);
       const detected = label === 'REUSABLE' ? '다회용기' : '일회용기';
+      // 용기인증 완료 → 그날 24시까지 야구네컷 잠금 해제
+      markVerifiedToday();
       if (res.scored) {
         addCertification(vMode);
-        setVResult({ tone: 'success', title: vMode === 'use' ? '사용 인증 완료' : '반납 인증 완료', reason: ai ? `${detected} · AI ${ai.confidence.toFixed(1)}%` : detected });
+        setVResult({ tone: 'success', title: '인증 완료', reason: ai ? `${detected} · AI ${ai.confidence.toFixed(1)}%` : detected });
       } else if (res.reason === 'SINGLE_USE_LABEL') {
-        setVResult({ tone: 'neutral', title: '일회용기로 기록', reason: '학습 데이터로 저장했어요. 점수는 반영되지 않습니다.' });
+        setVResult({ tone: 'neutral', title: '일회용기로 기록', reason: '학습 데이터로 저장했어요.' });
       } else {
-        setVResult({ tone: 'error', title: '사용 인증 필요', reason: '최근 12시간 내 사용 인증이 없어 반납 점수가 반영되지 않았습니다.' });
+        setVResult({ tone: 'neutral', title: '인증 기록 완료', reason: detected });
       }
+      // 사용자가 고른 용기 종류에 따라 감정 피드백 모달 표시
+      setFeedback(label);
       setVStep('done');
     } catch (err) {
       setVResult(errorResult(err));
@@ -844,8 +858,23 @@ export function VisitCard() {
         )}
       </div>
 
+      {/* ── 야구네컷 잠금 화면 (오늘 용기인증 전) ── */}
+      {cardLocked && (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px 28px', gap: 16, background: '#fff' }}>
+          <img src={lockedMascot} alt="" aria-hidden="true" style={{ width: '62%', maxWidth: 230, height: 'auto' }} />
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#430A21' }}>용기 인증 후에 이용 가능해요</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#8C6B73', lineHeight: 1.6 }}>
+            다회용기를 인증하면 오늘 자정까지<br />야구네컷을 만들 수 있어요.
+          </p>
+          <button type="button" onClick={() => setCameraPurpose('verify')}
+            style={{ marginTop: 4, border: '2px solid #430A21', borderRadius: 16, background: 'var(--cb-primary)', color: '#fff', padding: '14px 28px', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
+            용기 인증하러 가기
+          </button>
+        </div>
+      )}
+
       {/* ── 카메라 뷰 ── */}
-      {view === 'camera' && (
+      {view === 'camera' && !cardLocked && (
         <>
 	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
 	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
@@ -862,19 +891,28 @@ export function VisitCard() {
 	                )}
 	                {cardEditor}
 	              </>
-	            ) : camError ? (
+	            ) : camError && !photo ? (
 	              <div style={{ position: 'absolute', inset: 0, background: '#430A21', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
 	                <Camera size={30} strokeWidth={2.2} />
 	                <p style={{ fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5 }}>카메라를 열 수 없어요.<br />권한을 허용하거나 사진을 선택해 주세요.</p>
                 <button type="button" onClick={() => fileInputRef.current?.click()} style={{ border: '2px solid #fff', background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 800, padding: '10px 16px', cursor: 'pointer' }}>사진 선택</button>
               </div>
 	            ) : (
-	              <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
+	              <>
+                {!camError && (
+                  <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
+                )}
+                {/* 촬영한 사진을 뷰파인더 위에 고정 표시 (라이브 스트림 유지) */}
+                {photo && (
+                  <img src={photo.url} alt="촬영한 용기" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                )}
+              </>
 	            )}
 	          </div>
 
-          {/* 촬영 제어부 — 풀폭, 카메라 뷰는 선 없이 네비와 연결 */}
-          <div style={{ flexShrink: 0, background: '#fff', padding: '8px 0 4px' }}>
+          {/* 촬영 제어부 — 풀폭, 카메라 뷰는 선 없이 네비와 연결.
+              가장 큰 상태(프레임 선택) 높이를 모든 모드에 항상 고정해 레이아웃 점프 방지 */}
+          <div style={{ flexShrink: 0, background: '#fff', padding: '8px 0 4px', minHeight: 184, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {isCard && bottomMode === 'frames' ? (
               <div style={{ padding: '0 14px 8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1021,20 +1059,34 @@ export function VisitCard() {
                 </>
               )
             ) : (
-              // 인증 — 촬영 버튼만
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
+              // 인증 — 촬영 전: 셔터 / 촬영 후: 다시 · AI 인증
+              photo ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 24px' }}>
+                  <button type="button" onClick={retake} aria-label="다시 찍기" style={ctrlSquareStyle}>
+                    <RotateCcw size={20} color="#430A21" strokeWidth={2.4} />
+                    <span style={ctrlLabelStyle}>다시</span>
+                  </button>
+                  <button type="button" onClick={handleAnalyze} disabled={busy}
+                    style={{ flex: 1, height: 56, border: '2px solid #430A21', borderRadius: 16, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
+                    <ScanLine size={18} strokeWidth={2.4} /> AI 인증
+                  </button>
+                  <div style={{ width: 56 }} aria-hidden />
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
+              )
             )}
           </div>
         </>
       )}
 
-      {/* ── 결과: 직관카드 ── */}
+      {/* ── 결과: 야구네컷 ── */}
       {view === 'result' && isCard && (
         <>
           <div style={{ flex: 1, minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', overflow: 'hidden' }}>
             <div style={{ position: 'relative', width: `min(100%, ${(currentFrame.width / currentFrame.height) * 100}cqh)`, aspectRatio: `${currentFrame.width} / ${currentFrame.height}`, border: '2px solid #430A21', boxShadow: '4px 4px 0 0 #430A21', overflow: 'hidden', background: currentFrame.bg }}>
               {cardUrl ? (
-                <img src={cardUrl} alt="직관카드 미리보기" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                <img src={cardUrl} alt="야구네컷 미리보기" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
               ) : (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>카드 생성 중...</div>
               )}
@@ -1059,28 +1111,13 @@ export function VisitCard() {
       {view === 'result' && !isCard && (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* 촬영 사진 */}
-          <div style={{ width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+          <div style={{ width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
             {photo && <img src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
           </div>
 
-          {/* 사용/반납 (분석 전만) */}
-          {vStep === 'idle' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {V_MODES.map((m) => {
-                const active = m.id === vMode;
-                return (
-                  <button key={m.id} type="button" onClick={() => setVMode(m.id)} aria-pressed={active}
-                    style={{ border: active ? '2px solid var(--cb-primary)' : '2px solid #430A21', background: active ? 'var(--cb-primary-soft)' : '#fff', color: active ? 'var(--cb-primary-deep)' : '#430A21', padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: active ? '0 3px 0 0 var(--cb-primary)' : '0 2px 0 0 #430A21' }}>
-                    {m.t}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {vStep === 'idle' && (
             <button type="button" onClick={handleAnalyze} disabled={busy}
-              style={{ border: '2px solid #430A21', background: 'var(--cb-primary)', color: '#fff', padding: '15px 12px', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
+              style={{ border: '2px solid #430A21', borderRadius: 16, background: 'var(--cb-primary)', color: '#fff', padding: '15px 12px', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
               <ScanLine size={18} strokeWidth={2.4} /> AI 인증
             </button>
           )}
@@ -1090,8 +1127,8 @@ export function VisitCard() {
           )}
 
           {(vStep === 'labeling' || vStep === 'submitting') && (
-            <div style={{ background: '#fff', border: '2px solid #430A21', boxShadow: '0 3px 0 0 #430A21', padding: 16 }}>
-              <p style={{ fontSize: 13, fontWeight: 800, color: '#430A21', margin: 0 }}>라벨 확정</p>
+            <div style={{ background: '#fff', border: '2px solid #430A21', borderRadius: 18, boxShadow: '0 3px 0 0 #430A21', padding: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 800, color: '#430A21', margin: 0 }}>어떤 용기를 쓰셨나요?</p>
               <p style={{ marginTop: 4, fontSize: 11, color: '#8C6B73', lineHeight: 1.5 }}>
                 {ai ? `AI 예측: ${ai.isReusable ? '다회용기' : '일회용기'} · ${ai.confidence.toFixed(1)}%` : 'AI가 판단하지 못했어요. 직접 선택해주세요.'}
               </p>
@@ -1100,33 +1137,67 @@ export function VisitCard() {
                   const active = opt.value === label;
                   return (
                     <button key={opt.value} type="button" onClick={() => !busy && setLabel(opt.value)} aria-pressed={active}
-                      style={{ border: active ? `2px solid ${opt.tone}` : '2px solid #430A21', background: '#fff', color: active ? opt.tone : '#430A21', padding: '14px 0', fontSize: 14, fontWeight: 800, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: active ? `0 3px 0 0 ${opt.tone}` : '0 2px 0 0 #430A21' }}>
+                      style={{ border: active ? `2px solid ${opt.tone}` : '2px solid #430A21', borderRadius: 14, background: '#fff', color: active ? opt.tone : '#430A21', padding: '14px 0', fontSize: 14, fontWeight: 800, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: active ? `0 3px 0 0 ${opt.tone}` : '0 2px 0 0 #430A21' }}>
                       {opt.t}
                     </button>
                   );
                 })}
               </div>
               <button type="button" onClick={handleConfirm} disabled={busy}
-                style={{ width: '100%', marginTop: 12, border: '2px solid #430A21', background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', padding: '14px 12px', fontSize: 14, fontWeight: 800, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
+                style={{ width: '100%', marginTop: 12, border: '2px solid #430A21', borderRadius: 14, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', padding: '14px 12px', fontSize: 14, fontWeight: 800, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
                 {vStep === 'submitting' ? '확정 중...' : `${label === 'REUSABLE' ? '다회용기' : '일회용기'}로 인증 확정`}
               </button>
             </div>
           )}
 
           {vStep === 'done' && vResult && (
-            <div style={{ background: '#fff', border: `2px solid ${toneColor(vResult.tone)}`, boxShadow: `0 3px 0 0 ${toneColor(vResult.tone)}`, padding: 16 }}>
+            <div style={{ background: '#fff', border: `2px solid ${toneColor(vResult.tone)}`, borderRadius: 18, boxShadow: `0 3px 0 0 ${toneColor(vResult.tone)}`, padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                 <CheckCircle size={22} color={toneColor(vResult.tone)} />
                 <p style={{ fontSize: 16, fontWeight: 800, color: '#430A21', margin: 0 }}>{vResult.title}</p>
               </div>
               <p style={{ marginTop: 8, fontSize: 12, color: '#5E1530', lineHeight: 1.55, textAlign: 'center' }}>{vResult.reason}</p>
               <button type="button" onClick={retake}
-                style={{ width: '100%', marginTop: 12, border: '2px solid #430A21', background: '#fff', color: '#430A21', padding: '13px 12px', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21' }}>
+                style={{ width: '100%', marginTop: 12, border: '2px solid #430A21', borderRadius: 14, background: '#fff', color: '#430A21', padding: '13px 12px', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21' }}>
                 새로 촬영하기
               </button>
             </div>
           )}
         </div>
+      )}
+
+      {/* ── 용기 종류 선택 후 감정 피드백 모달 ── */}
+      {feedback && (
+        <>
+          <div className="cb-modal-backdrop" onClick={() => setFeedback(null)} />
+          <div className="cb-modal" role="dialog" aria-modal="true" aria-label="용기 인증 피드백">
+            <img
+              src={feedback === 'REUSABLE' ? reusableMascot : singleMascot}
+              alt=""
+              aria-hidden="true"
+              style={{ width: 150, height: 'auto', display: 'block', margin: '0 auto 14px' }}
+            />
+            <h3 className="cb-modal__title">
+              {feedback === 'REUSABLE' ? '다회용기 최고예요! 🎉' : '이번엔 일회용기였네요'}
+            </h3>
+            <p className="cb-modal__body">
+              {feedback === 'REUSABLE' ? (
+                <>지구가 한 뼘 더 깨끗해졌어요.<br />다음에도 함께해요!</>
+              ) : (
+                <>다음엔 다회용기로 같이<br />지구를 지켜요. 할 수 있어요!</>
+              )}
+            </p>
+            <div className="cb-modal__actions">
+              <button
+                type="button"
+                onClick={() => setFeedback(null)}
+                style={{ width: '100%', border: '2px solid #430A21', borderRadius: 14, background: 'var(--cb-primary)', color: '#fff', padding: '13px 12px', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21' }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {toast && (

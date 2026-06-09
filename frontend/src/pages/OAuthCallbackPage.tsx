@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/apiClient'
 import { useAuthStore, type User } from '../store/authStore'
+import { useTutorialStore } from '../store/tutorialStore'
 
 interface KakaoLoginResponse {
   user: User
@@ -11,7 +12,7 @@ interface KakaoLoginResponse {
 export default function OAuthCallbackPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const getTeamFor = useAuthStore((s) => s.getTeamFor)
+  const requestTutorial = useTutorialStore((s) => s.requestShow)
   const ranRef = useRef(false)
 
   useEffect(() => {
@@ -35,16 +36,15 @@ export default function OAuthCallbackPage() {
       )
       .then((data) => {
         setAuth(data.user, data.accessToken)
-        // Prefer backend teamCode (server SSOT). Fall back to local cache for
-        // sessions whose team was selected before the backend column existed.
-        const hasTeam = data.user.teamCode ?? getTeamFor(data.user.id)
-        navigate(hasTeam ? '/home' : '/onboarding', { replace: true })
+        // 팀 선택은 프로필에서. 로그인 직후 튜토리얼 노출 요청(미해제 시).
+        requestTutorial()
+        navigate('/home', { replace: true })
       })
       .catch((err) => {
         console.error('[OAuth callback] failed:', err)
         navigate('/login', { replace: true })
       })
-  }, [navigate, setAuth, getTeamFor])
+  }, [navigate, setAuth, requestTutorial])
 
   return (
     <div className="min-h-screen flex items-center justify-center">

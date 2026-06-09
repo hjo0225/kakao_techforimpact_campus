@@ -4,10 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Route =
   | 'login'
-  | 'onboarding'
   | 'home'
   | 'map'
-  | 'report'
   | 'calendar'
   | 'profile'
   | 'admin-stores';
@@ -21,10 +19,8 @@ const NavigationContext = createContext<NavigationState | null>(null);
 
 export const ROUTE_PATHS: Record<Route, string> = {
   login: '/login',
-  onboarding: '/onboarding',
   home: '/home',
   map: '/map',
-  report: '/report',
   calendar: '/calendar',
   profile: '/profile',
   'admin-stores': '/admin/stores',
