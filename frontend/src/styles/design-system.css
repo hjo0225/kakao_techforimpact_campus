@@ -228,6 +228,24 @@ html, body, #root {
   min-height: 0;
 }
 
+/* 캘린더 전용 배경 — 동일 야구장 일러스트의 '아랫부분'을 노출 (앱 기본은 center top) */
+.cb-calendar-bg {
+  position: relative;
+  isolation: isolate;
+}
+
+.cb-calendar-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/app-bg.png');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  z-index: -1;
+  pointer-events: none;
+}
+
 /* ============================================================
    App Header — rose gradient + skyline 데코 + chunky title
    ============================================================ */

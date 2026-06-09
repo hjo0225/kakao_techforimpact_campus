@@ -15,6 +15,7 @@ import {
   fetchVerificationImageUrl,
 } from '../../../lib/verifyApi';
 import { getVisitCards, sharedCardImageUrl } from '../../../lib/visitCardApi';
+import calendarMascot from '../../../assets/calendar-mascot.png';
 
 // ── 공통 정규화 모델 ──────────────────────────────────────────────
 // 'auth'  : 인증 필요. src=id → fetchVerificationImageUrl로 blob 생성 후 revoke
@@ -497,7 +498,7 @@ export function CalendarScreen() {
   const empty = entries !== null && entries.length === 0;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+    <div className="cb-calendar-bg" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <StatusBar centerLabel="캘린더" />
 
       {/* 상단 탭 토글 */}
@@ -672,6 +673,24 @@ export function CalendarScreen() {
       </div>
 
       {lightbox && <Lightbox entry={lightbox} onClose={() => setLightbox(null)} />}
+
+      {/* 왼쪽 아래 장식 마스코트 — 캘린더 본문 아래, 바텀내비 위 */}
+      <div
+        aria-hidden
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          justifyContent: 'flex-start',
+          paddingLeft: 8,
+          pointerEvents: 'none',
+        }}
+      >
+        <img
+          src={calendarMascot}
+          alt=""
+          style={{ width: 140, height: 'auto', display: 'block' }}
+        />
+      </div>
 
       <BottomNav />
     </div>

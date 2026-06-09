@@ -83,6 +83,9 @@ const FRAMES: CardFrame[] = [
   { key: 'ssg-3cut',     label: 'SSG 3컷',   countLabel: '3장', src: ssg3Frame,     width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
 ];
 
+// 컷 수(슬롯 개수)별 카테고리 — 1컷 프레임이 추가되면 자동으로 탭에 포함된다.
+const FRAME_CUTS: number[] = Array.from(new Set(FRAMES.map((f) => f.slots.length))).sort((a, b) => a - b);
+
 const MODES: Array<{ v: CameraPurpose; t: string }> = [
   { v: 'verify', t: '용기인증' },
   { v: 'visit-card', t: '야구네컷' },
@@ -221,6 +224,7 @@ export function VisitCard() {
   // 직관카드
   const [bottomMode, setBottomMode] = useState<BottomMode>('controls');
   const [frameKey, setFrameKey] = useState<string>(FRAMES[0].key);
+  const [frameCut, setFrameCut] = useState<number>(FRAMES[0].slots.length); // 프레임 선택지에서 보고 있는 컷 카테고리
   const [cardPhotos, setCardPhotos] = useState<Array<CardPhoto | null>>(() => makeEmptyCardPhotos(FRAMES[0]));
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [visitN, setVisitN] = useState(1);
@@ -820,7 +824,7 @@ export function VisitCard() {
 
       {/* 헤더 — 흰색 풀폭(상태바까지): 중앙 토글 + 우측 전후면 전환. 크기 통일 + 둥근 테두리 */}
       <div style={{ flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px 10px' }}>
-        <div style={{ width: 40, flexShrink: 0 }} aria-hidden />
+        <div style={{ width: 32, flexShrink: 0 }} aria-hidden />
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 4px', gap: 2, border: '2px solid #430A21', borderRadius: 9999, background: '#F0E8E7' }}>
             {MODES.map((o) => {
@@ -849,12 +853,12 @@ export function VisitCard() {
             type="button"
             onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
             aria-label="전후면 전환"
-            style={{ width: 40, height: 40, flexShrink: 0, border: '2px solid #430A21', borderRadius: 9999, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ width: 32, height: 32, flexShrink: 0, border: '2px solid #430A21', borderRadius: 9999, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
             <SwitchCamera size={19} color="#430A21" strokeWidth={2.4} />
           </button>
         ) : (
-          <div style={{ width: 40, flexShrink: 0 }} aria-hidden />
+          <div style={{ width: 32, flexShrink: 0 }} aria-hidden />
         )}
       </div>
 
@@ -863,9 +867,6 @@ export function VisitCard() {
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px 28px', gap: 16, background: '#fff' }}>
           <img src={lockedMascot} alt="" aria-hidden="true" style={{ width: '62%', maxWidth: 230, height: 'auto' }} />
           <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#430A21' }}>용기 인증 후에 이용 가능해요</p>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#8C6B73', lineHeight: 1.6 }}>
-            다회용기를 인증하면 오늘 자정까지<br />야구네컷을 만들 수 있어요.
-          </p>
           <button type="button" onClick={() => setCameraPurpose('verify')}
             style={{ marginTop: 4, border: '2px solid #430A21', borderRadius: 16, background: 'var(--cb-primary)', color: '#fff', padding: '14px 28px', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
             용기 인증하러 가기
@@ -921,8 +922,20 @@ export function VisitCard() {
                     <X size={18} color="#430A21" strokeWidth={2.6} />
                   </button>
                 </div>
+                {/* 컷 카테고리 탭 (2컷/3컷 … 1컷 프레임 추가 시 자동 노출) — 해당 컷 프레임만 노출 */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                  {FRAME_CUTS.map((cut) => {
+                    const on = frameCut === cut;
+                    return (
+                      <button key={cut} type="button" onClick={() => setFrameCut(cut)} aria-pressed={on}
+                        style={{ padding: '5px 13px', border: '2px solid #430A21', borderRadius: 9999, fontSize: 12, fontWeight: 800, cursor: 'pointer', background: on ? 'var(--cb-primary)' : '#fff', color: on ? '#fff' : '#430A21', boxShadow: on ? '0 2px 0 0 #430A21' : 'none' }}>
+                        {cut}컷
+                      </button>
+                    );
+                  })}
+                </div>
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
-                  {FRAMES.map((f) => {
+                  {FRAMES.filter((f) => f.slots.length === frameCut).map((f) => {
                     const active = frameKey === f.key;
                     return (
                       <button key={f.key} type="button" onClick={() => selectCardFrame(f)} aria-pressed={active}
@@ -1037,7 +1050,7 @@ export function VisitCard() {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-                    <button type="button" onClick={() => setBottomMode('frames')} aria-label="프레임" style={ctrlSquareStyle}>
+                    <button type="button" onClick={() => { setFrameCut(currentFrame.slots.length); setBottomMode('frames'); }} aria-label="프레임" style={ctrlSquareStyle}>
                       <Frame size={20} color="#430A21" strokeWidth={2.4} />
                       <span style={ctrlLabelStyle}>프레임</span>
                     </button>
@@ -1061,16 +1074,16 @@ export function VisitCard() {
             ) : (
               // 인증 — 촬영 전: 셔터 / 촬영 후: 다시 · AI 인증
               photo ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 24px' }}>
-                  <button type="button" onClick={retake} aria-label="다시 찍기" style={ctrlSquareStyle}>
-                    <RotateCcw size={20} color="#430A21" strokeWidth={2.4} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px' }}>
+                  <button type="button" onClick={retake} aria-label="다시 찍기" style={{ ...ctrlSquareStyle, width: 72, height: 72 }}>
+                    <RotateCcw size={24} color="#430A21" strokeWidth={2.4} />
                     <span style={ctrlLabelStyle}>다시</span>
                   </button>
                   <button type="button" onClick={handleAnalyze} disabled={busy}
-                    style={{ flex: 1, height: 56, border: '2px solid #430A21', borderRadius: 16, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
-                    <ScanLine size={18} strokeWidth={2.4} /> AI 인증
+                    style={{ flex: 1, height: 72, border: '2px solid #430A21', borderRadius: 18, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200,92,119,0.34)' }}>
+                    <ScanLine size={20} strokeWidth={2.4} /> AI 인증
                   </button>
-                  <div style={{ width: 56 }} aria-hidden />
+                  <div style={{ width: 72 }} aria-hidden />
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
