@@ -1560,9 +1560,9 @@ export function VisitCard() {
         </>
       )}
 
-      {/* ── 결과: 인증(AI 분석) — 사진이 남는 영역을 풀로 채우고, 카드는 하단 고정 ── */}
+      {/* ── 결과: 인증(AI 분석) — 사진이 남는 영역을 풀로 채우고, 카드는 하단 고정. 배경 흰색 ── */}
       {view === 'result' && !isCard && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#fff' }}>
           {/* 촬영 사진 — 남는 영역을 채우는 둥근 카드. 분석 중: 어둡게 + 브래킷 + 스캔 바 */}
           <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#fff', margin: '10px 14px 0', border: '2px solid #430A21', borderRadius: 18 }}>
             {photo && <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
