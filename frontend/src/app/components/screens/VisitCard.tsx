@@ -1138,7 +1138,10 @@ export function VisitCard() {
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input ref={fileInputRef} type="file" accept="image/*" multiple={isCard} capture={isCard ? undefined : 'environment'} onChange={handleFileChange} style={{ display: 'none' }} aria-hidden tabIndex={-1} />
-      <StatusBar bg="#fff" />
+      {/* 몰입 촬영에서는 상태바 스페이서까지 접어 화면 전체를 뷰파인더로 */}
+      <div style={{ maxHeight: immersive ? 0 : 60, overflow: 'hidden', transition: 'max-height 260ms ease' }}>
+        <StatusBar bg="#fff" />
+      </div>
 
       {/* 헤더 — 몰입 촬영 모드에서는 부드럽게 접힌다 */}
       <div style={{
@@ -1206,19 +1209,25 @@ export function VisitCard() {
 	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
 	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
 	            {immersive && (
-	              <button
-	                type="button"
-	                onClick={() => setImmersive(false)}
-	                aria-label="촬영 모드 닫기"
-	                style={{
-	                  position: 'absolute', top: 10, right: 12, zIndex: 6,
-	                  width: 34, height: 34, border: '2px solid #430A21', borderRadius: 9999,
-	                  background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center',
-	                  justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21',
-	                }}
-	              >
-	                <X size={18} color="#430A21" strokeWidth={2.6} />
-	              </button>
+	              <>
+	                <button
+	                  type="button"
+	                  onClick={() => setImmersive(false)}
+	                  aria-label="촬영 모드 닫기"
+	                  style={{
+	                    position: 'absolute', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 12, zIndex: 6,
+	                    width: 34, height: 34, border: '2px solid #430A21', borderRadius: 9999,
+	                    background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center',
+	                    justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21',
+	                  }}
+	                >
+	                  <X size={18} color="#430A21" strokeWidth={2.6} />
+	                </button>
+	                {/* 네이티브 카메라처럼 — 셔터가 영상 위에 떠 있다 */}
+	                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', display: 'flex', justifyContent: 'center', zIndex: 6 }}>
+	                  {captureBtn}
+	                </div>
+	              </>
 	            )}
 	            {isCard ? (
 	              cardEditor
@@ -1444,12 +1453,6 @@ export function VisitCard() {
                     </button>
                   )}
                 </div>
-              </div>
-            )}
-            {!activePanel && immersive && (
-              // 몰입 촬영 — 셔터만 남긴다
-              <div style={{ flexShrink: 0, background: '#fff', padding: '8px 0 10px', display: 'flex', justifyContent: 'center' }}>
-                {captureBtn}
               </div>
             )}
             {!activePanel && !immersive && (
