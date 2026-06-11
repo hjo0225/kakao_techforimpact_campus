@@ -724,7 +724,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
 .cb-login-logo {
   position: absolute;
   left: 50%;
-  top: 12%;
+  top: 13%;
   width: 76%;
   max-width: none;
   height: auto;
@@ -748,9 +748,9 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
 
 .cb-login-actions {
   position: absolute;
-  left: 0.5cm;
-  right: 0.5cm;
-  bottom: calc(1.6cm + env(safe-area-inset-bottom, 0px));
+  left: 12%;
+  right: 12%;
+  bottom: calc(1.6cm + 1% + env(safe-area-inset-bottom, 0px));
   padding: 0;
   display: flex;
   flex-direction: column;
