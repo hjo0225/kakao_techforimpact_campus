@@ -99,20 +99,21 @@ export function TutorialOverlay() {
           >
             {SLIDES.map((slide) => (
               <div className="cb-tutorial__slide" key={slide.title}>
-                <div className="cb-tutorial__board">
-                  <p className="cb-tutorial__step">{slide.step}</p>
-                  <h2 className="cb-tutorial__title">{slide.title}</h2>
-                  <p className="cb-tutorial__desc">{slide.description}</p>
+                <div className="cb-tutorial__shotwrap">
                   <img className="cb-tutorial__shot" src={slide.shot} alt={`${slide.title} 화면`} />
+                </div>
+                <div className="cb-tutorial__caption">
+                  <img className="cb-tutorial__mascot" src={mascotGuide} alt="" aria-hidden="true" />
+                  <div className="cb-tutorial__bubble">
+                    <p className="cb-tutorial__step">{slide.step}</p>
+                    <h2 className="cb-tutorial__title">{slide.title}</h2>
+                    <p className="cb-tutorial__desc">{slide.description}</p>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="cb-tutorial__spacer" />
-
-        <img className="cb-tutorial__mascot" src={mascotGuide} alt="" aria-hidden="true" />
 
         <div className="cb-tutorial__footer">
           <div className="cb-tutorial-dots" aria-hidden="true">
