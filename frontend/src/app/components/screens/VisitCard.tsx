@@ -268,7 +268,7 @@ export function VisitCard() {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const slotInputRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const cardPhotosRef = useRef<Array<CardPhoto | null>>(makeEmptyCardPhotos(FRAMES[0]));
+  const cardPhotosRef = useRef<Array<CardPhoto | null>>([]);
   const cardUrlRef = useRef<string | null>(null);
   const dragRef = useRef<{
     index: number;
@@ -290,9 +290,9 @@ export function VisitCard() {
 
   // 직관카드
   const [bottomMode, setBottomMode] = useState<BottomMode>('controls');
-  const [frameKey, setFrameKey] = useState<string>(FRAMES[0].key);
-  const [frameCut, setFrameCut] = useState<number>(FRAMES[0].slots.length); // 프레임 선택지에서 보고 있는 컷 카테고리
-  const [cardPhotos, setCardPhotos] = useState<Array<CardPhoto | null>>(() => makeEmptyCardPhotos(FRAMES[0]));
+  const [frameKey, setFrameKey] = useState<string | null>(null); // 초기값 없음 — 사용자가 직접 선택
+  const [frameCut, setFrameCut] = useState<number>(1); // 프레임 선택지에서 보고 있는 컷 카테고리
+  const [cardPhotos, setCardPhotos] = useState<Array<CardPhoto | null>>([]);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [stickers, setStickers] = useState<StickerInstance[]>([]);
   const [selectedStickerId, setSelectedStickerId] = useState<number | null>(null);
@@ -316,17 +316,17 @@ export function VisitCard() {
   const markVerifiedToday = useVerifyGateStore((s) => s.markVerifiedToday);
   const cardUnlocked = lastVerifiedDate === todayKey();
 
-  const currentFrame = FRAMES.find((f) => f.key === frameKey) ?? FRAMES[0];
+  const currentFrame = frameKey ? FRAMES.find((f) => f.key === frameKey) ?? null : null;
   const isCard = cameraPurpose === 'visit-card';
   // 야구네컷은 오늘 용기인증을 해야 사용 가능 (그날 24시까지)
   const cardLocked = isCard && !cardUnlocked;
   const cardPhotoCount = cardPhotos.filter(Boolean).length;
-  const isCardComplete = cardPhotoCount === currentFrame.slots.length;
+  const isCardComplete = !!currentFrame && cardPhotoCount === currentFrame.slots.length;
   const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
-  const isOneCut = currentFrame.slots.length === 1;
+  const isOneCut = currentFrame?.slots.length === 1;
   // 첫 빈 슬롯에 라이브 카메라를 보여준다 — 셔터를 누르면 그 슬롯에 담기고 다음 슬롯으로 이동 (네컷 부스 방식)
-  const liveSlotIndex = isCard && !camError ? cardPhotos.findIndex((p) => !p) : -1;
-  const liveSlot = liveSlotIndex >= 0 ? currentFrame.slots[liveSlotIndex] : null;
+  const liveSlotIndex = isCard && !camError && currentFrame ? cardPhotos.findIndex((p) => !p) : -1;
+  const liveSlot = liveSlotIndex >= 0 ? currentFrame?.slots[liveSlotIndex] ?? null : null;
   const selectedSticker = selectedStickerId !== null ? stickers.find((s) => s.id === selectedStickerId) ?? null : null;
   // 설정 시트 — 열리면 제어부 + 하단 네비 전체를 교체한다
   const activePanel: 'frames' | 'sticker' | 'slot' | null =
@@ -339,6 +339,15 @@ export function VisitCard() {
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2200);
+  }, []);
+
+  // 비디오 엘리먼트가 리마운트(프레임 선택 전/후 등)돼도 스트림을 다시 붙인다
+  const attachVideo = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && streamRef.current && node.srcObject !== streamRef.current) {
+      node.srcObject = streamRef.current;
+      node.play().catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -394,7 +403,7 @@ export function VisitCard() {
   useEffect(() => {
     setView('camera');
     setBottomMode('controls');
-    setFrameKey(FRAMES[0].key);
+    setFrameKey(null); // 프레임 초기값 없음 — 직접 선택
     setVStep('idle');
     setSampleId(null);
     setAi(null);
@@ -405,7 +414,7 @@ export function VisitCard() {
     setSelectedStickerId(null);
     setCardPhotos((cur) => {
       cur.forEach(revokeCardPhoto);
-      return makeEmptyCardPhotos(FRAMES[0]);
+      return [];
     });
     setCardFile(null);
     setCardUrl((cur) => { if (cur) URL.revokeObjectURL(cur); return null; });
@@ -422,24 +431,25 @@ export function VisitCard() {
     let cancelled = false;
     let timer: number | null = null;
     setSavedCard(null);
-    if (!isCardComplete) {
+    if (!isCardComplete || !currentFrame) {
       setCardFile(null);
       setCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
       return () => { cancelled = true; };
     }
+    const baseFrame = currentFrame;
     timer = window.setTimeout(() => {
       // 1컷은 화면(프리뷰 영역) 비율 그대로 출력 — 보이는 화면이 곧 카드
-      let frame = currentFrame;
+      let frame = baseFrame;
       const rect = cardPreviewRef.current?.getBoundingClientRect();
-      if (currentFrame.slots.length === 1 && rect && rect.width > 0 && rect.height > 0) {
+      if (baseFrame.slots.length === 1 && rect && rect.width > 0 && rect.height > 0) {
         const height = Math.round((1080 * rect.height) / rect.width);
-        frame = { ...currentFrame, width: 1080, height, slots: [{ x: 0, y: 0, w: 1080, h: height }] };
+        frame = { ...baseFrame, width: 1080, height, slots: [{ x: 0, y: 0, w: 1080, h: height }] };
       }
       createCardImage({
         photos: cardPhotos as CardPhoto[],
         frame,
         visitN,
-        stickers: currentFrame.slots.length === 1 ? stickers : undefined,
+        stickers: baseFrame.slots.length === 1 ? stickers : undefined,
       })
         .then((file) => {
           if (cancelled) return;
@@ -463,27 +473,36 @@ export function VisitCard() {
     return () => { if (photo) URL.revokeObjectURL(photo.url); };
   }, [photo]);
 
+  const slotCount = currentFrame?.slots.length ?? 0;
+
   const updateCardPhotos = useCallback((next: Array<CardPhoto | null>) => {
     setCardPhotos(next);
     setSavedCard(null);
     setBottomMode('controls');
     const filled = next.filter(Boolean).length;
-    if (filled === currentFrame.slots.length) {
+    if (filled === slotCount) {
       showToast('카드가 완성됐어요');
     } else {
-      showToast(`${filled}/${currentFrame.slots.length}장 선택했어요`);
+      showToast(`${filled}/${slotCount}장 선택했어요`);
     }
-  }, [currentFrame.slots.length, showToast]);
+  }, [slotCount, showToast]);
 
   const addCardFiles = useCallback((files: File[]) => {
+    // 프레임 미선택 상태 — 먼저 프레임을 고르게 유도
+    if (slotCount === 0) {
+      setFrameCut(1);
+      setBottomMode('frames');
+      showToast('프레임을 먼저 선택해주세요');
+      return;
+    }
     const images = files.filter((file) => file.type.startsWith('image/'));
     if (images.length === 0) return;
     const next = [...cardPhotos];
     let cursor = next.findIndex((item) => !item);
     if (cursor === -1) cursor = 0;
     let selectedIndex = cursor;
-    images.slice(0, currentFrame.slots.length).forEach((file) => {
-      const target = cursor % currentFrame.slots.length;
+    images.slice(0, slotCount).forEach((file) => {
+      const target = cursor % slotCount;
       revokeCardPhoto(next[target]);
       next[target] = createCardPhoto(file);
       selectedIndex = target;
@@ -491,7 +510,7 @@ export function VisitCard() {
     });
     setSelectedSlotIndex(selectedIndex);
     updateCardPhotos(next);
-  }, [cardPhotos, currentFrame.slots.length, updateCardPhotos]);
+  }, [cardPhotos, slotCount, updateCardPhotos, showToast]);
 
   const replaceCardSlot = useCallback((index: number, file: File) => {
     if (!file.type.startsWith('image/')) return;
@@ -529,7 +548,7 @@ export function VisitCard() {
   const clearCard = () => {
     setCardPhotos((cur) => {
       cur.forEach(revokeCardPhoto);
-      return makeEmptyCardPhotos(currentFrame);
+      return currentFrame ? makeEmptyCardPhotos(currentFrame) : [];
     });
     setSelectedSlotIndex(null);
     setStickers([]);
@@ -566,7 +585,7 @@ export function VisitCard() {
     const rect = cardPreviewRef.current?.getBoundingClientRect();
     const cardRatio = rect && rect.height > 0
       ? rect.width / rect.height
-      : currentFrame.width / currentFrame.height;
+      : (currentFrame ? currentFrame.width / currentFrame.height : 1080 / 1440);
     const ar = s.height / s.width;                      // 스티커 원본 세로/가로
     const quarter = Math.abs(s.rotation % 180) === 90;  // 90/270도 회전이면 가로세로 교체
     const wFrac = STICKER_BASE_RATIO * s.scale;         // 카드 폭 대비 스티커 폭
@@ -919,7 +938,35 @@ export function VisitCard() {
     </button>
   );
 
-  const cardEditor = (
+  const cardEditor = !currentFrame ? (
+    // 프레임 미선택 — 라이브 카메라만 풀로 보여주고 프레임 선택을 유도
+    <div style={{ ...cardEditorShellStyle, padding: 0 }}>
+      {!camError ? (
+        <video
+          ref={attachVideo}
+          autoPlay
+          muted
+          playsInline
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
+        />
+      ) : (
+        <p style={cardCameraHintStyle}>카메라를 열 수 없어요. 프레임을 선택하고 사진을 추가해 주세요.</p>
+      )}
+      <button
+        type="button"
+        className="cb-no-press"
+        onClick={() => { setFrameCut(1); setBottomMode('frames'); }}
+        style={{
+          position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 2,
+          border: '2px solid #430A21', borderRadius: 9999, background: 'rgba(255,255,255,0.94)',
+          color: '#430A21', fontSize: 13, fontWeight: 800, padding: '10px 18px',
+          cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21', whiteSpace: 'nowrap',
+        }}
+      >
+        프레임을 선택해 시작하세요
+      </button>
+    </div>
+  ) : (
     <div style={{ ...cardEditorShellStyle, ...(isOneCut ? { padding: 0 } : null) }}>
       <div
         ref={cardPreviewRef}
@@ -939,7 +986,7 @@ export function VisitCard() {
         {/* 카드 모드 공용 비디오 — 첫 빈 슬롯 위치에 라이브 프리뷰, 슬롯이 다 차면 촬영용으로만 유지 */}
         {!camError && (
           <video
-            ref={videoRef}
+            ref={attachVideo}
             autoPlay
             muted
             playsInline
@@ -1132,7 +1179,7 @@ export function VisitCard() {
 	            ) : (
 	              <>
                 {!camError && (
-                  <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
+                  <video ref={attachVideo} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
                 )}
                 {/* 촬영한 사진을 뷰파인더 위에 고정 표시 (라이브 스트림 유지) */}
                 {photo && (
@@ -1321,7 +1368,7 @@ export function VisitCard() {
                       슬롯 교체
                     </span>
                     <div style={slotSwapButtonsStyle}>
-                      {currentFrame.slots.map((_, index) => (
+                      {(currentFrame?.slots ?? []).map((_, index) => (
                         index === selectedSlotIndex ? null : (
                           <button
                             key={index}
@@ -1353,7 +1400,7 @@ export function VisitCard() {
                 <>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame.slots.length}
+                      <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame ? currentFrame.slots.length : '-'}
                     </span>
                     <button type="button" onClick={() => showToast('2초 비디오는 준비 중이에요')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#B59CA3', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Video size={14} strokeWidth={2.4} /> 비디오
@@ -1365,7 +1412,7 @@ export function VisitCard() {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-                    <button type="button" onClick={() => { setFrameCut(currentFrame.slots.length); setBottomMode((m) => (m === 'frames' ? 'controls' : 'frames')); }} aria-label="프레임" aria-pressed={bottomMode === 'frames'} style={ctrlSquareStyle}>
+                    <button type="button" onClick={() => { setFrameCut(currentFrame?.slots.length ?? 1); setBottomMode((m) => (m === 'frames' ? 'controls' : 'frames')); }} aria-label="프레임" aria-pressed={bottomMode === 'frames'} style={ctrlSquareStyle}>
                       <Frame size={20} color="#430A21" strokeWidth={2.4} />
                       <span style={ctrlLabelStyle}>프레임</span>
                     </button>
@@ -1401,7 +1448,7 @@ export function VisitCard() {
       )}
 
       {/* ── 결과: 야구네컷 ── */}
-      {view === 'result' && isCard && (
+      {view === 'result' && isCard && currentFrame && (
         <>
           <div style={{ flex: 1, minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', overflow: 'hidden' }}>
             <div style={{ position: 'relative', width: `min(100%, ${(currentFrame.width / currentFrame.height) * 100}cqh)`, aspectRatio: `${currentFrame.width} / ${currentFrame.height}`, border: '2px solid #430A21', boxShadow: '4px 4px 0 0 #430A21', overflow: 'hidden', background: currentFrame.bg }}>
