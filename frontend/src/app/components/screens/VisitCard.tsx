@@ -79,8 +79,9 @@ const SLOTS_3CUT: CardSlot[] = [
   { x: 40, y: 1223, w: 1000, h: 550 },
 ];
 // 1컷 — 사진이 카드 전체를 채우고, 그 위에 감정 캐릭터 스티커를 얹는다.
+// 3:4 세로 — 에디터 영역 비율에 가까워 화면을 거의 꽉 채운다.
 const SLOTS_1CUT: CardSlot[] = [
-  { x: 0, y: 0, w: 1080, h: 1920 },
+  { x: 0, y: 0, w: 1080, h: 1440 },
 ];
 
 // 스티커 기본 transform — scale 1 = 카드 폭의 50%
@@ -108,7 +109,7 @@ const FRAMES: CardFrame[] = [
   { key: 'nc-3cut',      label: 'NC 3컷',    countLabel: '3장', src: nc3Frame,      width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
   { key: 'samsung-3cut', label: '삼성 3컷',  countLabel: '3장', src: samsung3Frame, width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
   { key: 'ssg-3cut',     label: 'SSG 3컷',   countLabel: '3장', src: ssg3Frame,     width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
-  { key: '1cut',         label: '1컷',       countLabel: '1장', width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
+  { key: '1cut',         label: '1컷',       countLabel: '1장', width: 1080, height: 1440, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
 ];
 
 // 1컷 캐릭터 팔레트 — 탭하면 카드에 "추가"된다 (교체 아님, 여러 개 가능)
@@ -323,8 +324,9 @@ export function VisitCard() {
   const isCardComplete = cardPhotoCount === currentFrame.slots.length;
   const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
   const isOneCut = currentFrame.slots.length === 1;
-  // 1컷은 빈 슬롯에 라이브 카메라를 그대로 보여준다 — 캐릭터 스티커가 위에 떠서 AR 프리뷰처럼 보임
-  const liveSlotPreview = isCard && isOneCut && !cardPhotos[0] && !camError;
+  // 첫 빈 슬롯에 라이브 카메라를 보여준다 — 셔터를 누르면 그 슬롯에 담기고 다음 슬롯으로 이동 (네컷 부스 방식)
+  const liveSlotIndex = isCard && !camError ? cardPhotos.findIndex((p) => !p) : -1;
+  const liveSlot = liveSlotIndex >= 0 ? currentFrame.slots[liveSlotIndex] : null;
   const selectedSticker = selectedStickerId !== null ? stickers.find((s) => s.id === selectedStickerId) ?? null : null;
   // 설정 시트 — 열리면 제어부 + 하단 네비 전체를 교체한다
   const activePanel: 'frames' | 'sticker' | 'slot' | null =
@@ -908,15 +910,19 @@ export function VisitCard() {
           background: currentFrame.bg,
         }}
       >
-        {/* 카드 모드 공용 비디오 — 1컷 빈 슬롯에서는 풀블리드 라이브 프리뷰, 그 외에는 촬영용으로만 유지 */}
+        {/* 카드 모드 공용 비디오 — 첫 빈 슬롯 위치에 라이브 프리뷰, 슬롯이 다 차면 촬영용으로만 유지 */}
         {!camError && (
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            style={liveSlotPreview ? {
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
+            style={liveSlot ? {
+              position: 'absolute',
+              left: `${(liveSlot.x / currentFrame.width) * 100}%`,
+              top: `${(liveSlot.y / currentFrame.height) * 100}%`,
+              width: `${(liveSlot.w / currentFrame.width) * 100}%`,
+              height: `${(liveSlot.h / currentFrame.height) * 100}%`,
               objectFit: 'cover', display: 'block', zIndex: 0,
               transform: facing === 'user' ? 'scaleX(-1)' : 'none',
             } : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
@@ -954,7 +960,7 @@ export function VisitCard() {
                 aria-label={`${index + 1}번째 사진 ${slotPhoto ? '편집' : '선택'}`}
                 style={{
                   ...cardSlotButtonStyle,
-                  background: liveSlotPreview ? 'transparent' : cardSlotButtonStyle.background,
+                  background: index === liveSlotIndex ? 'transparent' : cardSlotButtonStyle.background,
                   borderStyle: slotPhoto ? 'solid' : 'dashed',
                   borderColor: selectedSlotIndex === index ? '#fff' : slotPhoto ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.82)',
                   touchAction: slotPhoto ? 'none' : 'manipulation',
@@ -967,7 +973,7 @@ export function VisitCard() {
                     onLoad={(e) => updateCardPhotoSize(index, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                     style={getPhotoPreviewStyle(slotPhoto, slot)}
                   />
-                ) : liveSlotPreview ? null : (
+                ) : index === liveSlotIndex ? null : (
                   <span style={cardSlotEmptyStyle}>
                     <ImageIcon size={22} strokeWidth={2.4} />
                     <span>{index + 1}</span>
