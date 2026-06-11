@@ -9,7 +9,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useVerifyGateStore, todayKey } from '../../../store/verifyGateStore';
 import { BottomNav } from '../BottomNav';
 import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
-import { saveImageViaBridge } from '../../../lib/webviewBridge';
+import { isInWebView, saveImageViaBridge } from '../../../lib/webviewBridge';
 import lockedMascot from '../../../assets/feedback/locked.png';
 import reusableMascot from '../../../assets/feedback/reusable.png';
 import singleMascot from '../../../assets/feedback/single.png';
@@ -911,19 +911,35 @@ export function VisitCard() {
   const handleDownload = async () => {
     if (!cardUrl || busy) return;
     setBusy(true);
+    const filename = `야구네컷_${visitN}.png`;
+    // 다운로드는 사용자 제스처 체인 안에서 즉시 트리거해야 한다 —
+    // 서버 저장(ensureSaved)을 먼저 await하면 Safari가 제스처 만료로 차단함.
+    let iosTab = false;
+    let bridged = false;
+    if (isInWebView()) {
+      // WebView: a[download] 미동작 → 네이티브 저장 브릿지
+      try { bridged = await saveImageViaBridge(cardUrl, filename); } catch { bridged = false; }
+    }
+    if (!bridged) {
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        // iOS WebKit(사파리/크롬/인앱 전부)은 a[download]를 무시 → 새 탭에서 길게 눌러 저장
+        const tab = window.open(cardUrl, '_blank');
+        if (!tab) window.location.href = cardUrl; // 팝업 차단 폴백
+        iosTab = true;
+      } else {
+        const a = document.createElement('a');
+        a.href = cardUrl;
+        a.download = filename;
+        document.body.appendChild(a); // Firefox: DOM에 없으면 click 무시
+        a.click();
+        a.remove();
+      }
+    }
     let saved = true;
     try { await ensureSaved(); } catch { saved = false; }
-    // WebView는 blob 다운로드(a[download])가 동작하지 않음 → 네이티브 저장 브릿지로 위임
-    const filename = `야구네컷_${visitN}.png`;
-    let bridged = false;
-    try { bridged = await saveImageViaBridge(cardUrl, filename); } catch { bridged = false; }
-    if (!bridged) {
-      const a = document.createElement('a');
-      a.href = cardUrl;
-      a.download = filename;
-      a.click();
-    }
-    showToast(saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
+    showToast(iosTab
+      ? '이미지를 길게 눌러 사진에 저장하세요'
+      : saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
     setSavePrompt(false);
     setBusy(false);
   };
