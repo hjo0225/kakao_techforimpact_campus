@@ -8,7 +8,7 @@ import { useApp, type CameraPurpose } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { useVerifyGateStore, todayKey } from '../../../store/verifyGateStore';
 import { BottomNav } from '../BottomNav';
-import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
+import { createVisitCard, getVisitCards, sharedCardImageUrl } from '../../../lib/visitCardApi';
 import { isInWebView, saveImageViaBridge } from '../../../lib/webviewBridge';
 import lockedMascot from '../../../assets/feedback/locked.png';
 import reusableMascot from '../../../assets/feedback/reusable.png';
@@ -919,6 +919,18 @@ export function VisitCard() {
     if (isInWebView()) {
       // WebView: a[download] 미동작 → 네이티브 저장 브릿지
       try { bridged = await saveImageViaBridge(cardUrl, filename); } catch { bridged = false; }
+    }
+    // 카톡 등 인앱 브라우저: blob 다운로드/새 탭 모두 막힘 → 서버 공개 이미지 URL로 이동해 길게 저장
+    if (!bridged && /KAKAOTALK|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent)) {
+      try {
+        const rec = await ensureSaved();
+        if (rec) {
+          showToast('이미지를 길게 눌러 사진에 저장하세요');
+          window.location.href = sharedCardImageUrl(rec.shareToken);
+          setBusy(false);
+          return;
+        }
+      } catch { /* 서버 저장 실패 — 아래 일반 경로로 폴백 */ }
     }
     if (!bridged) {
       if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
