@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Camera, Search } from 'lucide-react'
 import stadiumBg from '../../../assets/tutorial/stadium-bg.png'
+import mapShot from '../../../assets/tutorial/map-shot.png'
 import reusableMascot from '../../../assets/feedback/reusable.png'
 import victorySticker from '../../../assets/card-frames/1cutvictory.png'
 
@@ -75,11 +76,6 @@ function DemoShell({ children, bg = 'var(--cb-bg)' }: { children: ReactNode; bg?
 
 export function MapDemo() {
   const chips = ['전체', '식사', '카페', '편의점']
-  const markers: Array<{ left: string; top: string; n: number }> = [
-    { left: '28%', top: '34%', n: 1 },
-    { left: '64%', top: '26%', n: 2 },
-    { left: '50%', top: '62%', n: 3 },
-  ]
   return (
     <DemoShell>
       <div style={{ padding: '10px 10px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -96,19 +92,15 @@ export function MapDemo() {
           ))}
         </div>
       </div>
-      {/* 구장 필드 */}
+      {/* 구장 지도 — 실제 지도 화면 캡처 */}
       <div style={{ flex: 1, position: 'relative', margin: '2px 10px 10px', border: BORDER, borderRadius: 14, background: '#DFEAD2', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', left: '14%', right: '14%', top: '16%', bottom: '22%', borderRadius: '50% 50% 8% 8%', border: '2px solid rgba(67,10,33,0.35)', background: '#A9C68F' }} />
-        <div style={{ position: 'absolute', left: '32%', right: '32%', top: '38%', bottom: '38%', borderRadius: 10, transform: 'rotate(45deg)', border: '2px solid rgba(67,10,33,0.3)', background: '#C9B98A' }} />
-        <span style={{ position: 'absolute', left: '50%', top: '46%', transform: 'translate(-50%, -50%)', border: BORDER, borderRadius: 9999, background: '#430A21', color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 10px', whiteSpace: 'nowrap' }}>⚾ 잠실야구장</span>
-        {markers.map((m) => (
-          <span key={m.n} style={{
-            position: 'absolute', left: m.left, top: m.top, transform: 'translate(-50%, -50%)',
-            width: 24, height: 24, borderRadius: 9999, border: BORDER, background: 'var(--cb-primary)',
-            color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 0 0 #430A21',
-          }}>{m.n}</span>
-        ))}
+        <img
+          src={mapShot}
+          alt=""
+          draggable={false}
+          className="cb-photo"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+        />
       </div>
     </DemoShell>
   )
