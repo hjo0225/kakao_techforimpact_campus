@@ -283,6 +283,8 @@ export function VisitCard() {
 
   const [view, setView] = useState<View>('camera');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
+  // 몰입 촬영 모드 — 셔터 첫 탭에 헤더/네비를 접고 뷰파인더 확장, 다시 탭하면 촬영
+  const [immersive, setImmersive] = useState(false);
   const [camError, setCamError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -403,6 +405,7 @@ export function VisitCard() {
   useEffect(() => {
     setView('camera');
     setBottomMode('controls');
+    setImmersive(false);
     setFrameKey(null); // 프레임 초기값 없음 — 직접 선택
     setVStep('idle');
     setSampleId(null);
@@ -487,7 +490,7 @@ export function VisitCard() {
     }
   }, [slotCount, showToast]);
 
-  const addCardFiles = useCallback((files: File[]) => {
+  const addCardFiles = useCallback((files: File[], opts?: { continuous?: boolean }) => {
     // 프레임 미선택 상태 — 먼저 프레임을 고르게 유도
     if (slotCount === 0) {
       setFrameCut(1);
@@ -510,6 +513,12 @@ export function VisitCard() {
     });
     setSelectedSlotIndex(selectedIndex);
     updateCardPhotos(next);
+    // 몰입 촬영 중: 슬롯이 남았으면 시트 없이 연속 촬영, 다 차면 몰입 해제(편집 시트로)
+    if (opts?.continuous) {
+      const filled = next.filter(Boolean).length;
+      if (filled < slotCount) setSelectedSlotIndex(null);
+      else setImmersive(false);
+    }
   }, [cardPhotos, slotCount, updateCardPhotos, showToast]);
 
   const replaceCardSlot = useCallback((index: number, file: File) => {
@@ -782,11 +791,12 @@ export function VisitCard() {
       if (!blob) return;
       const file = new File([blob], 'shot.png', { type: 'image/png' });
       if (cameraPurpose === 'visit-card') {
-        addCardFiles([file]);
+        addCardFiles([file], { continuous: immersive });
         return;
       }
       const url = URL.createObjectURL(file);
       setPhoto((cur) => { if (cur) URL.revokeObjectURL(cur.url); return { file, url }; });
+      setImmersive(false); // 촬영 완료 — 몰입 모드 해제 (AI 인증 버튼 노출)
       setBottomMode('controls');
       setVStep('idle');
       setSampleId(null);
@@ -794,7 +804,26 @@ export function VisitCard() {
       setVResult(null);
       setView('camera'); // 결과 화면으로 점프하지 않고 카메라 UI 유지
     }, 'image/png');
-  }, [addCardFiles, facing, cameraPurpose]);
+  }, [addCardFiles, facing, cameraPurpose, immersive]);
+
+  // 셔터: 첫 탭 → 몰입 촬영 모드(헤더/네비 접힘 + 뷰파인더 확장), 몰입 중 탭 → 실제 촬영
+  const handleShutter = () => {
+    if (camError) return;
+    if (!immersive) {
+      if (isCard && !currentFrame) {
+        setFrameCut(1);
+        setBottomMode('frames');
+        showToast('프레임을 먼저 선택해주세요');
+        return;
+      }
+      setSelectedSlotIndex(null);
+      setSelectedStickerId(null);
+      setBottomMode('controls');
+      setImmersive(true);
+      return;
+    }
+    capture();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -923,7 +952,7 @@ export function VisitCard() {
   const captureBtn = (
     <button
       type="button"
-      onClick={capture}
+      onClick={handleShutter}
       disabled={camError}
       aria-label="촬영"
       style={{
@@ -1111,8 +1140,16 @@ export function VisitCard() {
       <input ref={fileInputRef} type="file" accept="image/*" multiple={isCard} capture={isCard ? undefined : 'environment'} onChange={handleFileChange} style={{ display: 'none' }} aria-hidden tabIndex={-1} />
       <StatusBar bg="#fff" />
 
-      {/* 헤더 — 흰색 풀폭(상태바까지): 중앙 토글 + 우측 전후면 전환. 크기 통일 + 둥근 테두리 */}
-      <div style={{ flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px 10px' }}>
+      {/* 헤더 — 몰입 촬영 모드에서는 부드럽게 접힌다 */}
+      <div style={{
+        flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', gap: 8,
+        padding: immersive ? '0 12px' : '4px 12px 10px',
+        maxHeight: immersive ? 0 : 64,
+        opacity: immersive ? 0 : 1,
+        overflow: 'hidden',
+        pointerEvents: immersive ? 'none' : 'auto',
+        transition: 'max-height 260ms ease, opacity 200ms ease, padding 260ms ease',
+      }}>
         <div style={{ width: 32, flexShrink: 0 }} aria-hidden />
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 4px', gap: 2, border: '2px solid #430A21', borderRadius: 9999, background: '#F0E8E7' }}>
@@ -1168,6 +1205,21 @@ export function VisitCard() {
         <>
 	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
 	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
+	            {immersive && (
+	              <button
+	                type="button"
+	                onClick={() => setImmersive(false)}
+	                aria-label="촬영 모드 닫기"
+	                style={{
+	                  position: 'absolute', top: 10, right: 12, zIndex: 6,
+	                  width: 34, height: 34, border: '2px solid #430A21', borderRadius: 9999,
+	                  background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center',
+	                  justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21',
+	                }}
+	              >
+	                <X size={18} color="#430A21" strokeWidth={2.6} />
+	              </button>
+	            )}
 	            {isCard ? (
 	              cardEditor
 	            ) : camError && !photo ? (
@@ -1394,7 +1446,13 @@ export function VisitCard() {
                 </div>
               </div>
             )}
-            {!activePanel && (
+            {!activePanel && immersive && (
+              // 몰입 촬영 — 셔터만 남긴다
+              <div style={{ flexShrink: 0, background: '#fff', padding: '8px 0 10px', display: 'flex', justifyContent: 'center' }}>
+                {captureBtn}
+              </div>
+            )}
+            {!activePanel && !immersive && (
             <div style={{ flexShrink: 0, background: '#fff', padding: '6px 0 4px' }}>
             {isCard ? (
                 <>
@@ -1581,7 +1639,16 @@ export function VisitCard() {
         </div>
       )}
 
-      {!activePanel && <BottomNav />}
+      {!activePanel && (
+        <div style={{
+          flexShrink: 0,
+          maxHeight: immersive ? 0 : 140,
+          overflow: 'hidden',
+          transition: 'max-height 260ms ease',
+        }}>
+          <BottomNav />
+        </div>
+      )}
     </div>
   );
 }
