@@ -1256,7 +1256,7 @@ export function VisitCard() {
                 )}
                 {/* 촬영한 사진을 뷰파인더 위에 고정 표시 (라이브 스트림 유지) */}
                 {photo && (
-                  <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                  <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#fff' }} />
                 )}
               </>
 	            )}
@@ -1564,7 +1564,7 @@ export function VisitCard() {
       {view === 'result' && !isCard && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {/* 촬영 사진 — 남는 영역을 채우는 둥근 카드. 분석 중: 어둡게 + 브래킷 + 스캔 바 */}
-          <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#000', margin: '10px 14px 0', border: '2px solid #430A21', borderRadius: 18 }}>
+          <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#fff', margin: '10px 14px 0', border: '2px solid #430A21', borderRadius: 18 }}>
             {photo && <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
             {vStep === 'analyzing' && (
               <>
