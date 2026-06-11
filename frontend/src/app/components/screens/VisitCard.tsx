@@ -1333,7 +1333,7 @@ export function VisitCard() {
                 </div>
                 {frameCut === 1 ? (
                   // 1컷 — 캐릭터 팔레트: 탭하면 카드에 추가 (여러 개 가능)
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                  <div className="hide-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
                     {STICKER_ASSETS.map((asset) => (
                       <button key={asset.key} type="button" onClick={() => addSticker(asset)}
                         aria-label={`${asset.label} 캐릭터 추가`}
@@ -1346,7 +1346,7 @@ export function VisitCard() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                  <div className="hide-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
                     {FRAMES.filter((f) => f.slots.length === frameCut).map((f) => {
                       const active = frameKey === f.key;
                       return (
