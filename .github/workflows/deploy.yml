@@ -44,8 +44,11 @@ jobs:
               - 'backend/**'
               - '.github/workflows/deploy.yml'
 
+  # 프론트 배포는 deploy-frontend.yml 단일 경로 (키 주입 + SDK 임베드 가드).
+  # 이 잡은 CI(타입체크+빌드 검증)만 수행한다 — 여기서 hosting 배포 금지.
+  # (과거 사고: 이 잡이 VITE_KAKAO_MAPS_JS_KEY 없이 빌드한 번들로 hosting을 덮어써 지도가 죽음)
   ci-frontend:
-    name: Frontend CI + Deploy
+    name: Frontend CI
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -67,30 +70,14 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Build (production)
+      - name: Build (CI validation)
         env:
           VITE_KAKAO_REST_API_KEY: ${{ secrets.VITE_KAKAO_REST_API_KEY }}
+          VITE_KAKAO_MAPS_JS_KEY: ${{ secrets.VITE_KAKAO_MAPS_JS_KEY }}
           VITE_KAKAO_REDIRECT_URI: https://cleanballtrio.web.app/oauth/callback
           VITE_KAKAO_LOGOUT_REDIRECT_URI: https://cleanballtrio.web.app/login
-          VITE_API_BASE_URL: https://cleanballtrio-api-fpvvjohnta-du.a.run.app
+          VITE_API_BASE_URL: https://cleanballtrio-api-1076044788885.asia-northeast3.run.app
         run: npm run build
-
-      - name: Authenticate to GCP (WIF)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-
-      - name: Setup gcloud
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy to Firebase Hosting
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: ${{ github.workspace }}
-        run: |
-          npx firebase-tools deploy --only hosting --project "$FIREBASE_PROJECT" --non-interactive
 
   ci-backend:
     name: Backend CI + Deploy
