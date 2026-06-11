@@ -750,7 +750,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   position: absolute;
   left: 12%;
   right: 12%;
-  bottom: calc(1.6cm + 1% + env(safe-area-inset-bottom, 0px));
+  bottom: calc(1.6cm + 3% + env(safe-area-inset-bottom, 0px));
   padding: 0;
   display: flex;
   flex-direction: column;
