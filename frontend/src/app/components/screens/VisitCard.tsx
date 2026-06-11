@@ -428,9 +428,16 @@ export function VisitCard() {
       return () => { cancelled = true; };
     }
     timer = window.setTimeout(() => {
+      // 1컷은 화면(프리뷰 영역) 비율 그대로 출력 — 보이는 화면이 곧 카드
+      let frame = currentFrame;
+      const rect = cardPreviewRef.current?.getBoundingClientRect();
+      if (currentFrame.slots.length === 1 && rect && rect.width > 0 && rect.height > 0) {
+        const height = Math.round((1080 * rect.height) / rect.width);
+        frame = { ...currentFrame, width: 1080, height, slots: [{ x: 0, y: 0, w: 1080, h: height }] };
+      }
       createCardImage({
         photos: cardPhotos as CardPhoto[],
-        frame: currentFrame,
+        frame,
         visitN,
         stickers: currentFrame.slots.length === 1 ? stickers : undefined,
       })
@@ -899,14 +906,19 @@ export function VisitCard() {
   );
 
   const cardEditor = (
-    <div style={cardEditorShellStyle}>
+    <div style={{ ...cardEditorShellStyle, ...(isOneCut ? { padding: 0 } : null) }}>
       <div
         ref={cardPreviewRef}
         style={{
           ...cardFramePreviewStyle,
-          // 카드 전체가 항상 한 화면에 담긴다 (contain) — 보이는 그대로가 결과물
-          height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)`,
-          aspectRatio: `${currentFrame.width} / ${currentFrame.height}`,
+          // 1컷: 화면 영역을 100% 채움 — 결과물 비율을 화면 비율로 동적으로 맞춰 WYSIWYG 유지
+          // 2컷/3컷: 카드 전체가 한 화면에 담기는 contain
+          ...(isOneCut
+            ? { width: '100%', height: '100%' }
+            : {
+                height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)`,
+                aspectRatio: `${currentFrame.width} / ${currentFrame.height}`,
+              }),
           background: currentFrame.bg,
         }}
       >
