@@ -408,6 +408,25 @@ html, body, #root {
   box-shadow: 1px 1px 0 0 #430a21;
 }
 
+/* ── Pixel press — 앱 전역 버튼 :active 인터랙션 (DESIGN.md §0) ──
+   인라인 스타일 버튼까지 일괄 적용. transform으로 위치를 잡는 버튼
+   (지도 마커, 카드 스티커)과 드래그 표면(카드 슬롯)은 .cb-no-press로 제외.
+   :where()로 특이도를 낮춰 컴포넌트별 press 규칙(.cb-button 등)이 우선하게 한다. */
+button:where(:not(:disabled)):where(:not(.cb-no-press)):active {
+  transform: translate(2px, 2px);
+}
+
+/* hard shadow를 선언한 버튼은 눌렀을 때 섀도를 collapse (inline style 덮어쓰기에 !important 필요) */
+button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
+  box-shadow: var(--cb-shadow-pressed) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button:where(:not(.cb-no-press)) {
+    transition: transform 0.08s linear, box-shadow 0.08s linear;
+  }
+}
+
 .cb-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;

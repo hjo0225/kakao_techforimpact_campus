@@ -860,6 +860,7 @@ export function VisitCard() {
               />
               <button
                 type="button"
+                className="cb-no-press"
                 onClick={() => handleSlotClick(index)}
                 onPointerDown={(e) => handleSlotPointerDown(index, e)}
                 onPointerMove={(e) => handleSlotPointerMove(index, e)}
@@ -894,6 +895,7 @@ export function VisitCard() {
         {currentFrame.sticker && (
           <button
             type="button"
+            className="cb-no-press"
             aria-label="캐릭터 이동 · 크기 조절"
             onPointerDown={handleStickerPointerDown}
             onPointerMove={handleStickerPointerMove}

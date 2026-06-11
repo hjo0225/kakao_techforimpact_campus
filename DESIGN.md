@@ -17,8 +17,10 @@
 | **그라데이션** | `linear-gradient(...)` 금지. flat color로 대체. 강조가 필요하면 hard shadow + border 조합으로 |
 | **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용) |
 
-활성/누르기 인터랙션:
-- `:active` → `transform: translate(2px, 2px)` + `box-shadow: var(--cb-shadow-pressed)` (눌린 느낌)
+활성/누르기 인터랙션 (전역 구현 — `design-system.css`):
+- 모든 `button:not(:disabled):active` → `transform: translate(2px, 2px)` (픽셀 press). `transition: transform 70ms`는 `prefers-reduced-motion: no-preference`에서만
+- hard shadow를 선언한 버튼(`.cb-button` 및 인라인 `[style*="box-shadow"]`)은 `:active`에 `box-shadow: var(--cb-shadow-pressed)`로 collapse
+- **예외 `.cb-no-press`**: transform으로 위치를 잡는 버튼(지도 마커, 카드 스티커)과 드래그 표면(카드 슬롯)은 press transform 제외 — 필수 적용
 
 ## 1-0. Pixel Border / Shadow tokens
 

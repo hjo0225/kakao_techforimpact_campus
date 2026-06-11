@@ -131,6 +131,7 @@ function StoreMarker({
   return (
     <button
       type="button"
+      className="cb-no-press"
       aria-label={`${store.name} 선택`}
       title={`${store.name} · ${store.slotNo}`}
       onClick={() => onSelectStore(store)}
