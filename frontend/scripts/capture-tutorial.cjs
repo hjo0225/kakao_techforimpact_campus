@@ -49,6 +49,14 @@ function mockHistory() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 핵심 영역만 잘라 확대 효과 — 전체 화면을 축소해 넣으면 글자가 뭉개진다 (viewport 390×844 기준)
+const CLIPS = {
+  map: { x: 0, y: 50, width: 390, height: 470 },
+  verify: { x: 0, y: 96, width: 390, height: 540 },
+  card: { x: 0, y: 96, width: 390, height: 540 },
+  record: { x: 0, y: 46, width: 390, height: 520 },
+};
+
 async function bootstrapSession(page) {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
   await page.evaluate(
@@ -96,7 +104,7 @@ async function fakeCamera(page) {
 
 async function shoot(page, name) {
   const file = path.join(OUT_DIR, `${name}.png`);
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, clip: CLIPS[name] });
   console.log(`✔ ${name}.png`);
 }
 
@@ -105,7 +113,7 @@ async function shoot(page, name) {
   try {
     // ── 1. 지도 ──────────────────────────────────────────────
     let page = await browser.newPage();
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3 });
     await bootstrapSession(page);
     await page.goto(`${BASE}/map`, { waitUntil: 'networkidle2' });
     await sleep(2500);
@@ -114,7 +122,7 @@ async function shoot(page, name) {
 
     // ── 2. 용기인증 카메라 ────────────────────────────────────
     page = await browser.newPage();
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3 });
     await fakeCamera(page);
     await bootstrapSession(page);
     await page.goto(`${BASE}/home`, { waitUntil: 'networkidle2' });
@@ -130,8 +138,10 @@ async function shoot(page, name) {
     await sleep(400);
     await page.locator('button ::-p-text(1컷)').click();
     await sleep(400);
-    await page.locator('button ::-p-text(기본 1컷)').click();
-    await sleep(600);
+    await page.locator('button[aria-label="기본 캐릭터 추가"]').click(); // 팔레트에서 캐릭터 추가
+    await sleep(500);
+    await page.locator('button[aria-label="캐릭터 편집 닫기"]').click();
+    await sleep(400);
     await page.locator('button[aria-label="촬영"]').click();
     await sleep(800);
     await page.locator('button[aria-label="편집 닫기"]').click(); // 슬롯 편집 패널 닫기
@@ -141,7 +151,7 @@ async function shoot(page, name) {
 
     // ── 4. 캘린더 (이력 목킹) ─────────────────────────────────
     page = await browser.newPage();
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3 });
     await page.setRequestInterception(true);
     const photoBytes = fs.readFileSync(path.resolve(__dirname, '../src/assets/tutorial/stadium-bg.png'));
     const cors = {
