@@ -398,7 +398,8 @@ export function VisitCard() {
 
   // 카메라 뷰 = 촬영 모드 → BottomNav 선 제거
   useEffect(() => {
-    setCaptureMode(view === 'camera');
+    // 카메라 화면에서는 결과 뷰 포함 항상 네비 상단선 제거 (검은선이 간헐적으로 보이던 문제)
+    setCaptureMode(true);
     return () => setCaptureMode(false);
   }, [view, setCaptureMode]);
 
@@ -744,6 +745,14 @@ export function VisitCard() {
     });
   }, []);
 
+  // 1컷은 출력 비율이 화면(프리뷰 영역) 실측 — cover 계산도 같은 비율을 써야 여백이 안 생긴다
+  const effectiveSlot = (slot: CardSlot): CardSlot => {
+    if (!isOneCut) return slot;
+    const rect = cardPreviewRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return slot;
+    return { x: 0, y: 0, w: 1080, h: Math.round((1080 * rect.height) / rect.width) };
+  };
+
   const getPhotoPreviewStyle = (photoItem: CardPhoto, slot: CardSlot): React.CSSProperties => {
     if (!photoItem.naturalWidth || !photoItem.naturalHeight) {
       return {
@@ -1075,7 +1084,7 @@ export function VisitCard() {
                     src={slotPhoto.url}
                     alt=""
                     onLoad={(e) => updateCardPhotoSize(index, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
-                    style={getPhotoPreviewStyle(slotPhoto, slot)}
+                    style={getPhotoPreviewStyle(slotPhoto, effectiveSlot(slot))}
                   />
                 ) : index === liveSlotIndex ? null : (
                   <span style={cardSlotEmptyStyle}>
@@ -1252,53 +1261,51 @@ export function VisitCard() {
 	          </div>
 
           {/* 하단 — 기본: 제어부(+네비). 설정 시트가 열리면 제어부와 네비를 통째로 교체 */}
-            {activePanel === 'frames' && (
-              <div style={settingsSheetStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#430A21' }}>프레임</span>
-                  <button type="button" onClick={() => setBottomMode('controls')} aria-label="프레임 닫기" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
+            {activePanel === 'frames' && !immersive && (
+              <div style={{ ...settingsSheetStyle, gap: 6 }}>
+                {/* 한 줄 헤더 — 프레임 라벨 + 컷 탭 + 닫기 (세로 공간 절약) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#430A21', flexShrink: 0 }}>프레임</span>
+                  <div style={{ display: 'flex', gap: 5, flex: 1 }}>
+                    {FRAME_CUTS.map((cut) => {
+                      const on = frameCut === cut;
+                      return (
+                        <button key={cut} type="button" onClick={() => setFrameCut(cut)} aria-pressed={on}
+                          style={{ padding: '4px 12px', border: '2px solid #430A21', borderRadius: 9999, fontSize: 11, fontWeight: 800, cursor: 'pointer', background: on ? 'var(--cb-primary)' : '#fff', color: on ? '#fff' : '#430A21', boxShadow: on ? '0 2px 0 0 #430A21' : 'none' }}>
+                          {cut}컷
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={() => setBottomMode('controls')} aria-label="프레임 닫기" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4, flexShrink: 0 }}>
                     <X size={18} color="#430A21" strokeWidth={2.6} />
                   </button>
                 </div>
-                {/* 컷 카테고리 탭 (2컷/3컷 … 1컷 프레임 추가 시 자동 노출) — 해당 컷 프레임만 노출 */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                  {FRAME_CUTS.map((cut) => {
-                    const on = frameCut === cut;
-                    return (
-                      <button key={cut} type="button" onClick={() => setFrameCut(cut)} aria-pressed={on}
-                        style={{ padding: '5px 13px', border: '2px solid #430A21', borderRadius: 9999, fontSize: 12, fontWeight: 800, cursor: 'pointer', background: on ? 'var(--cb-primary)' : '#fff', color: on ? '#fff' : '#430A21', boxShadow: on ? '0 2px 0 0 #430A21' : 'none' }}>
-                        {cut}컷
-                      </button>
-                    );
-                  })}
-                </div>
                 {frameCut === 1 ? (
                   // 1컷 — 캐릭터 팔레트: 탭하면 카드에 추가 (여러 개 가능)
-                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
                     {STICKER_ASSETS.map((asset) => (
                       <button key={asset.key} type="button" onClick={() => addSticker(asset)}
                         aria-label={`${asset.label} 캐릭터 추가`}
-                        style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 6px', border: '2px solid #430A21', background: '#fff', boxShadow: '0 2px 0 0 #430A21', cursor: 'pointer' }}>
-                        <span style={{ width: 48, height: 48, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 72, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 4px', border: '2px solid #430A21', borderRadius: 12, background: '#fff', boxShadow: '0 2px 0 0 #430A21', cursor: 'pointer' }}>
+                        <span style={{ width: 40, height: 40, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <img src={asset.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#430A21', whiteSpace: 'nowrap' }}>{asset.label}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#8C6B73', whiteSpace: 'nowrap' }}>+ 추가</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#430A21', whiteSpace: 'nowrap' }}>{asset.label}</span>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
                     {FRAMES.filter((f) => f.slots.length === frameCut).map((f) => {
                       const active = frameKey === f.key;
                       return (
                         <button key={f.key} type="button" onClick={() => selectCardFrame(f)} aria-pressed={active}
-                          style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 6px', border: active ? `2px solid ${f.accent}` : '2px solid #430A21', background: active ? 'var(--cb-primary-soft)' : '#fff', boxShadow: active ? `0 3px 0 0 ${f.accent}` : '0 2px 0 0 #430A21', cursor: 'pointer' }}>
-                          <span style={{ width: 28, height: 48, border: '1px solid #430A21', background: f.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 72, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 4px', border: active ? `2px solid ${f.accent}` : '2px solid #430A21', borderRadius: 12, background: active ? 'var(--cb-primary-soft)' : '#fff', boxShadow: active ? `0 3px 0 0 ${f.accent}` : '0 2px 0 0 #430A21', cursor: 'pointer' }}>
+                          <span style={{ width: 24, height: 40, border: '1px solid #430A21', background: f.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={f.src ?? sticker1Default} alt="" style={{ width: '100%', height: '100%', objectFit: f.src ? 'cover' : 'contain', display: 'block' }} />
                           </span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: active ? 'var(--cb-primary-deep)' : '#430A21', whiteSpace: 'nowrap' }}>{f.label}</span>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--cb-primary-deep)' : '#8C6B73', whiteSpace: 'nowrap' }}>{f.countLabel}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: active ? 'var(--cb-primary-deep)' : '#430A21', whiteSpace: 'nowrap' }}>{f.label}</span>
                         </button>
                       );
                     })}
@@ -1306,7 +1313,7 @@ export function VisitCard() {
                 )}
               </div>
             )}
-            {activePanel === 'sticker' && selectedSticker && (
+            {activePanel === 'sticker' && !immersive && selectedSticker && (
               <div style={settingsSheetStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
@@ -1370,7 +1377,7 @@ export function VisitCard() {
                 </div>
               </div>
             )}
-            {activePanel === 'slot' && selectedPhoto && selectedSlotIndex !== null && (
+            {activePanel === 'slot' && !immersive && selectedPhoto && selectedSlotIndex !== null && (
               <div style={settingsSheetStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
@@ -1456,7 +1463,7 @@ export function VisitCard() {
                 </div>
               </div>
             )}
-            {!activePanel && !immersive && (
+            {!immersive && (
             <div style={{ flexShrink: 0, background: '#fff', padding: '6px 0 4px' }}>
             {isCard ? (
                 <>
@@ -1535,11 +1542,11 @@ export function VisitCard() {
         </>
       )}
 
-      {/* ── 결과: 인증(AI 분석) ── */}
+      {/* ── 결과: 인증(AI 분석) — 사진이 남는 영역을 풀로 채우고, 카드는 하단 고정 ── */}
       {view === 'result' && !isCard && (
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* 촬영 사진 — 분석 중: 어둡게 + 포커스 브래킷 + 스캔 바 (튜토리얼 데모와 동일한 연출) */}
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* 촬영 사진 — 남는 영역을 채우는 둥근 카드. 분석 중: 어둡게 + 브래킷 + 스캔 바 */}
+          <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#000', margin: '10px 14px 0', border: '2px solid #430A21', borderRadius: 18 }}>
             {photo && <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
             {vStep === 'analyzing' && (
               <>
@@ -1553,6 +1560,7 @@ export function VisitCard() {
             )}
           </div>
 
+          <div style={{ flexShrink: 0, background: '#fff', padding: '10px 14px 12px' }}>
           {vStep === 'idle' && (
             <button type="button" onClick={handleAnalyze} disabled={busy}
               style={{ border: '2px solid #430A21', borderRadius: 16, background: 'var(--cb-primary)', color: '#fff', padding: '15px 12px', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', boxShadow: '0 3px 0 0 #430A21, 0 4px 8px rgba(200,92,119,0.32)' }}>
@@ -1608,6 +1616,7 @@ export function VisitCard() {
               </button>
             </div>
           )}
+          </div>
         </div>
       )}
 
@@ -1651,16 +1660,14 @@ export function VisitCard() {
         </div>
       )}
 
-      {!activePanel && (
-        <div style={{
-          flexShrink: 0,
-          maxHeight: immersive ? 0 : 140,
-          overflow: 'hidden',
-          transition: 'max-height 260ms ease',
-        }}>
-          <BottomNav />
-        </div>
-      )}
+      <div style={{
+        flexShrink: 0,
+        maxHeight: immersive ? 0 : 140,
+        overflow: 'hidden',
+        transition: 'max-height 260ms ease',
+      }}>
+        <BottomNav />
+      </div>
     </div>
   );
 }
@@ -1778,12 +1785,12 @@ const cardToolPanelStyle: React.CSSProperties = {
   gap: 8,
 };
 
-// 설정 시트 — 열리면 제어부와 하단 네비를 통째로 교체하는 하단 영역
+// 설정 시트 — 열리면 제어부와 하단 네비를 통째로 교체하는 하단 영역 (구분선 없음)
+// 설정 패널 — 제어부 위에 표시된다 (제어부/네비는 그대로 유지)
 const settingsSheetStyle: React.CSSProperties = {
   flexShrink: 0,
   background: '#fff',
-  borderTop: '2px solid #430A21',
-  padding: '12px 14px calc(14px + env(safe-area-inset-bottom, 0px))',
+  padding: '8px 12px 2px',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
