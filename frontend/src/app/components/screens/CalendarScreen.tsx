@@ -15,6 +15,7 @@ import {
   fetchVerificationImageUrl,
 } from '../../../lib/verifyApi';
 import { getVisitCards, sharedCardImageUrl } from '../../../lib/visitCardApi';
+import { isInWebView, shareTextViaBridge } from '../../../lib/webviewBridge';
 import calendarMascot from '../../../assets/calendar-mascot.png';
 
 // ── 공통 정규화 모델 ──────────────────────────────────────────────
@@ -115,6 +116,7 @@ function EntryImage({
   if (url) {
     return (
       <img
+        className="cb-photo"
         src={url}
         alt={alt}
         onError={() => setFailed(true)}
@@ -163,7 +165,7 @@ function Lightbox({ entry, onClose }: { entry: CalEntry; onClose: () => void }) 
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 200,
+        zIndex: 1000, // 모달류는 무조건 최상위
         WebkitTapHighlightColor: 'transparent',
       }}
     >
@@ -472,6 +474,8 @@ export function CalendarScreen() {
     const monthText = `${viewY}.${String(viewM + 1).padStart(2, '0')}`;
     const text = `${monthText} ${tabLabel} ${monthCount}건 기록 🌱`;
     try {
+      // WebView는 navigator.share 미지원이 흔함 → 네이티브 공유 시트로 위임
+      if (isInWebView() && shareTextViaBridge(text)) return;
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({ title: tabLabel, text });
       } else if (navigator.clipboard) {
@@ -508,7 +512,7 @@ export function CalendarScreen() {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: 8,
-          padding: '4px 14px 10px',
+          padding: '12px 14px 10px',
         }}
       >
         {TABS.map((t) => {
@@ -521,6 +525,7 @@ export function CalendarScreen() {
               aria-pressed={active}
               style={{
                 border: active ? '2px solid var(--cb-primary)' : BORDER,
+                borderRadius: 14,
                 background: active ? 'var(--cb-primary-soft)' : '#fff',
                 color: active ? 'var(--cb-primary-deep)' : '#430A21',
                 padding: '11px 0',
@@ -568,11 +573,12 @@ export function CalendarScreen() {
                 appearance: 'none',
                 WebkitAppearance: 'none',
                 border: BORDER,
+                borderRadius: 9999, // 알약 — 상단 탭/아이콘 버튼 라운드와 통일
                 background: '#fff',
                 color: '#430A21',
                 fontSize: 16,
                 fontWeight: 800,
-                padding: '7px 30px 7px 12px',
+                padding: '7px 30px 7px 14px',
                 cursor: 'pointer',
                 boxShadow: '0 2px 0 0 #430A21',
               }}
@@ -636,14 +642,16 @@ export function CalendarScreen() {
         </div>
       </div>
 
-      {/* 본문 */}
+      {/* 본문 — 그리드 뷰는 남는 높이를 캘린더가 모두 차지 (아랫선이 마스코트 바로 위) */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
-          padding: '0 14px 18px',
+          padding: '0 14px 10px',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {error && (
@@ -708,7 +716,7 @@ function MonthGrid({
   onPickDay: (key: string) => void;
 }) {
   return (
-    <div style={{ border: BORDER, background: '#fff', boxShadow: '3px 3px 0 0 #430A21' }}>
+    <div style={{ border: BORDER, background: '#fff', boxShadow: '3px 3px 0 0 #430A21', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* 요일 헤더 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
         {WEEKDAYS.map((w, i) => (
@@ -729,13 +737,13 @@ function MonthGrid({
         ))}
       </div>
 
-      {/* 날짜 셀 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      {/* 날짜 셀 — 남는 높이를 행이 균등 분배 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', flex: 1, minHeight: 0 }}>
         {cells.map((cell, idx) => {
           const col = idx % 7;
           const isSun = col === 0;
           if (!cell) {
-            return <div key={`b-${idx}`} style={{ aspectRatio: '1 / 1', background: '#FAF5EF' }} />;
+            return <div key={`b-${idx}`} style={{ minHeight: 44, background: '#FAF5EF' }} />;
           }
           const dayEntries = byDay.get(cell.key);
           const rep = dayEntries?.[0];
@@ -747,7 +755,7 @@ function MonthGrid({
               disabled={!dayEntries}
               style={{
                 position: 'relative',
-                aspectRatio: '1 / 1',
+                minHeight: 44,
                 padding: 0,
                 border: 'none',
                 borderRight: col === 6 ? 'none' : '1px solid rgba(67,10,33,0.12)',
@@ -880,6 +888,7 @@ const iconBtnStyle: React.CSSProperties = {
   width: 34,
   height: 34,
   border: BORDER,
+  borderRadius: 9999, // 다른 화면 아이콘 버튼(원형)과 통일
   background: '#fff',
   display: 'flex',
   alignItems: 'center',

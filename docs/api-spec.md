@@ -30,15 +30,25 @@ Hello World!
 
 ### `POST /auth/kakao`
 
-카카오 OAuth `code`를 받아 백엔드에서 토큰 교환 + 카카오 프로필 조회 → DB upsert → JWT 발급.
+카카오 로그인 → DB upsert → JWT 발급. 두 가지 입력을 받는다:
 
-**Request body**
+1. **웹 (브라우저 OAuth redirect)**: `code`를 받아 백엔드에서 토큰 교환 + 프로필 조회
+2. **WebView (네이티브 SDK)**: Expo 래퍼가 `@react-native-seoul/kakao-login`으로 발급받은
+   카카오 `accessToken`을 postMessage 브릿지로 웹에 전달 → 토큰 교환 생략, 프로필 조회만
+
+**Request body** — 둘 중 하나
 ```json
 {
   "code": "string",          // 카카오 authorize 콜백의 query param `code`
   "redirectUri": "string"    // authorize 요청 시 사용한 redirect_uri와 정확히 일치
 }
 ```
+```json
+{
+  "accessToken": "string"    // 네이티브 카카오 SDK가 발급한 access token
+}
+```
+> 둘 다 없으면 400 (ValidationPipe).
 
 **Response 200**
 ```json

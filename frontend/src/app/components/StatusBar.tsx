@@ -7,5 +7,5 @@ interface StatusBarProps {
 
 /** Dynamic Island 아래 안전영역 여백을 확보하는 스페이서. bg로 배경을 채울 수 있음. */
 export function StatusBar({ bg }: StatusBarProps) {
-  return <div style={{ flexShrink: 0, height: 'max(44px, env(safe-area-inset-top, 44px))', background: bg }} />;
+  return <div style={{ flexShrink: 0, height: 'env(safe-area-inset-top, 0px)', background: bg }} />;
 }

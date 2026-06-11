@@ -408,6 +408,25 @@ html, body, #root {
   box-shadow: 1px 1px 0 0 #430a21;
 }
 
+/* ── Pixel press — 앱 전역 버튼 :active 인터랙션 (DESIGN.md §0) ──
+   인라인 스타일 버튼까지 일괄 적용. transform으로 위치를 잡는 버튼
+   (지도 마커, 카드 스티커)과 드래그 표면(카드 슬롯)은 .cb-no-press로 제외.
+   :where()로 특이도를 낮춰 컴포넌트별 press 규칙(.cb-button 등)이 우선하게 한다. */
+button:where(:not(:disabled)):where(:not(.cb-no-press)):active {
+  transform: translate(2px, 2px);
+}
+
+/* hard shadow를 선언한 버튼은 눌렀을 때 섀도를 collapse (inline style 덮어쓰기에 !important 필요) */
+button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
+  box-shadow: var(--cb-shadow-pressed) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button:where(:not(.cb-no-press)) {
+    transition: transform 0.08s linear, box-shadow 0.08s linear;
+  }
+}
+
 .cb-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -593,7 +612,7 @@ html, body, #root {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 300;
+  z-index: 1000; /* 모달은 무조건 최상위 */
   backdrop-filter: blur(4px);
 }
 
@@ -608,7 +627,7 @@ html, body, #root {
   border: var(--cb-border-thick);
   border-radius: var(--cb-radius-xl);
   padding: 28px 24px 20px;
-  z-index: 301;
+  z-index: 1001; /* 모달은 무조건 최상위 */
   box-shadow: var(--cb-shadow-md);
 }
 
@@ -880,7 +899,8 @@ html, body, #root {
 }
 
 .cb-tutorial__viewport {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 10px;
   overflow: hidden;
   touch-action: pan-y;
@@ -888,23 +908,101 @@ html, body, #root {
 
 .cb-tutorial__track {
   display: flex;
+  height: 100%;
   transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .cb-tutorial__slide {
   flex: 0 0 100%;
+  min-height: 0;
   padding: 0 2px;
-}
-
-.cb-tutorial__board {
-  background: rgba(255, 252, 246, 0.94);
-  border: var(--cb-border-pixel);
-  border-radius: var(--cb-radius-lg);
-  box-shadow: var(--cb-shadow-md);
-  padding: 16px 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+/* 스크린샷 — 상단부터 남는 높이를 모두 차지 */
+.cb-tutorial__shotwrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* 튜토리얼 전용 데모 화면 — 컴포넌트가 박스를 100% 채워 비율 문제가 없다 */
+.cb-tutorial__demo {
+  width: 100%;
+  height: 100%;
+  border: var(--cb-border-pixel);
+  box-shadow: var(--cb-shadow-md);
+  overflow: hidden;
+  background: var(--cb-bg);
+}
+
+/* 튜토리얼 캡처 슬라이드 — 박스 비율(354:620)로 제작된 이미지 (1062×1860px 권장) */
+.cb-tutorial__shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border: var(--cb-border-pixel);
+  box-shadow: var(--cb-shadow-md);
+  image-rendering: auto; /* pixelated 전역 규칙 예외 */
+}
+
+/* 캡션 행 — 마스코트(작게) + 말풍선 설명 */
+.cb-tutorial__caption {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cb-tutorial__mascot {
+  width: 96px;
+  height: auto;
+  flex-shrink: 0;
+  pointer-events: none;
+  transform: scaleX(-1); /* 말풍선(오른쪽)을 바라보게 좌우반전 */
+  filter: drop-shadow(0 4px 6px rgba(67, 10, 33, 0.28));
+}
+
+.cb-tutorial__bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 252, 246, 0.96);
+  border: var(--cb-border-pixel);
+  border-radius: var(--cb-radius-md);
+  box-shadow: var(--cb-shadow-sm);
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+/* 말풍선 꼬리 — 마스코트를 향한 좌하단 삼각형 (테두리 + 면) */
+.cb-tutorial__bubble::after {
+  content: '';
+  position: absolute;
+  left: -11px;
+  bottom: 14px;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-right: 11px solid #430a21;
+}
+
+.cb-tutorial__bubble::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  bottom: 16px;
+  z-index: 1;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 9px solid rgba(255, 252, 246, 0.96);
 }
 
 .cb-tutorial__step {
@@ -918,7 +1016,7 @@ html, body, #root {
 .cb-tutorial__title {
   margin: 0;
   color: var(--cb-text);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.35;
 }
@@ -926,45 +1024,15 @@ html, body, #root {
 .cb-tutorial__desc {
   margin: 0;
   color: var(--cb-text-soft);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.cb-tutorial__placeholder {
-  margin-top: 6px;
-  height: 116px;
-  border: 2px dashed var(--cb-border);
-  border-radius: var(--cb-radius-md);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  color: var(--cb-muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.cb-tutorial__spacer {
-  flex: 1;
-  min-height: 120px;
-}
-
-.cb-tutorial__mascot {
-  position: absolute;
-  right: 0;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  width: 70%;
-  max-width: 270px;
-  height: auto;
-  z-index: 2;
-  pointer-events: none;
-  filter: drop-shadow(0 4px 6px rgba(67, 10, 33, 0.28));
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .cb-tutorial__footer {
   position: relative;
   z-index: 3;
   flex-shrink: 0;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -977,11 +1045,12 @@ html, body, #root {
 }
 
 .cb-tutorial-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
-  background: rgba(255, 252, 246, 0.7);
-  border: 1px solid #430a21;
+  background: rgba(255, 252, 246, 0.95);
+  border: 2px solid #430a21;
+  box-sizing: border-box;
   transition: width 200ms ease, background 200ms ease;
 }
 
@@ -994,6 +1063,94 @@ html, body, #root {
   .cb-tutorial__track,
   .cb-tutorial-dot {
     transition: none;
+  }
+}
+
+/* 실사 사진/스크린샷 — 전역 pixelated 규칙 예외 (DESIGN.md §0 아이콘 예외) */
+.cb-photo {
+  image-rendering: auto;
+}
+
+/* ── AI 인증 분석 로딩 — 마스코트가 사진을 살펴보는 인터랙션 (DESIGN.md §AI 분석 로딩) ── */
+.cb-ai-loading {
+  background: var(--cb-surface);
+  border: var(--cb-border-pixel);
+  border-radius: 18px; /* 인증 화면 카드 라운드와 통일 */
+  box-shadow: var(--cb-shadow-sm);
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.cb-ai-loading__mascot {
+  width: 110px;
+  height: auto;
+  animation: cb-ai-bob 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 3px 0 rgba(67, 10, 33, 0.18));
+}
+
+.cb-ai-loading__label {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cb-text);
+}
+
+.cb-ai-loading__dots span {
+  display: inline-block;
+  animation: cb-ai-dot 1.2s infinite;
+}
+
+.cb-ai-loading__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.cb-ai-loading__dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.cb-ai-loading__hint {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cb-muted);
+}
+
+/* 촬영 사진 위를 오르내리는 스캔 바 — 부모는 position: relative + overflow: hidden */
+.cb-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: var(--cb-primary);
+  animation: cb-ai-scan 1.6s linear infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes cb-ai-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes cb-ai-dot {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+
+@keyframes cb-ai-scan {
+  0% { top: 0; }
+  100% { top: calc(100% - 4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-ai-loading__mascot,
+  .cb-ai-loading__dots span,
+  .cb-scanline {
+    animation: none;
   }
 }
 

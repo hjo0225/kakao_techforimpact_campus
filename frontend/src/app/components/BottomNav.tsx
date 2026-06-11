@@ -1,6 +1,5 @@
 import { Home, Map, Calendar, UserRound, type LucideIcon } from 'lucide-react';
 import { useNavigation, type Route } from '../navigation';
-import { useApp } from '../AppContext';
 
 interface Tab {
   label: string;
@@ -18,7 +17,6 @@ const TABS: Tab[] = [
 
 export function BottomNav() {
   const { currentRoute, navigate } = useNavigation();
-  const { captureMode } = useApp();
 
   return (
     <nav
@@ -28,8 +26,8 @@ export function BottomNav() {
         display: 'flex',
         alignItems: 'flex-end',
         background: '#fff',
-        // 촬영 모드: 선 제거 → 위 촬영 제어부와 한 덩어리로 연결
-        borderTop: captureMode ? 'none' : '2px solid #430A21',
+        // 전 화면 공통: 상단 실선 없이 흰 배경으로 콘텐츠와 연결
+        borderTop: 'none',
         paddingTop: 8,
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
       }}

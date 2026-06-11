@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### feat: WebView 네이티브 카카오 로그인 + postMessage 브릿지
+
+- **`POST /auth/kakao` 입력 확장**: 기존 `{ code, redirectUri }`에 더해 `{ accessToken }`(네이티브
+  카카오 SDK 발급 토큰) 허용. accessToken이 오면 토큰 교환을 생략하고 프로필 조회만 수행
+- 프론트: `lib/webviewBridge.ts` 신규 — WebView 감지, 네이티브 로그인 요청/수신,
+  이미지 저장(`SAVE_IMAGE`)·텍스트 공유(`SHARE_TEXT`) 브릿지
+- 세션: JWT `exp` 사전 검사(`lib/jwt.ts`) — 만료 토큰이면 보호 라우트 진입/포그라운드 복귀 시 즉시 로그아웃
+
 ### feat: 직관카드 서버 저장 + 공개 공유 링크 + 기존 카드 프레임 복원
 
 - 신규 테이블 `visit_cards`(마이그레이션 `20260602010000_add_visit_cards`)

@@ -41,6 +41,7 @@ export default function SharedCardPage() {
           </p>
         ) : (
           <img
+            className="cb-photo"
             src={sharedCardImageUrl(token)}
             alt="야구네컷"
             onError={() => setFailed(true)}

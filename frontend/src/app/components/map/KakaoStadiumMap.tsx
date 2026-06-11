@@ -323,11 +323,6 @@ export function KakaoStadiumMap({
         const map = new window.kakao.maps.Map(containerRef.current, { center: position, level: 2 })
         mapRef.current = map
         new window.kakao.maps.Marker({ map, position })
-        new window.kakao.maps.CustomOverlay({
-          map, position,
-          content: `<div style="background:#430A21;color:#FFF8F9;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,0.3);transform:translateY(-6px);">⚾ 잠실야구장</div>`,
-          yAnchor: 1,
-        })
         setMapReady(true)
       })
       .catch((err: Error) => setLoadError(err.message === 'no-key' ? 'no-key' : 'failed'))

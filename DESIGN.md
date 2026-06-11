@@ -15,10 +15,12 @@
 | **테두리** | `border: var(--cb-border-pixel)` = `2px solid #430a21` 기본. 인라인 스타일에서도 `2px solid` 미만 금지 |
 | **그림자** | hard offset만. `--cb-shadow-xs/sm/md/primary`는 모두 `Xpx Xpx 0 0 #430a21` 형태. blur(`rgba(..., 0.X)` 4th value) 사용 금지 |
 | **그라데이션** | `linear-gradient(...)` 금지. flat color로 대체. 강조가 필요하면 hard shadow + border 조합으로 |
-| **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용) |
+| **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용). **예외**: 실사 사진·앱 스크린샷은 `image-rendering: auto` — pixelated는 픽셀아트 에셋 전용 (사진에 적용하면 계단 현상) |
 
-활성/누르기 인터랙션:
-- `:active` → `transform: translate(2px, 2px)` + `box-shadow: var(--cb-shadow-pressed)` (눌린 느낌)
+활성/누르기 인터랙션 (전역 구현 — `design-system.css`):
+- 모든 `button:not(:disabled):active` → `transform: translate(2px, 2px)` (픽셀 press). `transition: transform 70ms`는 `prefers-reduced-motion: no-preference`에서만
+- hard shadow를 선언한 버튼(`.cb-button` 및 인라인 `[style*="box-shadow"]`)은 `:active`에 `box-shadow: var(--cb-shadow-pressed)`로 collapse
+- **예외 `.cb-no-press`**: transform으로 위치를 잡는 버튼(지도 마커, 카드 스티커)과 드래그 표면(카드 슬롯)은 press transform 제외 — 필수 적용
 
 ## 1-0. Pixel Border / Shadow tokens
 
@@ -246,15 +248,35 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
 └─────────────────┘
 ```
 
+### AI 분석 로딩 (`cb-ai-loading` / `cb-scanline`)
+
+용기인증 AI 판독 대기 인터랙션 (분석이 수 초 걸림). 마스코트가 사진을 살펴보는 콘셉트.
+
+- `cb-ai-loading`: surface 카드 (pixel border + `--cb-shadow-sm`). 내부 세로 정렬 —
+  마스코트(`cb-ai-loading__mascot`, 110px, `cb-ai-bob` 1.1s 둥실거림) ·
+  라벨(`cb-ai-loading__label`, `--cb-text` 15px/800) + 점 3개(`cb-ai-loading__dots`,
+  `cb-ai-dot` 순차 점멸 0/0.2/0.4s 딜레이) · 힌트(`cb-ai-loading__hint`, `--cb-muted` 12px)
+- `cb-scanline`: 촬영 사진 컨테이너 위 `--cb-primary` 4px 수평 바, `cb-ai-scan`으로
+  위↔아래 1.6s 왕복 (AI 스캔 느낌). 컨테이너는 `position: relative` + `overflow: hidden`.
+- `prefers-reduced-motion: reduce`: 모든 애니메이션 제거 (정적 표시).
+
 ### `<TutorialOverlay>` — 첫 진입 온보딩 캐러셀
 
 로그인 직후 앱 프레임 내부를 덮는 풀스크린 오버레이. 실제 앱 스크린샷 4장을 좌우 스와이프/다음 버튼으로 넘긴다.
 
 - 컨테이너: `cb-tutorial-backdrop` (`position: absolute; inset: 0`, `--cb-bg`, `z-index: 50`). `.cb-app-bg`(relative + isolation) 내부에 마운트되어 폰 프레임 안에 갇힘.
-- 슬라이드 트랙: `cb-tutorial__track` (`transform: translateX`), 전환 `320ms cubic-bezier(0.22,0.61,0.36,1)`. 스크린샷은 `cb-tutorial__shot` (pixel border + `--cb-shadow-md`, `max-height: 54vh`).
-- 제목 `cb-tutorial__title`(`--cb-text`, 18px/800), 설명 `cb-tutorial__desc`(`--cb-muted`, 14px).
+- 슬라이드 트랙: `cb-tutorial__track` (`transform: translateX`), 전환 `320ms cubic-bezier(0.22,0.61,0.36,1)`.
+- **슬라이드 레이아웃 (위→아래)**: ① 데모 화면 `cb-tutorial__shotwrap > cb-tutorial__demo` —
+  앱 캡처가 아니라 **튜토리얼 전용으로 그린 컴포넌트**(`tutorial/TutorialDemos.tsx`,
+  지도/인증/야구네컷/캘린더 4종). 박스를 100% 채워 기기 비율과 무관하게 딱 맞음.
+  pixel border + `--cb-shadow-md`, 토큰/기존 에셋(stadium-bg, 마스코트, 캐릭터 스티커)만 사용
+  ② 캡션 행 `cb-tutorial__caption` — 마스코트(`cb-tutorial__mascot`, 96px, 좌측) +
+  **말풍선** `cb-tutorial__bubble` (cream surface + pixel border + `--cb-shadow-sm`,
+  좌하단에 마스코트를 향한 꼬리 ::before/::after 삼각형)
+- 말풍선 내부: step(`cb-tutorial__step`, `--cb-primary` 12px/800) · 제목(`cb-tutorial__title`, `--cb-text` 17px/800) · 설명(`cb-tutorial__desc`, `--cb-text-soft` 13px).
 - **점 인디케이터** `cb-tutorial-dots` > `cb-tutorial-dot`: inactive=`--cb-border` 8px 원, active(`.is-active`)=`--cb-primary` 22px 알약. 신규 토큰 없이 기존 색 토큰만 사용.
-- CTA는 `<Button variant="primary" size="lg">`("다음"/"시작하기"), "다시 안보기"는 `cb-tutorial__skip` 텍스트 버튼(`--cb-muted`).
+- CTA 버튼 없음 — **스와이프로만 진행**, 마지막 슬라이드에서 한 번 더 스와이프하면 종료.
+  "다시 안보기"는 `cb-tutorial__skip` 텍스트 버튼(`--cb-muted`). 푸터에는 점 인디케이터만.
 - `prefers-reduced-motion`: 트랙/점 transition 제거.
 
 ## Rules
