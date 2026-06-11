@@ -276,7 +276,8 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
 - 말풍선 내부: step(`cb-tutorial__step`, `--cb-primary` 12px/800) · 제목(`cb-tutorial__title`, `--cb-text` 17px/800) · 설명(`cb-tutorial__desc`, `--cb-text-soft` 13px).
 - **점 인디케이터** `cb-tutorial-dots` > `cb-tutorial-dot`: inactive=`--cb-border` 8px 원, active(`.is-active`)=`--cb-primary` 22px 알약. 신규 토큰 없이 기존 색 토큰만 사용.
 - CTA 버튼 없음 — **스와이프로만 진행**, 마지막 슬라이드에서 한 번 더 스와이프하면 종료.
-  "다시 안보기"는 `cb-tutorial__skip` 텍스트 버튼(`--cb-muted`). 푸터에는 점 인디케이터만.
+  우상단 "닫기"는 `cb-tutorial__skip` 텍스트 버튼(`--cb-muted`). 푸터에는 점 인디케이터만.
+- **매 로그인마다 무조건 노출** (영구 해제 없음) — 닫기는 이번 세션만.
 - `prefers-reduced-motion`: 트랙/점 transition 제거.
 
 ## Rules
