@@ -877,14 +877,14 @@ export function VisitCard() {
       disabled={camError}
       aria-label="촬영"
       style={{
-        width: 72, height: 72, borderRadius: '9999px', border: '2px solid #430A21',
+        width: 64, height: 64, borderRadius: '9999px', border: '2px solid #430A21',
         background: camError ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         cursor: camError ? 'not-allowed' : 'pointer',
         boxShadow: '0 4px 0 0 #430A21, 0 6px 14px rgba(200,92,119,0.4)',
       }}
     >
-      <Camera size={28} strokeWidth={2.4} />
+      <Camera size={26} strokeWidth={2.4} />
     </button>
   );
 
@@ -1109,11 +1109,10 @@ export function VisitCard() {
 	            )}
 	          </div>
 
-          {/* 촬영 제어부 — 풀폭, 카메라 뷰는 선 없이 네비와 연결.
-              가장 큰 상태(프레임 선택) 높이를 모든 모드에 항상 고정해 레이아웃 점프 방지 */}
-          <div style={{ flexShrink: 0, background: '#fff', padding: '8px 0 4px', minHeight: 184, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            {isCard && bottomMode === 'frames' ? (
-              <div style={{ padding: '0 14px 8px' }}>
+          {/* 촬영 제어부 — 컴팩트 고정. 프레임/편집 패널은 제어부 위(뷰파인더 위)에 떠서 겹침 */}
+          <div style={{ flexShrink: 0, position: 'relative', background: '#fff', padding: '6px 0 4px' }}>
+            {isCard && bottomMode === 'frames' && (
+              <div style={cardFloatPanelStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: '#430A21' }}>프레임</span>
                   <button type="button" onClick={() => setBottomMode('controls')} aria-label="프레임 닫기" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
@@ -1165,8 +1164,9 @@ export function VisitCard() {
                   </div>
                 )}
               </div>
-            ) : isCard ? (
-              selectedSticker ? (
+            )}
+            {isCard && bottomMode !== 'frames' && selectedSticker && (
+              <div style={cardFloatPanelStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
                     <span style={cardToolTitleStyle}>
@@ -1219,7 +1219,10 @@ export function VisitCard() {
                     </button>
                   </div>
                 </div>
-              ) : selectedPhoto && selectedSlotIndex !== null ? (
+              </div>
+            )}
+            {isCard && bottomMode !== 'frames' && !selectedSticker && selectedPhoto && selectedSlotIndex !== null && (
+              <div style={cardFloatPanelStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
                     <span style={cardToolTitleStyle}>
@@ -1294,9 +1297,11 @@ export function VisitCard() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              </div>
+            )}
+            {isCard ? (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame.slots.length}
                     </span>
@@ -1310,7 +1315,7 @@ export function VisitCard() {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-                    <button type="button" onClick={() => { setFrameCut(currentFrame.slots.length); setBottomMode('frames'); }} aria-label="프레임" style={ctrlSquareStyle}>
+                    <button type="button" onClick={() => { setFrameCut(currentFrame.slots.length); setBottomMode((m) => (m === 'frames' ? 'controls' : 'frames')); }} aria-label="프레임" aria-pressed={bottomMode === 'frames'} style={ctrlSquareStyle}>
                       <Frame size={20} color="#430A21" strokeWidth={2.4} />
                       <span style={ctrlLabelStyle}>프레임</span>
                     </button>
@@ -1330,20 +1335,19 @@ export function VisitCard() {
                     </div>
                   )}
                 </>
-              )
             ) : (
               // 인증 — 촬영 전: 셔터 / 촬영 후: 다시 · AI 인증
               photo ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px' }}>
-                  <button type="button" onClick={retake} aria-label="다시 찍기" style={{ ...ctrlSquareStyle, width: 72, height: 72 }}>
+                  <button type="button" onClick={retake} aria-label="다시 찍기" style={{ ...ctrlSquareStyle, width: 64, height: 64 }}>
                     <RotateCcw size={24} color="#430A21" strokeWidth={2.4} />
                     <span style={ctrlLabelStyle}>다시</span>
                   </button>
                   <button type="button" onClick={handleAnalyze} disabled={busy}
-                    style={{ flex: 1, height: 72, border: '2px solid #430A21', borderRadius: 18, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200,92,119,0.34)' }}>
+                    style={{ flex: 1, height: 64, border: '2px solid #430A21', borderRadius: 18, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200,92,119,0.34)' }}>
                     <ScanLine size={20} strokeWidth={2.4} /> AI 인증
                   </button>
-                  <div style={{ width: 72 }} aria-hidden />
+                  <div style={{ width: 64 }} aria-hidden />
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
@@ -1493,7 +1497,7 @@ export function VisitCard() {
 }
 
 const ctrlSquareStyle: React.CSSProperties = {
-  width: 56, height: 56, flexShrink: 0, border: '2px solid #430A21', background: '#fff',
+  width: 52, height: 52, flexShrink: 0, border: '2px solid #430A21', background: '#fff',
   borderRadius: 16,
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
   cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21',
@@ -1601,10 +1605,24 @@ const cardCameraHintStyle: React.CSSProperties = {
 };
 
 const cardToolPanelStyle: React.CSSProperties = {
-  padding: '0 14px 8px',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
+};
+
+// 프레임/편집 패널 — 제어부 위(뷰파인더 위)에 떠 있는 카드
+const cardFloatPanelStyle: React.CSSProperties = {
+  position: 'absolute',
+  left: 10,
+  right: 10,
+  bottom: '100%',
+  marginBottom: 8,
+  zIndex: 5,
+  background: '#fff',
+  border: '2px solid #430A21',
+  borderRadius: 16,
+  boxShadow: '0 3px 0 0 #430A21, 0 8px 18px rgba(67,10,33,0.18)',
+  padding: '10px 12px',
 };
 
 const cardToolHeaderStyle: React.CSSProperties = {
