@@ -16,7 +16,7 @@ import singleMascot from '../../../assets/feedback/single.png';
 import guideMascot from '../../../assets/tutorial/mascot-guide.png';
 import { FocusBrackets } from '../tutorial/TutorialDemos';
 import {
-  analyzeImage, confirmLabel, ApiError,
+  analyzeImage, confirmLabel, getVerificationHistory, ApiError,
   type AiPrediction, type ContainerLabel, type CertificationMode,
 } from '../../../lib/verifyApi';
 import lotteFrame from '../../../assets/card-frames/2cutlotte.png';
@@ -319,6 +319,26 @@ export function VisitCard() {
   const lastVerifiedDate = useVerifyGateStore((s) => s.lastVerifiedDate);
   const markVerifiedToday = useVerifyGateStore((s) => s.markVerifiedToday);
   const cardUnlocked = lastVerifiedDate === todayKey();
+
+  // 게이트는 서버가 진실 — 다른 브라우저/기기/WebView에서 로그인해도 오늘 인증 이력이 있으면 해제.
+  // (localStorage는 클라이언트별이라 이 동기화가 없으면 기기마다 다시 잠긴 것처럼 보인다)
+  useEffect(() => {
+    if (cardUnlocked) return;
+    let cancelled = false;
+    getVerificationHistory()
+      .then((items) => {
+        if (cancelled) return;
+        const today = todayKey();
+        const doneToday = items.some((it) => {
+          if (it.status !== 'CONFIRMED') return false;
+          const d = new Date(it.createdAt);
+          return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` === today;
+        });
+        if (doneToday) markVerifiedToday();
+      })
+      .catch(() => {}); // 실패 시 로컬 게이트 그대로
+    return () => { cancelled = true; };
+  }, [cardUnlocked, markVerifiedToday]);
 
   const currentFrame = frameKey ? FRAMES.find((f) => f.key === frameKey) ?? null : null;
   const isCard = cameraPurpose === 'visit-card';
