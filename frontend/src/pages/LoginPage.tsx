@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import landingBg from '../assets/landing-bg.png'
-import landingLogo from '../assets/landing-logo.svg'
+import landingLogo from '../assets/landing-logo.png'
 import { Button } from '../app/components/design-system'
 import { api } from '../lib/apiClient'
 import { getKakaoLoginUrl } from '../lib/kakaoAuth'

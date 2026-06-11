@@ -724,8 +724,8 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
 .cb-login-logo {
   position: absolute;
   left: 50%;
-  top: 0%;
-  width: 96%;
+  top: 6%;
+  width: 84%;
   max-width: none;
   height: auto;
   object-fit: contain;
