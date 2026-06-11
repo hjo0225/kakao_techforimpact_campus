@@ -15,6 +15,7 @@ import {
   fetchVerificationImageUrl,
 } from '../../../lib/verifyApi';
 import { getVisitCards, sharedCardImageUrl } from '../../../lib/visitCardApi';
+import { isInWebView, shareTextViaBridge } from '../../../lib/webviewBridge';
 import calendarMascot from '../../../assets/calendar-mascot.png';
 
 // ── 공통 정규화 모델 ──────────────────────────────────────────────
@@ -472,6 +473,8 @@ export function CalendarScreen() {
     const monthText = `${viewY}.${String(viewM + 1).padStart(2, '0')}`;
     const text = `${monthText} ${tabLabel} ${monthCount}건 기록 🌱`;
     try {
+      // WebView는 navigator.share 미지원이 흔함 → 네이티브 공유 시트로 위임
+      if (isInWebView() && shareTextViaBridge(text)) return;
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({ title: tabLabel, text });
       } else if (navigator.clipboard) {

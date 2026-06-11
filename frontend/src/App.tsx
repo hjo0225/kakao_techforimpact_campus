@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { isTokenExpired } from './lib/jwt'
 import MobileFrame from './app/MobileFrame'
 import { TutorialOverlay } from './app/components/tutorial/TutorialOverlay'
 import LoginPage from './pages/LoginPage'
@@ -29,7 +30,22 @@ function ScreenFallback() {
 
 function PrivateLayout() {
   const token = useAuthStore((s) => s.token)
-  if (!token) return <Navigate to="/login" replace />
+  const logout = useAuthStore((s) => s.logout)
+  const expired = !!token && isTokenExpired(token)
+
+  // 만료 토큰 정리 + WebView가 백그라운드에 오래 있다 돌아온 경우 재검사
+  useEffect(() => {
+    if (expired) logout()
+    const recheck = () => {
+      if (document.visibilityState !== 'visible') return
+      const current = useAuthStore.getState().token
+      if (current && isTokenExpired(current)) useAuthStore.getState().logout()
+    }
+    document.addEventListener('visibilitychange', recheck)
+    return () => document.removeEventListener('visibilitychange', recheck)
+  }, [expired, logout])
+
+  if (!token || expired) return <Navigate to="/login" replace />
   return (
     <div className="cb-app-bg">
       <Outlet />

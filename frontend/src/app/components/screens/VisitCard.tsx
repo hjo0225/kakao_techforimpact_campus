@@ -10,6 +10,7 @@ import { useVerifyGateStore, todayKey } from '../../../store/verifyGateStore';
 import { BottomNav } from '../BottomNav';
 import { StatusBar } from '../StatusBar';
 import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
+import { saveImageViaBridge } from '../../../lib/webviewBridge';
 import lockedMascot from '../../../assets/feedback/locked.png';
 import reusableMascot from '../../../assets/feedback/reusable.png';
 import singleMascot from '../../../assets/feedback/single.png';
@@ -741,10 +742,16 @@ export function VisitCard() {
     setBusy(true);
     let saved = true;
     try { await ensureSaved(); } catch { saved = false; }
-    const a = document.createElement('a');
-    a.href = cardUrl;
-    a.download = `야구네컷_${visitN}.png`;
-    a.click();
+    // WebView는 blob 다운로드(a[download])가 동작하지 않음 → 네이티브 저장 브릿지로 위임
+    const filename = `야구네컷_${visitN}.png`;
+    let bridged = false;
+    try { bridged = await saveImageViaBridge(cardUrl, filename); } catch { bridged = false; }
+    if (!bridged) {
+      const a = document.createElement('a');
+      a.href = cardUrl;
+      a.download = filename;
+      a.click();
+    }
     showToast(saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
     setBusy(false);
   };

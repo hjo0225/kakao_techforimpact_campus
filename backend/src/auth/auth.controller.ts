@@ -8,6 +8,6 @@ export class AuthController {
 
   @Post('kakao')
   kakaoLogin(@Body() dto: KakaoCallbackDto) {
-    return this.authService.kakaoLogin(dto.code, dto.redirectUri);
+    return this.authService.kakaoLogin(dto);
   }
 }

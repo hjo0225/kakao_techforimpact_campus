@@ -1,4 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,8 +31,22 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async kakaoLogin(code: string, redirectUri: string) {
-    const kakaoToken = await this.getKakaoToken(code, redirectUri);
+  async kakaoLogin(input: {
+    code?: string;
+    redirectUri?: string;
+    accessToken?: string;
+  }) {
+    // 웹: code 교환 / WebView: 네이티브 SDK가 발급한 accessToken 직접 사용
+    let kakaoToken: string;
+    if (input.accessToken) {
+      kakaoToken = input.accessToken;
+    } else if (input.code && input.redirectUri) {
+      kakaoToken = await this.getKakaoToken(input.code, input.redirectUri);
+    } else {
+      throw new BadRequestException(
+        'code+redirectUri 또는 accessToken이 필요합니다',
+      );
+    }
     const kakaoUser = await this.getKakaoUser(kakaoToken);
 
     const user = await this.prisma.user.upsert({
