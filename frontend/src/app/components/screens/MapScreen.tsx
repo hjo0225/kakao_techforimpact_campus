@@ -110,7 +110,7 @@ export function MapScreen() {
       <StatusBar centerLabel="지도" />
 
       {/* ── 검색바 ── */}
-      <div style={{ padding: '12px 12px 8px', background: '#fff', position: 'relative' }}>
+      <div style={{ padding: '12px 12px 4px', background: '#fff', position: 'relative' }}>
         <label style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: '#FFFDF8', border: '2px solid #430A21',
@@ -198,7 +198,7 @@ export function MapScreen() {
       {/* ── 카테고리 칩 — 스크롤 없이 한 화면에 모두 (균등 분배) ── */}
       <div style={{
         display: 'flex', gap: 5,
-        padding: '8px 10px 4px',
+        padding: '4px 12px',
         background: '#fff',
       }}>
         {categories.map((cat) => {
@@ -231,10 +231,10 @@ export function MapScreen() {
         })}
       </div>
 
-      {/* ── 용기 필터 — 카테고리 칩과 동일 규격 ── */}
+      {/* ── 용기 필터 — 카테고리 칩과 동일 규격(5등분 폭), 좌측 정렬 ── */}
       <div style={{
         display: 'flex', gap: 5,
-        padding: '4px 10px 8px',
+        padding: '4px 12px 8px',
         background: '#fff',
       }}>
         {containerFilters.map((f) => {
@@ -246,11 +246,11 @@ export function MapScreen() {
               onClick={() => setContainerFilter(f.key)}
               aria-pressed={isActive}
               style={{
-                width: 61, height: 31.7, flexShrink: 0,
+                width: 'calc((100% - 20px) / 5)', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 999, padding: '0 4px',
+                borderRadius: 999, padding: '6px 2px', lineHeight: '13px',
                 border: '2px solid #430A21', cursor: 'pointer',
-                fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+                fontSize: 'clamp(8.5px, 2.5vw, 10px)', fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
                 color: isActive ? '#FFF8F9' : '#430A21',
                 boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
