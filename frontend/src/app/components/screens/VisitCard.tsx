@@ -305,8 +305,9 @@ export function VisitCard() {
   const cardPhotoCount = cardPhotos.filter(Boolean).length;
   const isCardComplete = cardPhotoCount === currentFrame.slots.length;
   const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
+  const isOneCut = currentFrame.slots.length === 1;
   // 1컷은 빈 슬롯에 라이브 카메라를 그대로 보여준다 — 캐릭터 스티커가 위에 떠서 AR 프리뷰처럼 보임
-  const liveSlotPreview = isCard && currentFrame.slots.length === 1 && !cardPhotos[0] && !camError;
+  const liveSlotPreview = isCard && isOneCut && !cardPhotos[0] && !camError;
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -836,12 +837,21 @@ export function VisitCard() {
   );
 
   const cardEditor = (
-    <div style={cardEditorShellStyle}>
+    <div style={{ ...cardEditorShellStyle, ...(isOneCut ? { padding: 0 } : null) }}>
       <div
         ref={cardPreviewRef}
         style={{
           ...cardFramePreviewStyle,
-          height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)`,
+          // 1컷: 카드가 화면을 cover로 꽉 채움 (위아래 일부는 화면 밖 — 스티커 좌표는 카드 기준이라 WYSIWYG 유지)
+          ...(isOneCut
+            ? {
+                width: `max(100cqw, ${(currentFrame.width / currentFrame.height) * 100}cqh)`,
+                height: `max(${(currentFrame.height / currentFrame.width) * 100}cqw, 100cqh)`,
+                maxWidth: 'none',
+                maxHeight: 'none',
+                flexShrink: 0,
+              }
+            : { height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)` }),
           aspectRatio: `${currentFrame.width} / ${currentFrame.height}`,
           background: currentFrame.bg,
         }}
