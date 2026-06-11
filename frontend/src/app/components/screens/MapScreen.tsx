@@ -110,7 +110,7 @@ export function MapScreen() {
       <StatusBar centerLabel="지도" />
 
       {/* ── 검색바 ── */}
-      <div style={{ padding: '12px 12px 8px', borderBottom: '1.5px solid #EDD5DC', background: '#fff', position: 'relative' }}>
+      <div style={{ padding: '12px 12px 8px', background: '#fff', position: 'relative' }}>
         <label style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: '#FFFDF8', border: '2px solid #430A21',
@@ -198,7 +198,7 @@ export function MapScreen() {
       {/* ── 카테고리 칩 — 스크롤 없이 한 화면에 모두 (균등 분배) ── */}
       <div style={{
         display: 'flex', gap: 5,
-        padding: '8px 10px', borderBottom: '1.5px solid #EDD5DC',
+        padding: '8px 10px 4px',
         background: '#fff',
       }}>
         {categories.map((cat) => {
@@ -231,11 +231,11 @@ export function MapScreen() {
         })}
       </div>
 
-      {/* ── 용기 필터 ── */}
+      {/* ── 용기 필터 — 카테고리 칩과 동일 규격 ── */}
       <div style={{
-        display: 'flex', gap: 6,
-        padding: '6px 12px', borderBottom: '1.5px solid #EDD5DC',
-        background: '#fff', scrollbarWidth: 'none',
+        display: 'flex', gap: 5,
+        padding: '4px 10px 8px',
+        background: '#fff',
       }}>
         {containerFilters.map((f) => {
           const isActive = containerFilter === f.key
@@ -246,13 +246,14 @@ export function MapScreen() {
               onClick={() => setContainerFilter(f.key)}
               aria-pressed={isActive}
               style={{
-                flexShrink: 0,
-                borderRadius: 999, padding: '5px 12px',
-                border: `1.5px solid ${isActive ? '#430A21' : '#C8A8B4'}`,
-                cursor: 'pointer',
+                flex: 1, minWidth: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 999, padding: '6px 2px',
+                border: '2px solid #430A21', cursor: 'pointer',
                 fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
-                color: isActive ? '#FFF8F9' : '#8C6B73',
+                color: isActive ? '#FFF8F9' : '#430A21',
+                boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
               }}
             >
               {f.label}
