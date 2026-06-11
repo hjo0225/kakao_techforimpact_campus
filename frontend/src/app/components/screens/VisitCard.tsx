@@ -980,6 +980,7 @@ export function VisitCard() {
               >
                 {slotPhoto ? (
                   <img
+                    className="cb-photo"
                     src={slotPhoto.url}
                     alt=""
                     onLoad={(e) => updateCardPhotoSize(index, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
@@ -1121,7 +1122,7 @@ export function VisitCard() {
                 )}
                 {/* 촬영한 사진을 뷰파인더 위에 고정 표시 (라이브 스트림 유지) */}
                 {photo && (
-                  <img src={photo.url} alt="촬영한 용기" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                  <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
                 )}
               </>
 	            )}
@@ -1391,7 +1392,7 @@ export function VisitCard() {
           <div style={{ flex: 1, minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', overflow: 'hidden' }}>
             <div style={{ position: 'relative', width: `min(100%, ${(currentFrame.width / currentFrame.height) * 100}cqh)`, aspectRatio: `${currentFrame.width} / ${currentFrame.height}`, border: '2px solid #430A21', boxShadow: '4px 4px 0 0 #430A21', overflow: 'hidden', background: currentFrame.bg }}>
               {cardUrl ? (
-                <img src={cardUrl} alt="야구네컷 미리보기" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                <img className="cb-photo" src={cardUrl} alt="야구네컷 미리보기" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
               ) : (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>카드 생성 중...</div>
               )}
@@ -1417,7 +1418,7 @@ export function VisitCard() {
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* 촬영 사진 — 분석 중에는 스캔 바가 위아래로 훑는다 */}
           <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
-            {photo && <img src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+            {photo && <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
             {vStep === 'analyzing' && <div className="cb-scanline" aria-hidden="true" />}
           </div>
 

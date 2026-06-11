@@ -116,6 +116,7 @@ function EntryImage({
   if (url) {
     return (
       <img
+        className="cb-photo"
         src={url}
         alt={alt}
         onError={() => setFailed(true)}

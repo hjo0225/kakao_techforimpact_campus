@@ -937,6 +937,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   object-fit: contain;
   border: var(--cb-border-pixel);
   box-shadow: var(--cb-shadow-md);
+  image-rendering: auto; /* 스크린샷은 pixelated 전역 규칙 예외 — 계단 현상 방지 */
 }
 
 /* 캡션 행 — 마스코트(작게) + 말풍선 설명 */
@@ -1050,6 +1051,11 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   .cb-tutorial-dot {
     transition: none;
   }
+}
+
+/* 실사 사진/스크린샷 — 전역 pixelated 규칙 예외 (DESIGN.md §0 아이콘 예외) */
+.cb-photo {
+  image-rendering: auto;
 }
 
 /* ── AI 인증 분석 로딩 — 마스코트가 사진을 살펴보는 인터랙션 (DESIGN.md §AI 분석 로딩) ── */

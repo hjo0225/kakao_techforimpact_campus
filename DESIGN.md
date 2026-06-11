@@ -15,7 +15,7 @@
 | **테두리** | `border: var(--cb-border-pixel)` = `2px solid #430a21` 기본. 인라인 스타일에서도 `2px solid` 미만 금지 |
 | **그림자** | hard offset만. `--cb-shadow-xs/sm/md/primary`는 모두 `Xpx Xpx 0 0 #430a21` 형태. blur(`rgba(..., 0.X)` 4th value) 사용 금지 |
 | **그라데이션** | `linear-gradient(...)` 금지. flat color로 대체. 강조가 필요하면 hard shadow + border 조합으로 |
-| **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용) |
+| **아이콘** | lucide-react `strokeWidth ≥ 2.5` (BottomNav `3`). 작은 SVG에는 `image-rendering: pixelated` (theme.css에서 전역 적용). **예외**: 실사 사진·앱 스크린샷은 `image-rendering: auto` — pixelated는 픽셀아트 에셋 전용 (사진에 적용하면 계단 현상) |
 
 활성/누르기 인터랙션 (전역 구현 — `design-system.css`):
 - 모든 `button:not(:disabled):active` → `transform: translate(2px, 2px)` (픽셀 press). `transition: transform 70ms`는 `prefers-reduced-motion: no-preference`에서만
