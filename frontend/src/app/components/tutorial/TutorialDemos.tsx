@@ -39,6 +39,30 @@ function Shutter() {
   )
 }
 
+/** 뷰파인더 모서리 포커스 브래킷 4개 — 각 모서리를 향해 ㄱ자로 꺾인다. */
+export function FocusBrackets({ color }: { color: string }) {
+  const corners: Array<{ inset: string; top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }> = [
+    { inset: '12px auto auto 12px', top: true, left: true },     // ↖
+    { inset: '12px 12px auto auto', top: true, right: true },    // ↗
+    { inset: 'auto auto 12px 12px', bottom: true, left: true },  // ↙
+    { inset: 'auto 12px 12px auto', bottom: true, right: true }, // ↘
+  ]
+  const line = `2px solid ${color}`
+  return (
+    <>
+      {corners.map((c, i) => (
+        <span key={i} aria-hidden style={{
+          position: 'absolute', inset: c.inset, width: 18, height: 18,
+          borderTop: c.top ? line : 'none',
+          borderBottom: c.bottom ? line : 'none',
+          borderLeft: c.left ? line : 'none',
+          borderRight: c.right ? line : 'none',
+        }} />
+      ))}
+    </>
+  )
+}
+
 function DemoShell({ children, bg = 'var(--cb-bg)' }: { children: ReactNode; bg?: string }) {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', background: bg, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -101,14 +125,7 @@ export function VerifyDemo() {
       <div style={{ flex: 1, position: 'relative', margin: '2px 12px 10px', border: BORDER, borderRadius: 14, background: '#F8F1F2', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <img src={reusableMascot} alt="" draggable={false} style={{ width: '64%', maxWidth: 190, height: 'auto' }} />
         <div className="cb-scanline" aria-hidden="true" />
-        {/* 모서리 포커스 브래킷 */}
-        {(['12px 12px auto auto', '12px auto auto 12px', 'auto auto 12px 12px', 'auto 12px 12px auto'] as const).map((inset, i) => (
-          <span key={i} aria-hidden style={{
-            position: 'absolute', inset, width: 18, height: 18,
-            borderTop: i < 2 ? BORDER : 'none', borderBottom: i >= 2 ? BORDER : 'none',
-            borderLeft: i % 2 === 1 ? BORDER : 'none', borderRight: i % 2 === 0 ? BORDER : 'none',
-          }} />
-        ))}
+        <FocusBrackets color="#430A21" />
         <span style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: '#430A21', color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 9999, whiteSpace: 'nowrap' }}>
           AI가 다회용기를 확인해요
         </span>

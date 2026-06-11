@@ -15,6 +15,7 @@ import lockedMascot from '../../../assets/feedback/locked.png';
 import reusableMascot from '../../../assets/feedback/reusable.png';
 import singleMascot from '../../../assets/feedback/single.png';
 import guideMascot from '../../../assets/tutorial/mascot-guide.png';
+import { FocusBrackets } from '../tutorial/TutorialDemos';
 import {
   analyzeImage, confirmLabel, ApiError,
   type AiPrediction, type ContainerLabel, type CertificationMode,
@@ -1544,10 +1545,19 @@ export function VisitCard() {
       {/* ── 결과: 인증(AI 분석) ── */}
       {view === 'result' && !isCard && (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* 촬영 사진 — 분석 중에는 스캔 바가 위아래로 훑는다 */}
+          {/* 촬영 사진 — 분석 중: 어둡게 + 포커스 브래킷 + 스캔 바 (튜토리얼 데모와 동일한 연출) */}
           <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
             {photo && <img className="cb-photo" src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-            {vStep === 'analyzing' && <div className="cb-scanline" aria-hidden="true" />}
+            {vStep === 'analyzing' && (
+              <>
+                <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.38)' }} />
+                <div className="cb-scanline" aria-hidden="true" />
+                <FocusBrackets color="rgba(255,255,255,0.92)" />
+                <span style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: '#430A21', color: '#fff', fontSize: 11, fontWeight: 800, padding: '5px 12px', borderRadius: 9999, whiteSpace: 'nowrap' }}>
+                  AI가 다회용기를 확인해요
+                </span>
+              </>
+            )}
           </div>
 
           {vStep === 'idle' && (
