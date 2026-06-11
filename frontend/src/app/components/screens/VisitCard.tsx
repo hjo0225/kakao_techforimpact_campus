@@ -1673,7 +1673,7 @@ export function VisitCard() {
       )}
 
       {toast && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 1000 /* 토스트/모달은 무조건 최상위 */ }}>
           <div style={{ background: '#430A21', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 16px', border: '2px solid #430A21', boxShadow: '3px 3px 0 0 rgba(67,10,33,0.25)' }}>{toast}</div>
         </div>
       )}
