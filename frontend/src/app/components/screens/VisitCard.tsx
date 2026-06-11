@@ -1350,15 +1350,7 @@ export function VisitCard() {
                       <span style={ctrlLabelStyle}>사진</span>
                     </button>
                   </div>
-                  {isCardComplete && (
-                    <div style={{ padding: '8px 24px 0' }}>
-                      <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
-                        style={{ ...cardSaveButtonStyle, height: 48, width: '100%', background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
-                        <Download size={18} strokeWidth={2.6} />
-                        {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
-                      </button>
-                    </div>
-                  )}
+                  {/* 저장 버튼은 편집 시트 안에만 — X로 닫았다면 저장 의도가 없는 것 */}
                 </>
             ) : (
               // 인증 — 촬영 전: 셔터 / 촬영 후: 다시 · AI 인증
