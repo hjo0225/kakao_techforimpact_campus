@@ -167,7 +167,7 @@ export function RecordDemo() {
           }}>{t}</span>
         ))}
       </div>
-      <div style={{ flex: 1, margin: '0 12px 12px', border: BORDER, background: '#fff', boxShadow: '3px 3px 0 0 #430A21', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, margin: '0 12px 12px', border: BORDER, borderRadius: 14, background: '#fff', boxShadow: '3px 3px 0 0 #430A21', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {['일', '월', '화', '수', '목', '금', '토'].map((w, i) => (
             <span key={w} style={{ textAlign: 'center', padding: '5px 0', fontSize: 9, fontWeight: 800, color: i === 0 ? '#C2362C' : '#5E1530', borderBottom: BORDER, background: '#F8EAC9' }}>{w}</span>

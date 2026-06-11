@@ -8,7 +8,6 @@ import { useApp, type CameraPurpose } from '../../AppContext';
 import { useAuthStore } from '../../../store/authStore';
 import { useVerifyGateStore, todayKey } from '../../../store/verifyGateStore';
 import { BottomNav } from '../BottomNav';
-import { StatusBar } from '../StatusBar';
 import { createVisitCard, getVisitCards } from '../../../lib/visitCardApi';
 import { saveImageViaBridge } from '../../../lib/webviewBridge';
 import lockedMascot from '../../../assets/feedback/locked.png';
@@ -286,6 +285,8 @@ export function VisitCard() {
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   // 몰입 촬영 모드 — 셔터 첫 탭에 헤더/네비를 접고 뷰파인더 확장, 다시 탭하면 촬영
   const [immersive, setImmersive] = useState(false);
+  // 마지막 촬영 직후 — 저장/나가기만 묻는 시트
+  const [savePrompt, setSavePrompt] = useState(false);
   const [camError, setCamError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -332,11 +333,12 @@ export function VisitCard() {
   const liveSlot = liveSlotIndex >= 0 ? currentFrame?.slots[liveSlotIndex] ?? null : null;
   const selectedSticker = selectedStickerId !== null ? stickers.find((s) => s.id === selectedStickerId) ?? null : null;
   // 설정 시트 — 열리면 제어부 + 하단 네비 전체를 교체한다
-  const activePanel: 'frames' | 'sticker' | 'slot' | null =
+  const activePanel: 'frames' | 'sticker' | 'slot' | 'save' | null =
     !(isCard && view === 'camera' && !cardLocked) ? null
     : bottomMode === 'frames' ? 'frames'
     : selectedSticker ? 'sticker'
     : selectedPhoto && selectedSlotIndex !== null ? 'slot'
+    : savePrompt && isCardComplete ? 'save'
     : null;
 
   const showToast = useCallback((msg: string) => {
@@ -408,6 +410,7 @@ export function VisitCard() {
     setView('camera');
     setBottomMode('controls');
     setImmersive(false);
+    setSavePrompt(false);
     setFrameKey(null); // 프레임 초기값 없음 — 직접 선택
     setVStep('idle');
     setSampleId(null);
@@ -515,11 +518,14 @@ export function VisitCard() {
     });
     setSelectedSlotIndex(selectedIndex);
     updateCardPhotos(next);
-    // 몰입 촬영 중: 슬롯이 남았으면 시트 없이 연속 촬영, 다 차면 몰입 해제(편집 시트로)
-    if (opts?.continuous) {
-      const filled = next.filter(Boolean).length;
-      if (filled < slotCount) setSelectedSlotIndex(null);
-      else setImmersive(false);
+    const filled = next.filter(Boolean).length;
+    if (filled >= slotCount) {
+      // 마지막 촬영 — 편집 대신 저장/나가기만 묻는다
+      setSelectedSlotIndex(null);
+      setSavePrompt(true);
+      setImmersive(false);
+    } else if (opts?.continuous) {
+      setSelectedSlotIndex(null); // 몰입 연속 촬영 — 시트 없이 다음 슬롯
     }
   }, [cardPhotos, slotCount, updateCardPhotos, showToast]);
 
@@ -562,6 +568,7 @@ export function VisitCard() {
       return currentFrame ? makeEmptyCardPhotos(currentFrame) : [];
     });
     setSelectedSlotIndex(null);
+    setSavePrompt(false);
     setStickers([]);
     setSelectedStickerId(null);
     setCardFile(null);
@@ -897,6 +904,7 @@ export function VisitCard() {
       a.click();
     }
     showToast(saved ? '저장했어요' : '내려받았어요 (기록 저장 실패)');
+    setSavePrompt(false);
     setBusy(false);
   };
 
@@ -1148,10 +1156,6 @@ export function VisitCard() {
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       <input ref={fileInputRef} type="file" accept="image/*" multiple={isCard} capture={isCard ? undefined : 'environment'} onChange={handleFileChange} style={{ display: 'none' }} aria-hidden tabIndex={-1} />
-      {/* 몰입 촬영에서는 상태바 스페이서까지 접어 화면 전체를 뷰파인더로 */}
-      <div style={{ maxHeight: immersive ? 0 : 60, overflow: 'hidden', transition: 'max-height 260ms ease' }}>
-        <StatusBar bg="#fff" />
-      </div>
 
       {/* 헤더 — 몰입 촬영 모드에서는 부드럽게 접힌다 */}
       <div style={{
@@ -1463,7 +1467,26 @@ export function VisitCard() {
                 </div>
               </div>
             )}
-            {!immersive && (
+            {activePanel === 'save' && (
+              // 마지막 촬영 직후 — 저장 또는 나가기만
+              <div style={settingsSheetStyle}>
+                <p style={{ margin: 0, textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#430A21' }}>
+                  카드가 완성됐어요 — 저장할까요?
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => setSavePrompt(false)}
+                    style={{ flex: 1, height: 48, border: '2px solid #430A21', borderRadius: 14, background: '#fff', color: '#430A21', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21' }}>
+                    나가기
+                  </button>
+                  <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
+                    style={{ ...cardSaveButtonStyle, flex: 2, height: 48, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
+                    <Download size={17} strokeWidth={2.6} />
+                    {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {!activePanel && !immersive && (
             <div style={{ flexShrink: 0, background: '#fff', padding: '6px 0 4px' }}>
             {isCard ? (
                 <>
@@ -1662,7 +1685,8 @@ export function VisitCard() {
 
       <div style={{
         flexShrink: 0,
-        maxHeight: immersive ? 0 : 140,
+        background: '#fff',
+        maxHeight: immersive || activePanel ? 0 : 140,
         overflow: 'hidden',
         transition: 'max-height 260ms ease',
       }}>
@@ -1786,11 +1810,11 @@ const cardToolPanelStyle: React.CSSProperties = {
 };
 
 // 설정 시트 — 열리면 제어부와 하단 네비를 통째로 교체하는 하단 영역 (구분선 없음)
-// 설정 패널 — 제어부 위에 표시된다 (제어부/네비는 그대로 유지)
+// 설정 시트 — 열리면 제어부와 하단 네비를 통째로 교체 (구분선 없음)
 const settingsSheetStyle: React.CSSProperties = {
   flexShrink: 0,
   background: '#fff',
-  padding: '8px 12px 2px',
+  padding: '8px 12px calc(12px + env(safe-area-inset-bottom, 0px))',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
