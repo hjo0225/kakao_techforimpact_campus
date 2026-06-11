@@ -49,7 +49,9 @@ function mockHistory() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 전체 화면 캡처 — cb-photo(image-rendering: auto) 적용으로 축소돼도 선명
+// 튜토리얼 표시 박스(cb-tutorial__shotwrap, 354×620)와 동일 비율로 클립 —
+// 박스에 1:1로 딱 맞아 크롭/레터박스 없음. 상태바(46px)는 제외하고 본문부터.
+const CLIP = { x: 0, y: 46, width: 390, height: 683 };
 
 async function bootstrapSession(page) {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
@@ -98,7 +100,7 @@ async function fakeCamera(page) {
 
 async function shoot(page, name) {
   const file = path.join(OUT_DIR, `${name}.png`);
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, clip: CLIP });
   console.log(`✔ ${name}.png`);
 }
 
