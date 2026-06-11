@@ -14,7 +14,8 @@ export class VisitCardShareController {
 
   @Get(':token/image')
   async image(@Param('token') token: string, @Res() res: Response) {
-    const { buffer, contentType } = await this.visitCards.getImageByToken(token);
+    const { buffer, contentType } =
+      await this.visitCards.getImageByToken(token);
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(buffer);
