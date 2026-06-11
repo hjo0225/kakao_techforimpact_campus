@@ -10,6 +10,7 @@ const UsageKind = {
 type AnyFn = jest.Mock<unknown, unknown[]>;
 interface PrismaStub {
   usage: { groupBy: AnyFn; findMany: AnyFn };
+  verificationSample: { count: AnyFn };
 }
 
 describe('StatsService', () => {
@@ -22,6 +23,9 @@ describe('StatsService', () => {
         groupBy: jest.fn<unknown, unknown[]>(),
         findMany: jest.fn<unknown, unknown[]>(),
       },
+      verificationSample: {
+        count: jest.fn<unknown, unknown[]>().mockResolvedValue(0),
+      },
     };
     const moduleRef = await Test.createTestingModule({
       providers: [StatsService, { provide: PrismaService, useValue: prisma }],
@@ -30,18 +34,22 @@ describe('StatsService', () => {
     jest.clearAllMocks();
   });
 
-  it('USE 7 + RETURN 5 → totalCount는 min(use,return)=5', async () => {
+  it('totalCount = 라벨 확정 샘플 수 (일회+다회 전체)', async () => {
     prisma.usage.groupBy.mockResolvedValue([
       { kind: UsageKind.USE, _count: { _all: 7 } },
       { kind: UsageKind.RETURN, _count: { _all: 5 } },
     ]);
+    prisma.verificationSample.count.mockResolvedValue(15); // 다회 12 + 일회 3 등
 
     const stats = await service.getMyStats('1');
 
     expect(stats).toEqual({
       useCount: 7,
       returnCount: 5,
-      totalCount: 5,
+      totalCount: 15,
+    });
+    expect(prisma.verificationSample.count).toHaveBeenCalledWith({
+      where: { userId: BigInt('1'), status: 'CONFIRMED' },
     });
   });
 
@@ -57,40 +65,17 @@ describe('StatsService', () => {
     });
   });
 
-  it('USE만 있음 → totalCount 0 (반납 0이면 회수된 컵 없음)', async () => {
-    prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _count: { _all: 1 } },
-    ]);
+  it('일회용기만 라벨링(usage 없음) → useCount 0, totalCount는 확정 수', async () => {
+    prisma.usage.groupBy.mockResolvedValue([]);
+    prisma.verificationSample.count.mockResolvedValue(3);
 
     const stats = await service.getMyStats('1');
 
     expect(stats).toEqual({
-      useCount: 1,
+      useCount: 0,
       returnCount: 0,
-      totalCount: 0,
+      totalCount: 3,
     });
-  });
-
-  it('USE 2 + RETURN 1 → totalCount=1 (반납 미완료분은 제외)', async () => {
-    prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _count: { _all: 2 } },
-      { kind: UsageKind.RETURN, _count: { _all: 1 } },
-    ]);
-
-    const stats = await service.getMyStats('1');
-
-    expect(stats.totalCount).toBe(1);
-  });
-
-  it('USE 3 + RETURN 3 → totalCount=3 (모두 짝 맞음)', async () => {
-    prisma.usage.groupBy.mockResolvedValue([
-      { kind: UsageKind.USE, _count: { _all: 3 } },
-      { kind: UsageKind.RETURN, _count: { _all: 3 } },
-    ]);
-
-    const stats = await service.getMyStats('1');
-
-    expect(stats.totalCount).toBe(3);
   });
 
   it('userId를 BigInt로 변환해 where에 전달', async () => {

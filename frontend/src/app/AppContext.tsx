@@ -180,8 +180,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [certificationLogs, shareCardShared]);
 
   const ecoImpact = useMemo<EcoImpact>(() => {
-    // 사용·반납 인증이 모두 된 짝만 1개의 다회용기로 카운트
-    const containers = Math.min(reusableReturnCount, reusableUseCount);
+    // 다회용기로 라벨 확정된 인증 건수 = 절약한 용기 수 (반납 인증 제거 후 min 짝 방식 폐기)
+    const containers = reusableUseCount;
     return {
       containers,
       wasteKg: Number((containers * 0.034).toFixed(2)),
