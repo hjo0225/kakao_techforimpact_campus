@@ -50,7 +50,6 @@ const SWIPE_THRESHOLD = 50
 export function TutorialOverlay() {
   const pendingShow = useTutorialStore((s) => s.pendingShow)
   const close = useTutorialStore((s) => s.close)
-  const dismissForever = useTutorialStore((s) => s.dismissForever)
   const [index, setIndex] = useState(0)
   const dragStartX = useRef<number | null>(null)
 
@@ -84,8 +83,8 @@ export function TutorialOverlay() {
       <div className="cb-tutorial__scrim" aria-hidden="true" />
 
       <div className="cb-tutorial">
-        <button type="button" className="cb-tutorial__skip" onClick={dismissForever}>
-          다시 안보기
+        <button type="button" className="cb-tutorial__skip" onClick={close}>
+          닫기
         </button>
 
         <div
