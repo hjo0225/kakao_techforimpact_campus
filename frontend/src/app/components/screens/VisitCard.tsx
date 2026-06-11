@@ -326,6 +326,13 @@ export function VisitCard() {
   // 1컷은 빈 슬롯에 라이브 카메라를 그대로 보여준다 — 캐릭터 스티커가 위에 떠서 AR 프리뷰처럼 보임
   const liveSlotPreview = isCard && isOneCut && !cardPhotos[0] && !camError;
   const selectedSticker = selectedStickerId !== null ? stickers.find((s) => s.id === selectedStickerId) ?? null : null;
+  // 설정 시트 — 열리면 제어부 + 하단 네비 전체를 교체한다
+  const activePanel: 'frames' | 'sticker' | 'slot' | null =
+    !(isCard && view === 'camera' && !cardLocked) ? null
+    : bottomMode === 'frames' ? 'frames'
+    : selectedSticker ? 'sticker'
+    : selectedPhoto && selectedSlotIndex !== null ? 'slot'
+    : null;
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -565,7 +572,8 @@ export function VisitCard() {
       // 추가할 때마다 살짝 어긋나게 — 같은 자리에 겹쳐 안 보이는 것 방지
       x: clamp(DEFAULT_STICKER_POS.x + (cur.length % 3 - 1) * 0.12, 0.05, 0.95),
     }]);
-    setSelectedStickerId(id);
+    // 기본값은 편집 시트를 띄우지 않는다 — 캐릭터를 탭하면 그때 편집
+    setSelectedStickerId(null);
     setSelectedSlotIndex(null);
     setSavedCard(null);
     setBottomMode('controls');
@@ -1109,10 +1117,9 @@ export function VisitCard() {
 	            )}
 	          </div>
 
-          {/* 촬영 제어부 — 컴팩트 고정. 프레임/편집 패널은 제어부 위(뷰파인더 위)에 떠서 겹침 */}
-          <div style={{ flexShrink: 0, position: 'relative', background: '#fff', padding: '6px 0 4px' }}>
-            {isCard && bottomMode === 'frames' && (
-              <div style={cardFloatPanelStyle}>
+          {/* 하단 — 기본: 제어부(+네비). 설정 시트가 열리면 제어부와 네비를 통째로 교체 */}
+            {activePanel === 'frames' && (
+              <div style={settingsSheetStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: '#430A21' }}>프레임</span>
                   <button type="button" onClick={() => setBottomMode('controls')} aria-label="프레임 닫기" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
@@ -1165,8 +1172,8 @@ export function VisitCard() {
                 )}
               </div>
             )}
-            {isCard && bottomMode !== 'frames' && selectedSticker && (
-              <div style={cardFloatPanelStyle}>
+            {activePanel === 'sticker' && selectedSticker && (
+              <div style={settingsSheetStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
                     <span style={cardToolTitleStyle}>
@@ -1218,11 +1225,19 @@ export function VisitCard() {
                       <span>삭제</span>
                     </button>
                   </div>
+
+                  {isCardComplete && (
+                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
+                      style={{ ...cardSaveButtonStyle, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
+                      <Download size={17} strokeWidth={2.6} />
+                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-            {isCard && bottomMode !== 'frames' && !selectedSticker && selectedPhoto && selectedSlotIndex !== null && (
-              <div style={cardFloatPanelStyle}>
+            {activePanel === 'slot' && selectedPhoto && selectedSlotIndex !== null && (
+              <div style={settingsSheetStyle}>
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
                     <span style={cardToolTitleStyle}>
@@ -1296,9 +1311,19 @@ export function VisitCard() {
                       ))}
                     </div>
                   </div>
+
+                  {isCardComplete && (
+                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
+                      style={{ ...cardSaveButtonStyle, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
+                      <Download size={17} strokeWidth={2.6} />
+                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
+            {!activePanel && (
+            <div style={{ flexShrink: 0, background: '#fff', padding: '6px 0 4px' }}>
             {isCard ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 6 }}>
@@ -1353,7 +1378,8 @@ export function VisitCard() {
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
               )
             )}
-          </div>
+            </div>
+            )}
         </>
       )}
 
@@ -1491,7 +1517,7 @@ export function VisitCard() {
         </div>
       )}
 
-      <BottomNav />
+      {!activePanel && <BottomNav />}
     </div>
   );
 }
@@ -1610,19 +1636,15 @@ const cardToolPanelStyle: React.CSSProperties = {
   gap: 8,
 };
 
-// 프레임/편집 패널 — 제어부 위(뷰파인더 위)에 떠 있는 카드
-const cardFloatPanelStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: 10,
-  right: 10,
-  bottom: '100%',
-  marginBottom: 8,
-  zIndex: 5,
+// 설정 시트 — 열리면 제어부와 하단 네비를 통째로 교체하는 하단 영역
+const settingsSheetStyle: React.CSSProperties = {
+  flexShrink: 0,
   background: '#fff',
-  border: '2px solid #430A21',
-  borderRadius: 16,
-  boxShadow: '0 3px 0 0 #430A21, 0 8px 18px rgba(67,10,33,0.18)',
-  padding: '10px 12px',
+  borderTop: '2px solid #430A21',
+  padding: '12px 14px calc(14px + env(safe-area-inset-bottom, 0px))',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
 };
 
 const cardToolHeaderStyle: React.CSSProperties = {
