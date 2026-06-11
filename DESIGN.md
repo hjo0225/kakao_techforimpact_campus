@@ -253,7 +253,7 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
 로그인 직후 앱 프레임 내부를 덮는 풀스크린 오버레이. 실제 앱 스크린샷 4장을 좌우 스와이프/다음 버튼으로 넘긴다.
 
 - 컨테이너: `cb-tutorial-backdrop` (`position: absolute; inset: 0`, `--cb-bg`, `z-index: 50`). `.cb-app-bg`(relative + isolation) 내부에 마운트되어 폰 프레임 안에 갇힘.
-- 슬라이드 트랙: `cb-tutorial__track` (`transform: translateX`), 전환 `320ms cubic-bezier(0.22,0.61,0.36,1)`. 스크린샷은 `cb-tutorial__shot` (pixel border + `--cb-shadow-md`, `max-height: 54vh`).
+- 슬라이드 트랙: `cb-tutorial__track` (`transform: translateX`), 전환 `320ms cubic-bezier(0.22,0.61,0.36,1)`. 스크린샷은 `cb-tutorial__shot` (pixel border + `--cb-shadow-md`, `max-height: 46vh`).
 - 제목 `cb-tutorial__title`(`--cb-text`, 18px/800), 설명 `cb-tutorial__desc`(`--cb-muted`, 14px).
 - **점 인디케이터** `cb-tutorial-dots` > `cb-tutorial-dot`: inactive=`--cb-border` 8px 원, active(`.is-active`)=`--cb-primary` 22px 알약. 신규 토큰 없이 기존 색 토큰만 사용.
 - CTA는 `<Button variant="primary" size="lg">`("다음"/"시작하기"), "다시 안보기"는 `cb-tutorial__skip` 텍스트 버튼(`--cb-muted`).

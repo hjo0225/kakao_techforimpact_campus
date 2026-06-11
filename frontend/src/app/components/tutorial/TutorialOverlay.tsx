@@ -5,13 +5,17 @@ import { Button } from '../design-system'
 import { cx } from '../../classNames'
 import stadiumBg from '../../../assets/tutorial/stadium-bg.png'
 import mascotGuide from '../../../assets/tutorial/mascot-guide.png'
+import shotMap from '../../../assets/tutorial/map.png'
+import shotVerify from '../../../assets/tutorial/verify.png'
+import shotCard from '../../../assets/tutorial/card.png'
+import shotRecord from '../../../assets/tutorial/record.png'
 
 interface Slide {
   step: string
   title: string
   description: string
-  /** 추후 들어갈 앱 화면/일러스트 자리 안내 문구 (임시 placeholder). */
-  placeholder: string
+  /** 실제 앱 화면 캡처 (scripts/capture-tutorial.cjs로 재생성). */
+  shot: string
 }
 
 const SLIDES: Slide[] = [
@@ -19,25 +23,25 @@ const SLIDES: Slide[] = [
     step: 'STEP 1 · 지도',
     title: '잠실야구장 지도에서 매장 찾기',
     description: '잠실야구장 층별 지도에서 다회용기를 쓸 수 있는 매장을 한눈에 확인해요.',
-    placeholder: '잠실야구장 지도 미리보기',
+    shot: shotMap,
   },
   {
     step: 'STEP 2 · 인증',
     title: '사진으로 다회용기 인증',
     description: '다회용기 사용 사진을 찍으면 AI가 자동으로 인증해 줘요.',
-    placeholder: '인증 화면 미리보기',
+    shot: shotVerify,
   },
   {
     step: 'STEP 3 · 야구네컷',
     title: '야구네컷으로 추억 공유',
     description: '용기 인증 후, 직관 사진으로 나만의 야구네컷을 만들어 친구들과 공유해요.',
-    placeholder: '야구네컷 미리보기',
+    shot: shotCard,
   },
   {
     step: 'STEP 4 · 기록',
     title: '캘린더에서 기록 확인',
     description: '캘린더에서 날짜별 인증 기록을 모아 볼 수 있어요.',
-    placeholder: '캘린더 미리보기',
+    shot: shotRecord,
   },
 ]
 
@@ -99,7 +103,7 @@ export function TutorialOverlay() {
                   <p className="cb-tutorial__step">{slide.step}</p>
                   <h2 className="cb-tutorial__title">{slide.title}</h2>
                   <p className="cb-tutorial__desc">{slide.description}</p>
-                  <div className="cb-tutorial__placeholder">{slide.placeholder}</div>
+                  <img className="cb-tutorial__shot" src={slide.shot} alt={`${slide.title} 화면`} />
                 </div>
               </div>
             ))}

@@ -949,18 +949,15 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   line-height: 1.6;
 }
 
-.cb-tutorial__placeholder {
+.cb-tutorial__shot {
   margin-top: 6px;
-  height: 116px;
-  border: 2px dashed var(--cb-border);
-  border-radius: var(--cb-radius-md);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  color: var(--cb-muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+  max-height: 46vh;
+  object-fit: contain;
+  border: var(--cb-border-pixel);
+  box-shadow: var(--cb-shadow-md);
 }
 
 .cb-tutorial__spacer {
