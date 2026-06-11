@@ -939,6 +939,18 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   background: var(--cb-bg);
 }
 
+/* 튜토리얼 캡처 슬라이드 — 박스 비율(354:620)로 제작된 이미지 (1062×1860px 권장) */
+.cb-tutorial__shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border: var(--cb-border-pixel);
+  box-shadow: var(--cb-shadow-md);
+  image-rendering: auto; /* pixelated 전역 규칙 예외 */
+}
+
 /* 캡션 행 — 마스코트(작게) + 말풍선 설명 */
 .cb-tutorial__caption {
   flex: 0 0 auto;

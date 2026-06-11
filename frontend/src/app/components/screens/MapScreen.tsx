@@ -195,11 +195,11 @@ export function MapScreen() {
         })()}
       </div>
 
-      {/* ── 카테고리 칩 ── */}
+      {/* ── 카테고리 칩 — 스크롤 없이 한 화면에 모두 (균등 분배) ── */}
       <div style={{
-        display: 'flex', gap: 8, overflowX: 'auto',
-        padding: '8px 12px', borderBottom: '1.5px solid #EDD5DC',
-        background: '#fff', scrollbarWidth: 'none',
+        display: 'flex', gap: 5,
+        padding: '8px 10px', borderBottom: '1.5px solid #EDD5DC',
+        background: '#fff',
       }}>
         {categories.map((cat) => {
           const Icon = cat.icon
@@ -213,18 +213,18 @@ export function MapScreen() {
                 setShowStoreList(true)
               }}
               style={{
-                flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                borderRadius: 999, padding: '7px 13px',
+                flex: 1, minWidth: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                borderRadius: 999, padding: '6px 2px',
                 border: '2px solid #430A21', cursor: 'pointer',
-                fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+                fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
                 color: isActive ? '#FFF8F9' : '#430A21',
                 boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
               }}
               aria-pressed={isActive}
             >
-              <Icon size={13} />
+              <Icon size={12} style={{ flexShrink: 0 }} />
               {cat.label}
             </button>
           )
