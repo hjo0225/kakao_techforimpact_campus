@@ -49,13 +49,7 @@ function mockHistory() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 핵심 영역만 잘라 확대 효과 — 전체 화면을 축소해 넣으면 글자가 뭉개진다 (viewport 390×844 기준)
-const CLIPS = {
-  map: { x: 0, y: 50, width: 390, height: 470 },
-  verify: { x: 0, y: 96, width: 390, height: 540 },
-  card: { x: 0, y: 96, width: 390, height: 540 },
-  record: { x: 0, y: 46, width: 390, height: 520 },
-};
+// 전체 화면 캡처 — cb-photo(image-rendering: auto) 적용으로 축소돼도 선명
 
 async function bootstrapSession(page) {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
@@ -104,7 +98,7 @@ async function fakeCamera(page) {
 
 async function shoot(page, name) {
   const file = path.join(OUT_DIR, `${name}.png`);
-  await page.screenshot({ path: file, clip: CLIPS[name] });
+  await page.screenshot({ path: file });
   console.log(`✔ ${name}.png`);
 }
 
@@ -138,10 +132,8 @@ async function shoot(page, name) {
     await sleep(400);
     await page.locator('button ::-p-text(1컷)').click();
     await sleep(400);
-    await page.locator('button[aria-label="기본 캐릭터 추가"]').click(); // 팔레트에서 캐릭터 추가
-    await sleep(500);
-    await page.locator('button[aria-label="캐릭터 편집 닫기"]').click();
-    await sleep(400);
+    await page.locator('button[aria-label="기본 캐릭터 추가"]').click(); // 팔레트에서 캐릭터 추가 (시트 자동 닫힘)
+    await sleep(600);
     await page.locator('button[aria-label="촬영"]').click();
     await sleep(800);
     await page.locator('button[aria-label="편집 닫기"]').click(); // 슬롯 편집 패널 닫기

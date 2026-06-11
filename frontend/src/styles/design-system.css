@@ -953,6 +953,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   height: auto;
   flex-shrink: 0;
   pointer-events: none;
+  transform: scaleX(-1); /* 말풍선(오른쪽)을 바라보게 좌우반전 */
   filter: drop-shadow(0 4px 6px rgba(67, 10, 33, 0.28));
 }
 
