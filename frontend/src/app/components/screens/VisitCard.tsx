@@ -1025,7 +1025,7 @@ export function VisitCard() {
       disabled={camError}
       aria-label="촬영"
       style={{
-        width: 64, height: 64, borderRadius: '9999px', border: 'none',
+        width: 64, height: 64, borderRadius: '9999px', border: '2px solid #430A21',
         background: camError ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         cursor: camError ? 'not-allowed' : 'pointer',

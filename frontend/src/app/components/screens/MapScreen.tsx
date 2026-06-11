@@ -27,9 +27,9 @@ const categories: Array<{ key: 'ALL' | StoreCategory; label: string; icon: typeo
 // ── 용기 필터 ─────────────────────────────────────────────────────────────────
 type ContainerFilter = 'ALL' | 'REUSABLE' | 'PERSONAL'
 const containerFilters: Array<{ key: ContainerFilter; label: string }> = [
-  { key: 'ALL',      label: '용기 전체'      },
-  { key: 'REUSABLE', label: '다회용기 가능'  },
-  { key: 'PERSONAL', label: '개인용기 가능'  },
+  { key: 'ALL',      label: '용기 전체' },
+  { key: 'REUSABLE', label: '다회용기'  },
+  { key: 'PERSONAL', label: '개인용기'  },
 ]
 
 function normalizeSearch(v: string) { return v.trim().toLowerCase() }
@@ -250,7 +250,7 @@ export function MapScreen() {
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 999, padding: '6px 2px', lineHeight: '13px',
                 border: '2px solid #430A21', cursor: 'pointer',
-                fontSize: 'clamp(8.5px, 2.5vw, 10px)', fontWeight: 800, whiteSpace: 'nowrap',
+                fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
                 color: isActive ? '#FFF8F9' : '#430A21',
                 boxShadow: isActive ? '0 2px 0 0 #2F0415' : '0 2px 0 0 #430A21',
