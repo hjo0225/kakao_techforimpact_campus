@@ -110,7 +110,7 @@ export function MapScreen() {
       <StatusBar centerLabel="지도" />
 
       {/* ── 검색바 ── */}
-      <div style={{ padding: '8px 12px', borderBottom: '1.5px solid #EDD5DC', background: '#fff', position: 'relative' }}>
+      <div style={{ padding: '12px 12px 8px', borderBottom: '1.5px solid #EDD5DC', background: '#fff', position: 'relative' }}>
         <label style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: '#FFFDF8', border: '2px solid #430A21',

@@ -612,7 +612,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 300;
+  z-index: 1000; /* 모달은 무조건 최상위 */
   backdrop-filter: blur(4px);
 }
 
@@ -627,7 +627,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   border: var(--cb-border-thick);
   border-radius: var(--cb-radius-xl);
   padding: 28px 24px 20px;
-  z-index: 301;
+  z-index: 1001; /* 모달은 무조건 최상위 */
   box-shadow: var(--cb-shadow-md);
 }
 

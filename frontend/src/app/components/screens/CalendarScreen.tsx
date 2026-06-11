@@ -165,7 +165,7 @@ function Lightbox({ entry, onClose }: { entry: CalEntry; onClose: () => void }) 
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 200,
+        zIndex: 1000, // 모달류는 무조건 최상위
         WebkitTapHighlightColor: 'transparent',
       }}
     >
@@ -512,7 +512,7 @@ export function CalendarScreen() {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: 8,
-          padding: '4px 14px 10px',
+          padding: '12px 14px 10px',
         }}
       >
         {TABS.map((t) => {

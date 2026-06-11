@@ -1081,8 +1081,6 @@ export function VisitCard() {
                 style={{
                   ...cardSlotButtonStyle,
                   background: index === liveSlotIndex ? 'transparent' : cardSlotButtonStyle.background,
-                  borderStyle: slotPhoto ? 'solid' : 'dashed',
-                  borderColor: selectedSlotIndex === index ? '#fff' : slotPhoto ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.82)',
                   touchAction: slotPhoto ? 'none' : 'manipulation',
                 }}
               >
@@ -1470,11 +1468,8 @@ export function VisitCard() {
             {activePanel === 'save' && (
               // 마지막 촬영 직후 — 저장 또는 나가기만
               <div style={settingsSheetStyle}>
-                <p style={{ margin: 0, textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#430A21' }}>
-                  카드가 완성됐어요 — 저장할까요?
-                </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setSavePrompt(false)}
+                  <button type="button" onClick={() => { clearCard(); showToast('저장하지 않고 나왔어요'); }}
                     style={{ flex: 1, height: 48, border: '2px solid #430A21', borderRadius: 14, background: '#fff', color: '#430A21', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 0 0 #430A21' }}>
                     나가기
                   </button>
@@ -1731,7 +1726,7 @@ const cardSlotButtonStyle: React.CSSProperties = {
   position: 'relative',
   width: '100%',
   height: '100%',
-  borderWidth: 2,
+  border: 'none', // 점선/실선 테두리 제거 — 선택 표시는 cardSelectedSlotStyle이 담당
   background: 'rgba(15, 23, 42, 0.68)',
   color: '#fff',
   padding: 0,
@@ -1775,7 +1770,7 @@ const stickerButtonStyle: React.CSSProperties = {
   position: 'absolute',
   transform: 'translate(-50%, -50%)',
   zIndex: 3,
-  border: '2px dashed transparent',
+  border: '2px solid transparent',
   background: 'transparent',
   padding: 0,
   cursor: 'grab',
