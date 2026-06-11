@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTutorialStore } from '../../../store/tutorialStore'
-import { Button } from '../design-system'
 import { cx } from '../../classNames'
 import stadiumBg from '../../../assets/tutorial/stadium-bg.png'
 import mascotGuide from '../../../assets/tutorial/mascot-guide.png'
@@ -100,10 +99,10 @@ export function TutorialOverlay() {
             {SLIDES.map((slide) => (
               <div className="cb-tutorial__slide" key={slide.title}>
                 <div className="cb-tutorial__shotwrap">
-                  <img className="cb-tutorial__shot" src={slide.shot} alt={`${slide.title} 화면`} />
+                  <img className="cb-tutorial__shot" src={slide.shot} alt={`${slide.title} 화면`} draggable={false} />
                 </div>
                 <div className="cb-tutorial__caption">
-                  <img className="cb-tutorial__mascot" src={mascotGuide} alt="" aria-hidden="true" />
+                  <img className="cb-tutorial__mascot" src={mascotGuide} alt="" aria-hidden="true" draggable={false} />
                   <div className="cb-tutorial__bubble">
                     <p className="cb-tutorial__step">{slide.step}</p>
                     <h2 className="cb-tutorial__title">{slide.title}</h2>
@@ -115,6 +114,7 @@ export function TutorialOverlay() {
           </div>
         </div>
 
+        {/* 버튼 없음 — 스와이프로 진행, 마지막에서 한 번 더 밀면 시작 */}
         <div className="cb-tutorial__footer">
           <div className="cb-tutorial-dots" aria-hidden="true">
             {SLIDES.map((slide, i) => (
@@ -124,9 +124,6 @@ export function TutorialOverlay() {
               />
             ))}
           </div>
-          <Button variant="primary" size="lg" fullWidth onClick={goNext}>
-            {isLast ? '시작하기' : '다음'}
-          </Button>
         </div>
       </div>
     </div>

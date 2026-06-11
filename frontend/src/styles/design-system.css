@@ -1034,11 +1034,12 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
 }
 
 .cb-tutorial-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
-  background: rgba(255, 252, 246, 0.7);
-  border: 1px solid #430a21;
+  background: rgba(255, 252, 246, 0.95);
+  border: 2px solid #430a21;
+  box-sizing: border-box;
   transition: width 200ms ease, background 200ms ease;
 }
 
