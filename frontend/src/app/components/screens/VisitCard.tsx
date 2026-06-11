@@ -897,21 +897,13 @@ export function VisitCard() {
   );
 
   const cardEditor = (
-    <div style={{ ...cardEditorShellStyle, ...(isOneCut ? { padding: 0 } : null) }}>
+    <div style={cardEditorShellStyle}>
       <div
         ref={cardPreviewRef}
         style={{
           ...cardFramePreviewStyle,
-          // 1컷: 카드가 화면을 cover로 꽉 채움 (위아래 일부는 화면 밖 — 스티커 좌표는 카드 기준이라 WYSIWYG 유지)
-          ...(isOneCut
-            ? {
-                width: `max(100cqw, ${(currentFrame.width / currentFrame.height) * 100}cqh)`,
-                height: `max(${(currentFrame.height / currentFrame.width) * 100}cqw, 100cqh)`,
-                maxWidth: 'none',
-                maxHeight: 'none',
-                flexShrink: 0,
-              }
-            : { height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)` }),
+          // 카드 전체가 항상 한 화면에 담긴다 (contain) — 보이는 그대로가 결과물
+          height: `min(100%, ${(currentFrame.height / currentFrame.width) * 100}cqw)`,
           aspectRatio: `${currentFrame.width} / ${currentFrame.height}`,
           background: currentFrame.bg,
         }}
@@ -1522,6 +1514,7 @@ const ctrlSquareStyle: React.CSSProperties = {
 };
 const ctrlLabelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 800, color: '#430A21' };
 
+// 흰 배경 — 헤더/제어부와 경계 없이 이어진다 (그라데이션 박스 제거)
 const cardEditorShellStyle: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
@@ -1529,9 +1522,9 @@ const cardEditorShellStyle: React.CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 8,
-  padding: '10px 16px',
-  background: 'linear-gradient(180deg, #430A21 0%, #5E1530 55%, #C85C77 100%)',
+  gap: 6,
+  padding: '4px 8px',
+  background: '#fff',
   boxSizing: 'border-box',
 };
 
@@ -1542,8 +1535,6 @@ const cardFramePreviewStyle: React.CSSProperties = {
   maxHeight: '100%',
   maxWidth: '100%',
   overflow: 'hidden',
-  outline: '2px solid rgba(255,255,255,0.72)',
-  boxShadow: '0 5px 0 0 #430A21, 0 10px 20px rgba(0,0,0,0.24)',
 };
 
 const cardSlotButtonStyle: React.CSSProperties = {
