@@ -47,14 +47,21 @@ import sticker1Grumpy from '../../../assets/card-frames/1cutgrumpy.png';
 import sticker1Taunt from '../../../assets/card-frames/1cuttaunt.png';
 
 interface CardSlot { x: number; y: number; w: number; h: number }
-// 1컷용 캐릭터 스티커 — 사용자가 위치(드래그)/크기(슬라이더)를 편집한다.
-interface CardSticker { src: string; width: number; height: number }
+// 1컷용 감정 캐릭터 스티커 — 여러 개 추가할 수 있고, 각각 드래그/크기/반전/회전 편집.
+interface StickerAsset { key: string; label: string; src: string; width: number; height: number }
+interface StickerInstance extends StickerAsset {
+  id: number;
+  x: number;       // 카드 기준 중심 좌표 (0~1)
+  y: number;
+  scale: number;   // 1 = 카드 폭의 50%
+  rotation: number;
+  flipped: boolean;
+}
 interface CardFrame {
   key: string;
   label: string;
   countLabel: string;
   src?: string;          // 프레임 오버레이 (1컷은 오버레이 없이 스티커만 사용)
-  sticker?: CardSticker;
   width: number;
   height: number;
   bg: string;
@@ -75,10 +82,9 @@ const SLOTS_1CUT: CardSlot[] = [
   { x: 0, y: 0, w: 1080, h: 1920 },
 ];
 
-// 스티커 transform — x/y는 카드 기준 중심 좌표(0~1), scale 1 = 카드 폭의 50%
-interface StickerTransform { x: number; y: number; scale: number }
+// 스티커 기본 transform — scale 1 = 카드 폭의 50%
 const STICKER_BASE_RATIO = 0.5;
-const DEFAULT_STICKER_TRANSFORM: StickerTransform = { x: 0.5, y: 0.72, scale: 1 };
+const DEFAULT_STICKER_POS = { x: 0.5, y: 0.72, scale: 1, rotation: 0, flipped: false };
 
 const FRAMES: CardFrame[] = [
   { key: 'lotte-2cut',   label: '롯데 2컷',  countLabel: '2장', src: lotteFrame,    width: 1084, height: 1924, bg: '#fff',    accent: '#C9152E', slots: SLOTS_2CUT },
@@ -101,13 +107,18 @@ const FRAMES: CardFrame[] = [
   { key: 'nc-3cut',      label: 'NC 3컷',    countLabel: '3장', src: nc3Frame,      width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
   { key: 'samsung-3cut', label: '삼성 3컷',  countLabel: '3장', src: samsung3Frame, width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
   { key: 'ssg-3cut',     label: 'SSG 3컷',   countLabel: '3장', src: ssg3Frame,     width: 1080, height: 1920, bg: '#fff', accent: '#151047', slots: SLOTS_3CUT },
-  { key: 'default-1cut',    label: '기본 1컷', countLabel: '1장', sticker: { src: sticker1Default,    width: 684, height: 793 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'excited-1cut',    label: '설렘 1컷', countLabel: '1장', sticker: { src: sticker1Excited,    width: 453, height: 794 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'victory-1cut',    label: '승리 1컷', countLabel: '1장', sticker: { src: sticker1Victory,    width: 688, height: 728 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'defeat-1cut',     label: '패배 1컷', countLabel: '1장', sticker: { src: sticker1Defeat,     width: 620, height: 896 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'frustrated-1cut', label: '좌절 1컷', countLabel: '1장', sticker: { src: sticker1Frustrated, width: 736, height: 522 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'grumpy-1cut',     label: '불만 1컷', countLabel: '1장', sticker: { src: sticker1Grumpy,     width: 451, height: 791 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
-  { key: 'taunt-1cut',      label: '조롱 1컷', countLabel: '1장', sticker: { src: sticker1Taunt,      width: 988, height: 676 }, width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
+  { key: '1cut',         label: '1컷',       countLabel: '1장', width: 1080, height: 1920, bg: '#fff', accent: '#430A21', slots: SLOTS_1CUT },
+];
+
+// 1컷 캐릭터 팔레트 — 탭하면 카드에 "추가"된다 (교체 아님, 여러 개 가능)
+const STICKER_ASSETS: StickerAsset[] = [
+  { key: 'default',    label: '기본', src: sticker1Default,    width: 684, height: 793 },
+  { key: 'excited',    label: '설렘', src: sticker1Excited,    width: 453, height: 794 },
+  { key: 'victory',    label: '승리', src: sticker1Victory,    width: 688, height: 728 },
+  { key: 'defeat',     label: '패배', src: sticker1Defeat,     width: 620, height: 896 },
+  { key: 'frustrated', label: '좌절', src: sticker1Frustrated, width: 736, height: 522 },
+  { key: 'grumpy',     label: '불만', src: sticker1Grumpy,     width: 451, height: 791 },
+  { key: 'taunt',      label: '조롱', src: sticker1Taunt,      width: 988, height: 676 },
 ];
 
 // 컷 수(슬롯 개수)별 카테고리 — 1컷 프레임이 추가되면 자동으로 탭에 포함된다.
@@ -152,7 +163,7 @@ interface CardInput {
   photos: CardPhoto[];
   frame: CardFrame;
   visitN: number;
-  sticker?: CardSticker & StickerTransform;
+  stickers?: StickerInstance[];
 }
 
 function makeEmptyCardPhotos(frame: CardFrame): Array<CardPhoto | null> {
@@ -205,11 +216,14 @@ function drawPhoto(ctx: CanvasRenderingContext2D, image: HTMLImageElement, photo
 
 async function createCardImage(input: CardInput): Promise<File> {
   const none = Promise.resolve<HTMLImageElement | null>(null);
-  const [frame, sticker, ...photos] = await Promise.all([
+  const stickers = input.stickers ?? [];
+  const [frame, ...rest] = await Promise.all([
     input.frame.src ? loadImage(input.frame.src) : none,
-    input.sticker ? loadImage(input.sticker.src) : none,
     ...input.photos.map((photo) => loadImage(photo.url)),
+    ...stickers.map((s) => loadImage(s.src)),
   ]);
+  const photos = rest.slice(0, input.photos.length);
+  const stickerImages = rest.slice(input.photos.length);
   const canvas = document.createElement('canvas');
   canvas.width = input.frame.width;
   canvas.height = input.frame.height;
@@ -221,17 +235,18 @@ async function createCardImage(input: CardInput): Promise<File> {
     if (photo) drawPhoto(ctx, photo, input.photos[index], input.frame.slots[index]);
   });
   if (frame) ctx.drawImage(frame, 0, 0, input.frame.width, input.frame.height);
-  if (sticker && input.sticker) {
-    const drawW = input.frame.width * STICKER_BASE_RATIO * input.sticker.scale;
-    const drawH = drawW * (input.sticker.height / input.sticker.width);
-    ctx.drawImage(
-      sticker,
-      input.sticker.x * input.frame.width - drawW / 2,
-      input.sticker.y * input.frame.height - drawH / 2,
-      drawW,
-      drawH,
-    );
-  }
+  stickers.forEach((s, index) => {
+    const image = stickerImages[index];
+    if (!image) return;
+    const drawW = input.frame.width * STICKER_BASE_RATIO * s.scale;
+    const drawH = drawW * (s.height / s.width);
+    ctx.save();
+    ctx.translate(s.x * input.frame.width, s.y * input.frame.height);
+    ctx.rotate((s.rotation * Math.PI) / 180);
+    ctx.scale(s.flipped ? -1 : 1, 1);
+    ctx.drawImage(image, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+  });
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((r) => (r ? resolve(r) : reject(new Error('export failed'))), 'image/png');
   });
@@ -261,7 +276,8 @@ export function VisitCard() {
     offsetY: number;
   } | null>(null);
   const cardPreviewRef = useRef<HTMLDivElement>(null);
-  const stickerDragRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
+  const stickerDragRef = useRef<{ id: number; startX: number; startY: number; x: number; y: number } | null>(null);
+  const stickerIdRef = useRef(0);
 
   const [view, setView] = useState<View>('camera');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
@@ -276,8 +292,8 @@ export function VisitCard() {
   const [frameCut, setFrameCut] = useState<number>(FRAMES[0].slots.length); // 프레임 선택지에서 보고 있는 컷 카테고리
   const [cardPhotos, setCardPhotos] = useState<Array<CardPhoto | null>>(() => makeEmptyCardPhotos(FRAMES[0]));
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
-  const [stickerT, setStickerT] = useState<StickerTransform>(DEFAULT_STICKER_TRANSFORM);
-  const [stickerEdit, setStickerEdit] = useState(false);
+  const [stickers, setStickers] = useState<StickerInstance[]>([]);
+  const [selectedStickerId, setSelectedStickerId] = useState<number | null>(null);
   const [visitN, setVisitN] = useState(1);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
   const [cardFile, setCardFile] = useState<File | null>(null);
@@ -308,6 +324,7 @@ export function VisitCard() {
   const isOneCut = currentFrame.slots.length === 1;
   // 1컷은 빈 슬롯에 라이브 카메라를 그대로 보여준다 — 캐릭터 스티커가 위에 떠서 AR 프리뷰처럼 보임
   const liveSlotPreview = isCard && isOneCut && !cardPhotos[0] && !camError;
+  const selectedSticker = selectedStickerId !== null ? stickers.find((s) => s.id === selectedStickerId) ?? null : null;
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -374,8 +391,8 @@ export function VisitCard() {
     setVResult(null);
     setPhoto((cur) => { if (cur) URL.revokeObjectURL(cur.url); return null; });
     setSelectedSlotIndex(null);
-    setStickerT(DEFAULT_STICKER_TRANSFORM);
-    setStickerEdit(false);
+    setStickers([]);
+    setSelectedStickerId(null);
     setCardPhotos((cur) => {
       cur.forEach(revokeCardPhoto);
       return makeEmptyCardPhotos(FRAMES[0]);
@@ -405,7 +422,7 @@ export function VisitCard() {
         photos: cardPhotos as CardPhoto[],
         frame: currentFrame,
         visitN,
-        sticker: currentFrame.sticker ? { ...currentFrame.sticker, ...stickerT } : undefined,
+        stickers: currentFrame.slots.length === 1 ? stickers : undefined,
       })
         .then((file) => {
           if (cancelled) return;
@@ -423,7 +440,7 @@ export function VisitCard() {
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [cardPhotos, currentFrame, isCard, isCardComplete, visitN, stickerT]);
+  }, [cardPhotos, currentFrame, isCard, isCardComplete, visitN, stickers]);
 
   useEffect(() => {
     return () => { if (photo) URL.revokeObjectURL(photo.url); };
@@ -478,7 +495,7 @@ export function VisitCard() {
     if (frame.key === frameKey) return;
     setFrameKey(frame.key);
     setSavedCard(null);
-    setStickerEdit(false); // 스티커 transform은 유지 — 감정만 바꿔도 위치가 그대로
+    setSelectedStickerId(null); // 스티커들은 유지 — 프레임을 오가도 배치가 그대로
     setSelectedSlotIndex((index) => (index !== null && index < frame.slots.length ? index : null));
     setCardPhotos((cur) => {
       const next = frame.slots.map((_, index) => cur[index] ?? null);
@@ -498,8 +515,8 @@ export function VisitCard() {
       return makeEmptyCardPhotos(currentFrame);
     });
     setSelectedSlotIndex(null);
-    setStickerT(DEFAULT_STICKER_TRANSFORM);
-    setStickerEdit(false);
+    setStickers([]);
+    setSelectedStickerId(null);
     setCardFile(null);
     setCardUrl((cur) => { if (cur) URL.revokeObjectURL(cur); return null; });
     setSavedCard(null);
@@ -517,7 +534,7 @@ export function VisitCard() {
   }, []);
 
   const handleSlotClick = (index: number) => {
-    setStickerEdit(false);
+    setSelectedStickerId(null);
     if (cardPhotos[index]) {
       setSelectedSlotIndex(index);
       setBottomMode('controls');
@@ -527,25 +544,59 @@ export function VisitCard() {
     slotInputRefs.current[index]?.click();
   };
 
-  // 캐릭터 스티커 — 드래그로 이동, 탭으로 편집 패널 열기
-  const handleStickerPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+  // 캐릭터 스티커 — 팔레트에서 "추가" (교체 아님), 드래그로 이동, 탭으로 편집 패널
+  const updateSticker = useCallback((id: number, updater: (s: StickerInstance) => StickerInstance) => {
+    setStickers((cur) => cur.map((s) => (s.id === id ? updater(s) : s)));
+    setSavedCard(null);
+  }, []);
+
+  const addSticker = (asset: StickerAsset) => {
+    // 1컷 프레임이 아니면 1컷으로 전환 (첫 슬롯 사진은 유지됨)
+    if (!isOneCut) {
+      const oneCutFrame = FRAMES.find((f) => f.slots.length === 1);
+      if (oneCutFrame) selectCardFrame(oneCutFrame);
+    }
+    const id = ++stickerIdRef.current;
+    setStickers((cur) => [...cur, {
+      ...asset,
+      id,
+      ...DEFAULT_STICKER_POS,
+      // 추가할 때마다 살짝 어긋나게 — 같은 자리에 겹쳐 안 보이는 것 방지
+      x: clamp(DEFAULT_STICKER_POS.x + (cur.length % 3 - 1) * 0.12, 0.05, 0.95),
+    }]);
+    setSelectedStickerId(id);
+    setSelectedSlotIndex(null);
+    setSavedCard(null);
+    setBottomMode('controls');
+    showToast(`${asset.label} 캐릭터를 추가했어요`);
+  };
+
+  const removeSticker = (id: number) => {
+    setStickers((cur) => cur.filter((s) => s.id !== id));
+    setSelectedStickerId((cur) => (cur === id ? null : cur));
+    setSavedCard(null);
+  };
+
+  const handleStickerPointerDown = (id: number, event: React.PointerEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    setStickerEdit(true);
+    const sticker = stickers.find((s) => s.id === id);
+    if (!sticker) return;
+    setSelectedStickerId(id);
     setSelectedSlotIndex(null);
     setBottomMode('controls');
-    stickerDragRef.current = { startX: event.clientX, startY: event.clientY, x: stickerT.x, y: stickerT.y };
+    stickerDragRef.current = { id, startX: event.clientX, startY: event.clientY, x: sticker.x, y: sticker.y };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleStickerPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const handleStickerPointerMove = (id: number, event: React.PointerEvent<HTMLButtonElement>) => {
     const drag = stickerDragRef.current;
-    if (!drag) return;
+    if (!drag || drag.id !== id) return;
     const rect = cardPreviewRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0 || rect.height <= 0) return;
     const dx = (event.clientX - drag.startX) / rect.width;
     const dy = (event.clientY - drag.startY) / rect.height;
-    setStickerT((cur) => ({
-      ...cur,
+    updateSticker(id, (s) => ({
+      ...s,
       x: clamp(drag.x + dx, 0.05, 0.95),
       y: clamp(drag.y + dy, 0.05, 0.95),
     }));
@@ -926,31 +977,35 @@ export function VisitCard() {
           );
         })}
         {currentFrame.src && <img src={currentFrame.src} alt="" style={cardFrameOverlayStyle} />}
-        {currentFrame.sticker && (
+        {isOneCut && stickers.map((s) => (
           <button
+            key={s.id}
             type="button"
             className="cb-no-press"
-            aria-label="캐릭터 이동 · 크기 조절"
-            onPointerDown={handleStickerPointerDown}
-            onPointerMove={handleStickerPointerMove}
+            aria-label={`${s.label} 캐릭터 이동 · 편집`}
+            onPointerDown={(e) => handleStickerPointerDown(s.id, e)}
+            onPointerMove={(e) => handleStickerPointerMove(s.id, e)}
             onPointerUp={handleStickerPointerEnd}
             onPointerCancel={handleStickerPointerEnd}
             style={{
               ...stickerButtonStyle,
-              left: `${stickerT.x * 100}%`,
-              top: `${stickerT.y * 100}%`,
-              width: `${STICKER_BASE_RATIO * stickerT.scale * 100}%`,
-              borderColor: stickerEdit ? 'rgba(255,255,255,0.85)' : 'transparent',
+              left: `${s.x * 100}%`,
+              top: `${s.y * 100}%`,
+              width: `${STICKER_BASE_RATIO * s.scale * 100}%`,
+              borderColor: selectedStickerId === s.id ? 'rgba(255,255,255,0.85)' : 'transparent',
             }}
           >
             <img
-              src={currentFrame.sticker.src}
+              src={s.src}
               alt=""
               draggable={false}
-              style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }}
+              style={{
+                width: '100%', height: 'auto', display: 'block', pointerEvents: 'none',
+                transform: `rotate(${s.rotation}deg) scaleX(${s.flipped ? -1 : 1})`,
+              }}
             />
           </button>
-        )}
+        ))}
         {selectedSlotIndex !== null && cardPhotos[selectedSlotIndex] && currentFrame.slots[selectedSlotIndex] && (
           <div
             aria-hidden
@@ -1076,31 +1131,48 @@ export function VisitCard() {
                     );
                   })}
                 </div>
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
-                  {FRAMES.filter((f) => f.slots.length === frameCut).map((f) => {
-                    const active = frameKey === f.key;
-                    return (
-                      <button key={f.key} type="button" onClick={() => selectCardFrame(f)} aria-pressed={active}
-                        style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 6px', border: active ? `2px solid ${f.accent}` : '2px solid #430A21', background: active ? 'var(--cb-primary-soft)' : '#fff', boxShadow: active ? `0 3px 0 0 ${f.accent}` : '0 2px 0 0 #430A21', cursor: 'pointer' }}>
-                        <span style={{ width: 28, height: 48, border: '1px solid #430A21', background: f.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src={f.src ?? f.sticker?.src} alt="" style={{ width: '100%', height: '100%', objectFit: f.src ? 'cover' : 'contain', display: 'block' }} />
+                {frameCut === 1 ? (
+                  // 1컷 — 캐릭터 팔레트: 탭하면 카드에 추가 (여러 개 가능)
+                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                    {STICKER_ASSETS.map((asset) => (
+                      <button key={asset.key} type="button" onClick={() => addSticker(asset)}
+                        aria-label={`${asset.label} 캐릭터 추가`}
+                        style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 6px', border: '2px solid #430A21', background: '#fff', boxShadow: '0 2px 0 0 #430A21', cursor: 'pointer' }}>
+                        <span style={{ width: 48, height: 48, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src={asset.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: active ? 'var(--cb-primary-deep)' : '#430A21', whiteSpace: 'nowrap' }}>{f.label}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--cb-primary-deep)' : '#8C6B73', whiteSpace: 'nowrap' }}>{f.countLabel}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#430A21', whiteSpace: 'nowrap' }}>{asset.label}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#8C6B73', whiteSpace: 'nowrap' }}>+ 추가</span>
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 2 }}>
+                    {FRAMES.filter((f) => f.slots.length === frameCut).map((f) => {
+                      const active = frameKey === f.key;
+                      return (
+                        <button key={f.key} type="button" onClick={() => selectCardFrame(f)} aria-pressed={active}
+                          style={{ flexShrink: 0, scrollSnapAlign: 'center', width: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 6px', border: active ? `2px solid ${f.accent}` : '2px solid #430A21', background: active ? 'var(--cb-primary-soft)' : '#fff', boxShadow: active ? `0 3px 0 0 ${f.accent}` : '0 2px 0 0 #430A21', cursor: 'pointer' }}>
+                          <span style={{ width: 28, height: 48, border: '1px solid #430A21', background: f.bg, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={f.src ?? sticker1Default} alt="" style={{ width: '100%', height: '100%', objectFit: f.src ? 'cover' : 'contain', display: 'block' }} />
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: active ? 'var(--cb-primary-deep)' : '#430A21', whiteSpace: 'nowrap' }}>{f.label}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--cb-primary-deep)' : '#8C6B73', whiteSpace: 'nowrap' }}>{f.countLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : isCard ? (
-              stickerEdit && currentFrame.sticker ? (
+              selectedSticker ? (
                 <div style={cardToolPanelStyle}>
                   <div style={cardToolHeaderStyle}>
                     <span style={cardToolTitleStyle}>
                       <Move size={15} strokeWidth={2.5} />
-                      캐릭터 — 드래그로 이동
+                      {selectedSticker.label} 캐릭터 — 드래그로 이동
                     </span>
-                    <button type="button" onClick={() => setStickerEdit(false)} aria-label="캐릭터 편집 닫기" style={iconOnlyButtonStyle}>
+                    <button type="button" onClick={() => setSelectedStickerId(null)} aria-label="캐릭터 편집 닫기" style={iconOnlyButtonStyle}>
                       <X size={17} color="#430A21" strokeWidth={2.6} />
                     </button>
                   </div>
@@ -1112,35 +1184,39 @@ export function VisitCard() {
                       min={0.4}
                       max={2.4}
                       step={0.05}
-                      value={stickerT.scale}
+                      value={selectedSticker.scale}
                       onChange={(e) => {
                         const scale = Number(e.currentTarget.value);
-                        setStickerT((cur) => ({ ...cur, scale }));
+                        updateSticker(selectedSticker.id, (s) => ({ ...s, scale }));
                       }}
                       aria-label="캐릭터 크기"
                       style={zoomSliderStyle}
                     />
-                    <span style={zoomValueStyle}>{Math.round(stickerT.scale * 100)}%</span>
+                    <span style={zoomValueStyle}>{Math.round(selectedSticker.scale * 100)}%</span>
                   </div>
 
                   <div style={cardToolScrollerStyle}>
-                    <button type="button" onClick={() => { setFrameCut(1); setBottomMode('frames'); }} aria-label="감정 바꾸기" style={cardToolButtonStyle}>
+                    <button type="button" onClick={() => { setFrameCut(1); setBottomMode('frames'); }} aria-label="캐릭터 더 추가" style={cardToolButtonStyle}>
                       <Frame size={18} strokeWidth={2.4} />
-                      <span>감정</span>
+                      <span>추가</span>
                     </button>
-                    <button type="button" onClick={() => setStickerT(DEFAULT_STICKER_TRANSFORM)} aria-label="캐릭터 위치 초기화" style={cardToolButtonStyle}>
+                    <button type="button" onClick={() => updateSticker(selectedSticker.id, (s) => ({ ...s, flipped: !s.flipped }))} aria-label="캐릭터 좌우 반전" style={cardToolButtonStyle}>
+                      <FlipHorizontal size={18} strokeWidth={2.4} />
+                      <span>반전</span>
+                    </button>
+                    <button type="button" onClick={() => updateSticker(selectedSticker.id, (s) => ({ ...s, rotation: (s.rotation + 90) % 360 }))} aria-label="캐릭터 90도 회전" style={cardToolButtonStyle}>
+                      <RotateCw size={18} strokeWidth={2.4} />
+                      <span>90도</span>
+                    </button>
+                    <button type="button" onClick={() => updateSticker(selectedSticker.id, (s) => ({ ...s, ...DEFAULT_STICKER_POS }))} aria-label="캐릭터 편집 초기화" style={cardToolButtonStyle}>
                       <RefreshCcw size={18} strokeWidth={2.4} />
                       <span>리셋</span>
                     </button>
-                  </div>
-
-                  {isCardComplete && (
-                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
-                      style={{ ...cardSaveButtonStyle, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
-                      <Download size={17} strokeWidth={2.6} />
-                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
+                    <button type="button" onClick={() => removeSticker(selectedSticker.id)} aria-label="캐릭터 삭제" style={cardToolButtonStyle}>
+                      <Trash2 size={18} strokeWidth={2.4} />
+                      <span>삭제</span>
                     </button>
-                  )}
+                  </div>
                 </div>
               ) : selectedPhoto && selectedSlotIndex !== null ? (
                 <div style={cardToolPanelStyle}>
@@ -1216,14 +1292,6 @@ export function VisitCard() {
                       ))}
                     </div>
                   </div>
-
-                  {isCardComplete && (
-                    <button type="button" onClick={handleDownload} disabled={!cardUrl || busy}
-                      style={{ ...cardSaveButtonStyle, background: !cardUrl || busy ? '#CBD5E1' : 'var(--cb-primary)', cursor: cardUrl && !busy ? 'pointer' : 'not-allowed' }}>
-                      <Download size={17} strokeWidth={2.6} />
-                      {busy ? '저장 중' : cardUrl ? '저장' : '카드 생성 중'}
-                    </button>
-                  )}
                 </div>
               ) : (
                 <>
