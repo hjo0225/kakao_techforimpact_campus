@@ -260,6 +260,15 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
   위↔아래 1.6s 왕복 (AI 스캔 느낌). 컨테이너는 `position: relative` + `overflow: hidden`.
 - `prefers-reduced-motion: reduce`: 모든 애니메이션 제거 (정적 표시).
 
+### 촬영 찰칵 플래시 (`cb-shutter-flash`)
+
+셔터 탭 → 실제 촬영 순간 화면 전체 흰 오버레이가 빠르게 사라지는 카메라 "찰칵" 피드백.
+
+- `cb-shutter-flash`: `position: absolute; inset: 0`, `#fff`, `z-index: 1100`(토스트 1000보다 위),
+  `pointer-events: none`. `cb-shutter-flash` keyframe으로 opacity 0.85 → 0, 280ms ease-out forwards.
+- 연속 촬영 재생: React에서 `key`를 증가시켜 리마운트로 애니메이션 재트리거.
+- `prefers-reduced-motion: reduce`: 애니메이션 제거 (플래시 없음).
+
 ### `<TutorialOverlay>` — 첫 진입 온보딩 캐러셀
 
 로그인 직후 앱 프레임 내부를 덮는 풀스크린 오버레이. 실제 앱 스크린샷 4장을 좌우 스와이프/다음 버튼으로 넘긴다.

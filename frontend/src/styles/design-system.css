@@ -786,6 +786,33 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   }
 }
 
+/* 촬영 찰칵 플래시 — 흰 오버레이가 빠르게 페이드아웃 */
+.cb-shutter-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  background: #fff;
+  pointer-events: none;
+  opacity: 0;
+  animation: cb-shutter-flash 280ms ease-out forwards;
+}
+
+@keyframes cb-shutter-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-shutter-flash {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .cb-team-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
