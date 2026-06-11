@@ -248,7 +248,7 @@ export function MapScreen() {
               style={{
                 width: 'calc((100% - 20px) / 5)', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 999, padding: '6px 2px', lineHeight: '13px',
+                borderRadius: 999, padding: '6px 2px',
                 border: '2px solid #430A21', cursor: 'pointer',
                 fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
