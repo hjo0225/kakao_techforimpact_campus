@@ -1160,8 +1160,8 @@ export function VisitCard() {
       {/* 헤더 — 몰입 촬영 모드에서는 부드럽게 접힌다 */}
       <div style={{
         flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', gap: 8,
-        padding: immersive ? '0 12px' : '4px 12px 10px',
-        maxHeight: immersive ? 0 : 64,
+        padding: immersive ? '0 12px' : '10px 12px 10px',
+        maxHeight: immersive ? 0 : 72,
         opacity: immersive ? 0 : 1,
         overflow: 'hidden',
         pointerEvents: immersive ? 'none' : 'auto',
