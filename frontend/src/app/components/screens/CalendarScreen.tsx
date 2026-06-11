@@ -525,6 +525,7 @@ export function CalendarScreen() {
               aria-pressed={active}
               style={{
                 border: active ? '2px solid var(--cb-primary)' : BORDER,
+                borderRadius: 14,
                 background: active ? 'var(--cb-primary-soft)' : '#fff',
                 color: active ? 'var(--cb-primary-deep)' : '#430A21',
                 padding: '11px 0',
@@ -640,14 +641,16 @@ export function CalendarScreen() {
         </div>
       </div>
 
-      {/* 본문 */}
+      {/* 본문 — 그리드 뷰는 남는 높이를 캘린더가 모두 차지 (아랫선이 마스코트 바로 위) */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
-          padding: '0 14px 18px',
+          padding: '0 14px 10px',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {error && (
@@ -712,7 +715,7 @@ function MonthGrid({
   onPickDay: (key: string) => void;
 }) {
   return (
-    <div style={{ border: BORDER, background: '#fff', boxShadow: '3px 3px 0 0 #430A21' }}>
+    <div style={{ border: BORDER, background: '#fff', boxShadow: '3px 3px 0 0 #430A21', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* 요일 헤더 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
         {WEEKDAYS.map((w, i) => (
@@ -733,13 +736,13 @@ function MonthGrid({
         ))}
       </div>
 
-      {/* 날짜 셀 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      {/* 날짜 셀 — 남는 높이를 행이 균등 분배 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', flex: 1, minHeight: 0 }}>
         {cells.map((cell, idx) => {
           const col = idx % 7;
           const isSun = col === 0;
           if (!cell) {
-            return <div key={`b-${idx}`} style={{ aspectRatio: '1 / 1', background: '#FAF5EF' }} />;
+            return <div key={`b-${idx}`} style={{ minHeight: 44, background: '#FAF5EF' }} />;
           }
           const dayEntries = byDay.get(cell.key);
           const rep = dayEntries?.[0];
@@ -751,7 +754,7 @@ function MonthGrid({
               disabled={!dayEntries}
               style={{
                 position: 'relative',
-                aspectRatio: '1 / 1',
+                minHeight: 44,
                 padding: 0,
                 border: 'none',
                 borderRight: col === 6 ? 'none' : '1px solid rgba(67,10,33,0.12)',
