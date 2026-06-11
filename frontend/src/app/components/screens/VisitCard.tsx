@@ -1026,7 +1026,7 @@ export function VisitCard() {
         background: camError ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         cursor: camError ? 'not-allowed' : 'pointer',
-        boxShadow: '0 4px 0 0 #430A21, 0 6px 14px rgba(200,92,119,0.4)',
+        boxShadow: 'none',
       }}
     >
       <Camera size={26} strokeWidth={2.4} />

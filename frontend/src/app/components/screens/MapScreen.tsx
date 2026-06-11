@@ -246,9 +246,9 @@ export function MapScreen() {
               onClick={() => setContainerFilter(f.key)}
               aria-pressed={isActive}
               style={{
-                flex: 1, minWidth: 0,
+                width: 61, height: 31.7, flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 999, padding: '6px 2px',
+                borderRadius: 999, padding: '0 4px',
                 border: '2px solid #430A21', cursor: 'pointer',
                 fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
                 background: isActive ? '#430A21' : '#fff',
