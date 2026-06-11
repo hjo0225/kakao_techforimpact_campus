@@ -561,11 +561,29 @@ export function VisitCard() {
     slotInputRefs.current[index]?.click();
   };
 
+  // 스티커가 카드(프레임) 밖으로 나가지 않게 — 크기/회전을 반영해 중심 좌표를 클램프
+  const clampStickerBounds = useCallback((s: StickerInstance): StickerInstance => {
+    const rect = cardPreviewRef.current?.getBoundingClientRect();
+    const cardRatio = rect && rect.height > 0
+      ? rect.width / rect.height
+      : currentFrame.width / currentFrame.height;
+    const ar = s.height / s.width;                      // 스티커 원본 세로/가로
+    const quarter = Math.abs(s.rotation % 180) === 90;  // 90/270도 회전이면 가로세로 교체
+    const wFrac = STICKER_BASE_RATIO * s.scale;         // 카드 폭 대비 스티커 폭
+    const halfW = (quarter ? wFrac * ar : wFrac) / 2;
+    const halfH = ((quarter ? wFrac : wFrac * ar) * cardRatio) / 2;
+    return {
+      ...s,
+      x: clamp(s.x, Math.min(halfW, 0.5), Math.max(1 - halfW, 0.5)),
+      y: clamp(s.y, Math.min(halfH, 0.5), Math.max(1 - halfH, 0.5)),
+    };
+  }, [currentFrame]);
+
   // 캐릭터 스티커 — 팔레트에서 "추가" (교체 아님), 드래그로 이동, 탭으로 편집 패널
   const updateSticker = useCallback((id: number, updater: (s: StickerInstance) => StickerInstance) => {
-    setStickers((cur) => cur.map((s) => (s.id === id ? updater(s) : s)));
+    setStickers((cur) => cur.map((s) => (s.id === id ? clampStickerBounds(updater(s)) : s)));
     setSavedCard(null);
-  }, []);
+  }, [clampStickerBounds]);
 
   const addSticker = (asset: StickerAsset) => {
     // 1컷 프레임이 아니면 1컷으로 전환 (첫 슬롯 사진은 유지됨)
@@ -574,13 +592,13 @@ export function VisitCard() {
       if (oneCutFrame) selectCardFrame(oneCutFrame);
     }
     const id = ++stickerIdRef.current;
-    setStickers((cur) => [...cur, {
+    setStickers((cur) => [...cur, clampStickerBounds({
       ...asset,
       id,
       ...DEFAULT_STICKER_POS,
       // 추가할 때마다 살짝 어긋나게 — 같은 자리에 겹쳐 안 보이는 것 방지
-      x: clamp(DEFAULT_STICKER_POS.x + (cur.length % 3 - 1) * 0.12, 0.05, 0.95),
-    }]);
+      x: DEFAULT_STICKER_POS.x + (cur.length % 3 - 1) * 0.12,
+    })]);
     // 기본값은 편집 시트를 띄우지 않는다 — 캐릭터를 탭하면 그때 편집
     setSelectedStickerId(null);
     setSelectedSlotIndex(null);
@@ -613,11 +631,7 @@ export function VisitCard() {
     if (!rect || rect.width <= 0 || rect.height <= 0) return;
     const dx = (event.clientX - drag.startX) / rect.width;
     const dy = (event.clientY - drag.startY) / rect.height;
-    updateSticker(id, (s) => ({
-      ...s,
-      x: clamp(drag.x + dx, 0.05, 0.95),
-      y: clamp(drag.y + dy, 0.05, 0.95),
-    }));
+    updateSticker(id, (s) => ({ ...s, x: drag.x + dx, y: drag.y + dy })); // 경계 클램프는 updateSticker가 처리
   };
 
   const handleStickerPointerEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
