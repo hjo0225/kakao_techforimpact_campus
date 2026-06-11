@@ -1656,7 +1656,7 @@ export function VisitCard() {
               {feedback === 'REUSABLE' ? (
                 <>지구가 한 뼘 더 깨끗해졌어요.<br />다음에도 함께해요!</>
               ) : (
-                <>다음엔 다회용기로 같이<br />지구를 지켜요. 할 수 있어요!</>
+                <>다음엔 다회용기로 같이 지구를 지켜요.<br />할 수 있어요</>
               )}
             </p>
             <div className="cb-modal__actions">
