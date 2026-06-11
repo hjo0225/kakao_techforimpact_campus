@@ -1206,8 +1206,14 @@ export function VisitCard() {
       {/* ── 카메라 뷰 ── */}
       {view === 'camera' && !cardLocked && (
         <>
-	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
-	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
+	          {/* 뷰파인더 — 평소엔 둥근 프레임 카드, 몰입 촬영에서는 풀블리드로 펴진다 */}
+	          <div style={{
+	            flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden',
+	            margin: immersive ? 0 : '2px 12px 10px',
+	            border: immersive ? 'none' : '2px solid #430A21',
+	            borderRadius: immersive ? 0 : 18,
+	            transition: 'margin 260ms ease, border-radius 260ms ease',
+	          }}>
 	            {immersive && (
 	              <>
 	                <button
