@@ -305,6 +305,8 @@ export function VisitCard() {
   const cardPhotoCount = cardPhotos.filter(Boolean).length;
   const isCardComplete = cardPhotoCount === currentFrame.slots.length;
   const selectedPhoto = selectedSlotIndex !== null ? cardPhotos[selectedSlotIndex] : null;
+  // 1컷은 빈 슬롯에 라이브 카메라를 그대로 보여준다 — 캐릭터 스티커가 위에 떠서 AR 프리뷰처럼 보임
+  const liveSlotPreview = isCard && currentFrame.slots.length === 1 && !cardPhotos[0] && !camError;
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -844,6 +846,20 @@ export function VisitCard() {
           background: currentFrame.bg,
         }}
       >
+        {/* 카드 모드 공용 비디오 — 1컷 빈 슬롯에서는 풀블리드 라이브 프리뷰, 그 외에는 촬영용으로만 유지 */}
+        {!camError && (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            style={liveSlotPreview ? {
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', display: 'block', zIndex: 0,
+              transform: facing === 'user' ? 'scaleX(-1)' : 'none',
+            } : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          />
+        )}
         {currentFrame.slots.map((slot, index) => {
           const slotPhoto = cardPhotos[index];
           const slotStyle: React.CSSProperties = {
@@ -876,6 +892,7 @@ export function VisitCard() {
                 aria-label={`${index + 1}번째 사진 ${slotPhoto ? '편집' : '선택'}`}
                 style={{
                   ...cardSlotButtonStyle,
+                  background: liveSlotPreview ? 'transparent' : cardSlotButtonStyle.background,
                   borderStyle: slotPhoto ? 'solid' : 'dashed',
                   borderColor: selectedSlotIndex === index ? '#fff' : slotPhoto ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.82)',
                   touchAction: slotPhoto ? 'none' : 'manipulation',
@@ -888,7 +905,7 @@ export function VisitCard() {
                     onLoad={(e) => updateCardPhotoSize(index, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                     style={getPhotoPreviewStyle(slotPhoto, slot)}
                   />
-                ) : (
+                ) : liveSlotPreview ? null : (
                   <span style={cardSlotEmptyStyle}>
                     <ImageIcon size={22} strokeWidth={2.4} />
                     <span>{index + 1}</span>
@@ -1006,18 +1023,7 @@ export function VisitCard() {
 	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 (검정 배경 없이 흰 제어부와 자연스럽게 연결) */}
 	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
 	            {isCard ? (
-	              <>
-	                {!camError && (
-	                  <video
-	                    ref={videoRef}
-	                    autoPlay
-	                    muted
-	                    playsInline
-	                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-	                  />
-	                )}
-	                {cardEditor}
-	              </>
+	              cardEditor
 	            ) : camError && !photo ? (
 	              <div style={{ position: 'absolute', inset: 0, background: '#430A21', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center', color: '#fff' }}>
 	                <Camera size={30} strokeWidth={2.2} />
