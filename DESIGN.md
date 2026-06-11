@@ -266,10 +266,10 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
 
 - 컨테이너: `cb-tutorial-backdrop` (`position: absolute; inset: 0`, `--cb-bg`, `z-index: 50`). `.cb-app-bg`(relative + isolation) 내부에 마운트되어 폰 프레임 안에 갇힘.
 - 슬라이드 트랙: `cb-tutorial__track` (`transform: translateX`), 전환 `320ms cubic-bezier(0.22,0.61,0.36,1)`.
-- **슬라이드 레이아웃 (위→아래)**: ① 스크린샷 `cb-tutorial__shotwrap > cb-tutorial__shot` —
-  상단부터 남는 높이를 모두 차지, 가로폭은 캡션 행과 동일한 100%
-  (`object-fit: cover; object-position: center top` — 비율 유지, 세로 초과분만 크롭.
-  pixel border + `--cb-shadow-md`)
+- **슬라이드 레이아웃 (위→아래)**: ① 데모 화면 `cb-tutorial__shotwrap > cb-tutorial__demo` —
+  앱 캡처가 아니라 **튜토리얼 전용으로 그린 컴포넌트**(`tutorial/TutorialDemos.tsx`,
+  지도/인증/야구네컷/캘린더 4종). 박스를 100% 채워 기기 비율과 무관하게 딱 맞음.
+  pixel border + `--cb-shadow-md`, 토큰/기존 에셋(stadium-bg, 마스코트, 캐릭터 스티커)만 사용
   ② 캡션 행 `cb-tutorial__caption` — 마스코트(`cb-tutorial__mascot`, 96px, 좌측) +
   **말풍선** `cb-tutorial__bubble` (cream surface + pixel border + `--cb-shadow-sm`,
   좌하단에 마스코트를 향한 꼬리 ::before/::after 삼각형)

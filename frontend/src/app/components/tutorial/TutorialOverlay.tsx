@@ -2,19 +2,17 @@ import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTutorialStore } from '../../../store/tutorialStore'
 import { cx } from '../../classNames'
+import type { ReactNode } from 'react'
 import stadiumBg from '../../../assets/tutorial/stadium-bg.png'
 import mascotGuide from '../../../assets/tutorial/mascot-guide.png'
-import shotMap from '../../../assets/tutorial/map.png'
-import shotVerify from '../../../assets/tutorial/verify.png'
-import shotCard from '../../../assets/tutorial/card.png'
-import shotRecord from '../../../assets/tutorial/record.png'
+import { MapDemo, VerifyDemo, CardDemo, RecordDemo } from './TutorialDemos'
 
 interface Slide {
   step: string
   title: string
   description: string
-  /** 실제 앱 화면 캡처 (scripts/capture-tutorial.cjs로 재생성). */
-  shot: string
+  /** 박스를 100% 채우는 튜토리얼 전용 데모 화면 (캡처 아님 — 비율 문제 없음). */
+  demo: ReactNode
 }
 
 const SLIDES: Slide[] = [
@@ -22,25 +20,25 @@ const SLIDES: Slide[] = [
     step: 'STEP 1 · 지도',
     title: '잠실야구장 지도에서 매장 찾기',
     description: '잠실야구장 층별 지도에서 다회용기를 쓸 수 있는 매장을 한눈에 확인해요.',
-    shot: shotMap,
+    demo: <MapDemo />,
   },
   {
     step: 'STEP 2 · 인증',
     title: '사진으로 다회용기 인증',
     description: '다회용기 사용 사진을 찍으면 AI가 자동으로 인증해 줘요.',
-    shot: shotVerify,
+    demo: <VerifyDemo />,
   },
   {
     step: 'STEP 3 · 야구네컷',
     title: '야구네컷으로 추억 공유',
     description: '용기 인증 후, 직관 사진으로 나만의 야구네컷을 만들어 친구들과 공유해요.',
-    shot: shotCard,
+    demo: <CardDemo />,
   },
   {
     step: 'STEP 4 · 기록',
     title: '캘린더에서 기록 확인',
     description: '캘린더에서 날짜별 인증 기록을 모아 볼 수 있어요.',
-    shot: shotRecord,
+    demo: <RecordDemo />,
   },
 ]
 
@@ -99,7 +97,7 @@ export function TutorialOverlay() {
             {SLIDES.map((slide) => (
               <div className="cb-tutorial__slide" key={slide.title}>
                 <div className="cb-tutorial__shotwrap">
-                  <img className="cb-tutorial__shot" src={slide.shot} alt={`${slide.title} 화면`} draggable={false} />
+                  <div className="cb-tutorial__demo">{slide.demo}</div>
                 </div>
                 <div className="cb-tutorial__caption">
                   <img className="cb-tutorial__mascot" src={mascotGuide} alt="" aria-hidden="true" draggable={false} />

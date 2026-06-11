@@ -929,15 +929,14 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   justify-content: center;
 }
 
-.cb-tutorial__shot {
-  display: block;
-  width: 100%; /* 캡션(마스코트+말풍선) 행과 동일한 가로폭 */
+/* 튜토리얼 전용 데모 화면 — 컴포넌트가 박스를 100% 채워 비율 문제가 없다 */
+.cb-tutorial__demo {
+  width: 100%;
   height: 100%;
-  object-fit: cover; /* 비율 유지 — 세로로 넘치는 하단부만 크롭 */
-  object-position: center top;
   border: var(--cb-border-pixel);
   box-shadow: var(--cb-shadow-md);
-  image-rendering: auto; /* 스크린샷은 pixelated 전역 규칙 예외 — 계단 현상 방지 */
+  overflow: hidden;
+  background: var(--cb-bg);
 }
 
 /* 캡션 행 — 마스코트(작게) + 말풍선 설명 */
