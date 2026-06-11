@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+### fix(api): `GET /stats/me`의 `totalCount` 의미 변경
+
+- `min(useCount, returnCount)` → **라벨 확정 샘플 전체 수(일회+다회)**. 반납 인증 UI 제거 후
+  min 방식은 항상 0이 되어 프로필 '누적 인증'이 올라가지 않던 버그 수정
+- 프론트 환경 지표(절약 용기/탄소)는 다회용기 라벨 건수(`useCount`) 기준으로 변경
+
 ### feat: WebView 네이티브 카카오 로그인 + postMessage 브릿지
 
 - **`POST /auth/kakao` 입력 확장**: 기존 `{ code, redirectUri }`에 더해 `{ accessToken }`(네이티브

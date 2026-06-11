@@ -281,7 +281,10 @@ KBO 경기 일정 조회. 인증 불필요.
 - `points`: `usages.score` 누적 합계 (USE=50, RETURN=100 기준)
 - `useCount`: `kind = USE` 인증 횟수
 - `returnCount`: `kind = RETURN` 인증 횟수
-- `totalCount`: `min(useCount, returnCount)` — 사용·반납이 모두 인증된 컵 수(실제 회수된 다회용기). 단순 합산은 같은 컵을 2회로 부풀리므로 사용하지 않음
+- `totalCount`: **라벨 확정된 인증 샘플 전체 수** (`verification_samples.status = CONFIRMED`,
+  일회용기 + 다회용기 포함) — 프로필 '누적 인증'.
+  (변경 2026-06-12: 기존 `min(useCount, returnCount)`는 반납 인증 UI 제거 후 항상 0이 되는 잔재)
+  `useCount`는 다회용기로 라벨링되어 점수가 부여된 건수(usage rows)만 — 환경 지표 계산에 사용
 
 **Errors**
 - `401 Unauthorized` — JWT 누락/무효/만료

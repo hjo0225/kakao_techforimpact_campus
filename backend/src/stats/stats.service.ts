@@ -30,11 +30,17 @@ export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMyStats(userId: string): Promise<MyStats> {
-    const rows = await this.prisma.usage.groupBy({
-      by: ['kind'],
-      where: { userId: BigInt(userId) },
-      _count: { _all: true },
-    });
+    const [rows, confirmedCount] = await Promise.all([
+      this.prisma.usage.groupBy({
+        by: ['kind'],
+        where: { userId: BigInt(userId) },
+        _count: { _all: true },
+      }),
+      // 누적 인증 = 라벨 확정된 샘플 전체 (일회용기 + 다회용기)
+      this.prisma.verificationSample.count({
+        where: { userId: BigInt(userId), status: 'CONFIRMED' },
+      }),
+    ]);
 
     let useCount = 0;
     let returnCount = 0;
@@ -47,9 +53,8 @@ export class StatsService {
     return {
       useCount,
       returnCount,
-      // 사용·반납 양쪽 인증이 모두 있을 때 실제 회수된 다회용기 1개로 카운트.
-      // 단순 합산은 같은 컵을 2회로 부풀린다.
-      totalCount: Math.min(useCount, returnCount),
+      // 누적 인증 = 일회+다회 라벨 확정 전체. (useCount는 다회용기 라벨 건만 — usage는 REUSABLE일 때만 생성)
+      totalCount: confirmedCount,
     };
   }
 
