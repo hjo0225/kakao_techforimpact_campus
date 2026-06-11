@@ -931,10 +931,10 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
 
 .cb-tutorial__shot {
   display: block;
+  width: 100%; /* 캡션(마스코트+말풍선) 행과 동일한 가로폭 */
   height: 100%;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
+  object-fit: cover; /* 비율 유지 — 세로로 넘치는 하단부만 크롭 */
+  object-position: center top;
   border: var(--cb-border-pixel);
   box-shadow: var(--cb-shadow-md);
   image-rendering: auto; /* 스크린샷은 pixelated 전역 규칙 예외 — 계단 현상 방지 */
