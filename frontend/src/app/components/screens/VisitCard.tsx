@@ -14,6 +14,7 @@ import { saveImageViaBridge } from '../../../lib/webviewBridge';
 import lockedMascot from '../../../assets/feedback/locked.png';
 import reusableMascot from '../../../assets/feedback/reusable.png';
 import singleMascot from '../../../assets/feedback/single.png';
+import guideMascot from '../../../assets/tutorial/mascot-guide.png';
 import {
   analyzeImage, confirmLabel, ApiError,
   type AiPrediction, type ContainerLabel, type CertificationMode,
@@ -1382,9 +1383,10 @@ export function VisitCard() {
       {/* ── 결과: 인증(AI 분석) ── */}
       {view === 'result' && !isCard && (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* 촬영 사진 */}
-          <div style={{ width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+          {/* 촬영 사진 — 분석 중에는 스캔 바가 위아래로 훑는다 */}
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', border: '2px solid #430A21', borderRadius: 18, boxShadow: '3px 3px 0 0 #430A21', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
             {photo && <img src={photo.url} alt="촬영한 용기" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+            {vStep === 'analyzing' && <div className="cb-scanline" aria-hidden="true" />}
           </div>
 
           {vStep === 'idle' && (
@@ -1395,7 +1397,14 @@ export function VisitCard() {
           )}
 
           {vStep === 'analyzing' && (
-            <p style={{ textAlign: 'center', color: '#8C6B73', fontSize: 13, fontWeight: 700, padding: '12px 0' }}>AI 판독 중...</p>
+            <div className="cb-ai-loading" role="status" aria-live="polite">
+              <img className="cb-ai-loading__mascot" src={guideMascot} alt="" aria-hidden="true" />
+              <p className="cb-ai-loading__label">
+                AI가 용기를 살펴보는 중
+                <span className="cb-ai-loading__dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
+              </p>
+              <p className="cb-ai-loading__hint">다회용기인지 꼼꼼하게 확인하고 있어요</p>
+            </div>
           )}
 
           {(vStep === 'labeling' || vStep === 'submitting') && (

@@ -248,6 +248,18 @@ vintage 야구장 일러스트(`frontend/src/assets/landing.svg`)를 풀스크�
 └─────────────────┘
 ```
 
+### AI 분석 로딩 (`cb-ai-loading` / `cb-scanline`)
+
+용기인증 AI 판독 대기 인터랙션 (분석이 수 초 걸림). 마스코트가 사진을 살펴보는 콘셉트.
+
+- `cb-ai-loading`: surface 카드 (pixel border + `--cb-shadow-sm`). 내부 세로 정렬 —
+  마스코트(`cb-ai-loading__mascot`, 110px, `cb-ai-bob` 1.1s 둥실거림) ·
+  라벨(`cb-ai-loading__label`, `--cb-text` 15px/800) + 점 3개(`cb-ai-loading__dots`,
+  `cb-ai-dot` 순차 점멸 0/0.2/0.4s 딜레이) · 힌트(`cb-ai-loading__hint`, `--cb-muted` 12px)
+- `cb-scanline`: 촬영 사진 컨테이너 위 `--cb-primary` 4px 수평 바, `cb-ai-scan`으로
+  위↔아래 1.6s 왕복 (AI 스캔 느낌). 컨테이너는 `position: relative` + `overflow: hidden`.
+- `prefers-reduced-motion: reduce`: 모든 애니메이션 제거 (정적 표시).
+
 ### `<TutorialOverlay>` — 첫 진입 온보딩 캐러셀
 
 로그인 직후 앱 프레임 내부를 덮는 풀스크린 오버레이. 실제 앱 스크린샷 4장을 좌우 스와이프/다음 버튼으로 넘긴다.
