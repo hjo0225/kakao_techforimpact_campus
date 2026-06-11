@@ -1207,14 +1207,8 @@ export function VisitCard() {
       {/* ── 카메라 뷰 ── */}
       {view === 'camera' && !cardLocked && (
         <>
-	          {/* 뷰파인더 — 평소엔 둥근 프레임 카드, 몰입 촬영에서는 풀블리드로 펴진다 */}
-	          <div style={{
-	            flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden',
-	            margin: immersive ? 0 : '2px 12px 10px',
-	            border: immersive ? 'none' : '2px solid #430A21',
-	            borderRadius: immersive ? 0 : 18,
-	            transition: 'margin 260ms ease, border-radius 260ms ease',
-	          }}>
+	          {/* 풀블리드 뷰파인더 — 영역 전체를 촬영 화면으로 */}
+	          <div style={{ flex: 1, minHeight: 0, containerType: 'size', position: 'relative', overflow: 'hidden' }}>
 	            {immersive && (
 	              <>
 	                <button
@@ -1495,16 +1489,15 @@ export function VisitCard() {
             ) : (
               // 인증 — 촬영 전: 셔터 / 촬영 후: 다시 · AI 인증
               photo ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px' }}>
-                  <button type="button" onClick={retake} aria-label="다시 찍기" style={{ ...ctrlSquareStyle, width: 64, height: 64 }}>
-                    <RotateCcw size={24} color="#430A21" strokeWidth={2.4} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px' }}>
+                  <button type="button" onClick={retake} aria-label="다시 찍기" style={{ ...ctrlSquareStyle, width: 56, height: 56 }}>
+                    <RotateCcw size={22} color="#430A21" strokeWidth={2.4} />
                     <span style={ctrlLabelStyle}>다시</span>
                   </button>
                   <button type="button" onClick={handleAnalyze} disabled={busy}
-                    style={{ flex: 1, height: 64, border: '2px solid #430A21', borderRadius: 18, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200,92,119,0.34)' }}>
-                    <ScanLine size={20} strokeWidth={2.4} /> AI 인증
+                    style={{ flex: 1, height: 56, border: '2px solid #430A21', borderRadius: 18, background: busy ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0 0 #430A21, 0 6px 12px rgba(200,92,119,0.34)' }}>
+                    <ScanLine size={19} strokeWidth={2.4} /> AI 인증
                   </button>
-                  <div style={{ width: 64 }} aria-hidden />
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>{captureBtn}</div>
@@ -1851,18 +1844,16 @@ const zoomValueStyle: React.CSSProperties = {
   fontWeight: 900,
 };
 
+// 도구 버튼 행 — 스크롤 없이 시트 폭을 균등하게 꽉 채운다
 const cardToolScrollerStyle: React.CSSProperties = {
   display: 'flex',
-  gap: 8,
-  overflowX: 'auto',
-  WebkitOverflowScrolling: 'touch',
-  paddingBottom: 2,
+  gap: 6,
 };
 
 const cardToolButtonStyle: React.CSSProperties = {
-  minWidth: 62,
+  flex: 1,
+  minWidth: 0,
   height: 52,
-  flexShrink: 0,
   border: '2px solid #430A21',
   borderRadius: 14,
   background: '#fff',
