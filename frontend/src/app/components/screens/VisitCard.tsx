@@ -291,6 +291,8 @@ export function VisitCard() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
+  // 촬영 찰칵 플래시 — key 증가로 연속 촬영에도 매번 재생
+  const [flashKey, setFlashKey] = useState(0);
 
   // 직관카드
   const [bottomMode, setBottomMode] = useState<BottomMode>('controls');
@@ -814,6 +816,7 @@ export function VisitCard() {
   const capture = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
+    setFlashKey((k) => k + 1); // 찰칵 플래시
     // 뷰파인더에 보이는 전체 프레임을 그대로 촬영한다.
     const vw = video.videoWidth;
     const vh = video.videoHeight;
@@ -1022,7 +1025,7 @@ export function VisitCard() {
       disabled={camError}
       aria-label="촬영"
       style={{
-        width: 64, height: 64, borderRadius: '9999px', border: '2px solid #430A21',
+        width: 64, height: 64, borderRadius: '9999px', border: 'none',
         background: camError ? '#CBD5E1' : 'var(--cb-primary)', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         cursor: camError ? 'not-allowed' : 'pointer',
@@ -1719,6 +1722,9 @@ export function VisitCard() {
           </div>
         </>
       )}
+
+      {/* 촬영 찰칵 플래시 — 화면 전체 흰 오버레이가 빠르게 사라진다 */}
+      {flashKey > 0 && <div key={flashKey} className="cb-shutter-flash" />}
 
       {toast && (
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 1000 /* 토스트/모달은 무조건 최상위 */ }}>
