@@ -1647,7 +1647,7 @@ export function VisitCard() {
               src={feedback === 'REUSABLE' ? reusableMascot : singleMascot}
               alt=""
               aria-hidden="true"
-              style={{ width: 150, height: 'auto', display: 'block', margin: '0 auto 14px' }}
+              style={{ height: 180, width: 'auto', display: 'block', margin: '0 auto 14px' }} // 비율 달라도 높이 통일
             />
             <h3 className="cb-modal__title">
               {feedback === 'REUSABLE' ? '다회용기 최고예요! 🎉' : '이번엔 일회용기였네요'}
@@ -1656,7 +1656,7 @@ export function VisitCard() {
               {feedback === 'REUSABLE' ? (
                 <>지구가 한 뼘 더 깨끗해졌어요.<br />다음에도 함께해요!</>
               ) : (
-                <>다음엔 다회용기로 같이 지구를 지켜요.<br />할 수 있어요</>
+                <>다음엔 다회용기로 같이 지구를 지켜요.</>
               )}
             </p>
             <div className="cb-modal__actions">
