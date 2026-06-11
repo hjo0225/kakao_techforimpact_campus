@@ -573,11 +573,12 @@ export function CalendarScreen() {
                 appearance: 'none',
                 WebkitAppearance: 'none',
                 border: BORDER,
+                borderRadius: 9999, // 알약 — 상단 탭/아이콘 버튼 라운드와 통일
                 background: '#fff',
                 color: '#430A21',
                 fontSize: 16,
                 fontWeight: 800,
-                padding: '7px 30px 7px 12px',
+                padding: '7px 30px 7px 14px',
                 cursor: 'pointer',
                 boxShadow: '0 2px 0 0 #430A21',
               }}
@@ -887,6 +888,7 @@ const iconBtnStyle: React.CSSProperties = {
   width: 34,
   height: 34,
   border: BORDER,
+  borderRadius: 9999, // 다른 화면 아이콘 버튼(원형)과 통일
   background: '#fff',
   display: 'flex',
   alignItems: 'center',

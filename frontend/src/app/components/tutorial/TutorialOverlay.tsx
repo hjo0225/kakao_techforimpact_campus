@@ -5,8 +5,7 @@ import { cx } from '../../classNames'
 import type { ReactNode } from 'react'
 import stadiumBg from '../../../assets/tutorial/stadium-bg.png'
 import mascotGuide from '../../../assets/tutorial/mascot-guide.png'
-import shotRecord from '../../../assets/tutorial/record.png'
-import { MapDemo, VerifyDemo, CardDemo } from './TutorialDemos'
+import { MapDemo, VerifyDemo, CardDemo, RecordDemo } from './TutorialDemos'
 
 interface Slide {
   step: string
@@ -42,7 +41,7 @@ const SLIDES: Slide[] = [
     step: 'STEP 4 · 기록',
     title: '캘린더에서 기록 확인',
     description: '캘린더에서 날짜별 인증 기록을 모아 볼 수 있어요.',
-    visual: <img className="cb-tutorial__shot" src={shotRecord} alt="캘린더 화면" draggable={false} />,
+    visual: <div className="cb-tutorial__demo"><RecordDemo /></div>,
   },
 ]
 
