@@ -261,7 +261,7 @@ type VStep = 'idle' | 'analyzing' | 'labeling' | 'submitting' | 'done';
 interface VResult { tone: ResultTone; title: string; reason: string }
 
 export function VisitCard() {
-  const { cameraPurpose, setCameraPurpose, setCaptureMode, addCertification } = useApp();
+  const { cameraPurpose, setCameraPurpose, setCaptureMode } = useApp();
   const user = useAuthStore((s) => s.user);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1000,7 +1000,6 @@ export function VisitCard() {
       // 용기인증 완료 → 그날 24시까지 야구네컷 잠금 해제
       markVerifiedToday();
       if (res.scored) {
-        addCertification(vMode);
         setVResult({ tone: 'success', title: '인증 완료', reason: ai ? `${detected} · AI ${ai.confidence.toFixed(1)}%` : detected });
       } else if (res.reason === 'SINGLE_USE_LABEL') {
         setVResult({ tone: 'neutral', title: '일회용기로 기록', reason: '학습 데이터로 저장했어요.' });
