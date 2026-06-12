@@ -22,25 +22,25 @@ const SLIDES: Slide[] = [
   {
     step: 'STEP 1 · 지도',
     title: '잠실야구장 지도에서 매장 찾기',
-    description: '잠실야구장 층별 지도에서 다회용기를 쓸 수 있는 매장을 한눈에 확인해요.',
+    description: '잠실야구장 층별 지도에서 다회용기를 쓸 수 있는 매장을 한눈에 확인해요',
     visual: <div className="cb-tutorial__demo"><MapDemo /></div>, // TODO: 직접 캡처본으로 교체 예정
   },
   {
     step: 'STEP 2 · 인증',
     title: '사진으로 다회용기 인증',
-    description: '다회용기 사용 사진을 찍으면 AI가 자동으로 인증해 줘요.',
+    description: '다회용기 사용 사진을 찍으면\nAI가 자동으로 인증해 줘요',
     visual: <div className="cb-tutorial__demo"><VerifyDemo /></div>,
   },
   {
     step: 'STEP 3 · 야구네컷',
     title: '야구네컷으로 추억 공유',
-    description: '용기 인증 후, 직관 사진으로 나만의 야구네컷을 만들어 친구들과 공유해요.',
+    description: '용기 인증 후, 나만의 야구네컷을\n만들어 친구들과 공유해요',
     visual: <div className="cb-tutorial__demo"><CardDemo /></div>,
   },
   {
     step: 'STEP 4 · 기록',
     title: '캘린더에서 기록 확인',
-    description: '캘린더에서 날짜별 인증 기록을 모아 볼 수 있어요.',
+    description: '캘린더에서 날짜별 인증 기록을 모아서\n볼 수 있어요',
     visual: <div className="cb-tutorial__demo"><RecordDemo /></div>,
   },
 ]

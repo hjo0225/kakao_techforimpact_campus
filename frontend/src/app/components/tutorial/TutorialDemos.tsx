@@ -154,7 +154,7 @@ export function CardDemo() {
 // ── STEP 4 · 기록 ────────────────────────────────────────────────
 
 export function RecordDemo() {
-  const photoDays = [8, 17, 26]
+  const photoDays = [4, 17, 26]
   return (
     <DemoShell>
       <div style={{ display: 'flex', gap: 6, padding: '10px 12px 8px' }}>
