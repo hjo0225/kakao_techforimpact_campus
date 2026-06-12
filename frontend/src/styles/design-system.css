@@ -1053,6 +1053,7 @@ button[style*="box-shadow"]:not(:disabled):not(.cb-no-press):active {
   color: var(--cb-text-soft);
   font-size: 13px;
   line-height: 1.55;
+  white-space: pre-line;
 }
 
 .cb-tutorial__footer {
