@@ -19,7 +19,8 @@ function PillToggle({ left, right, active }: { left: string; right: string; acti
     <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0 3px', gap: 2, height: 30, border: BORDER, borderRadius: 9999, background: '#F0E8E7' }}>
       {[left, right].map((t, i) => (
         <span key={t} style={{
-          padding: '4px 11px', borderRadius: 9999, fontSize: 11, fontWeight: 800,
+          display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 10px',
+          borderRadius: 9999, fontSize: 11, fontWeight: 800, lineHeight: 1,
           background: active === i ? 'var(--cb-primary)' : 'transparent',
           color: active === i ? '#fff' : '#8C6B73', whiteSpace: 'nowrap',
         }}>{t}</span>
