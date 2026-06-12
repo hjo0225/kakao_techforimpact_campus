@@ -80,7 +80,6 @@
 | `users/` | `/me` 프로필 조회 / `/me/team` 응원팀 변경 / `/me/avatar` 아바타 저장 (UI 폐기됐으나 엔드포인트는 유지) | `PrismaService`, `JwtAuthGuard` |
 | `games/` | `/games` KBO 일정 조회 (날짜 범위 필터) | `PrismaService` |
 | `verify/` | `/verify/use`, `/verify/return` — multipart 이미지를 Vision 서비스에 forward → 통과 시 `usages` insert. RETURN은 12h 이내 USE 가드 | `axios`, `form-data`, env `VISION_API_URL`, `PrismaService` |
-| `stats/` | `/stats/me` — 본인 누적 통계 (groupBy 1쿼리) | `PrismaService` |
 | `rankings/` | `/rankings/teams` — 팀별 누적 점수 (PG aggregate, 항상 10팀 반환) | `PrismaService` |
 
 ### Vision (`vision/`, 별도 Cloud Run 서비스)

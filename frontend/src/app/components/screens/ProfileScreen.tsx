@@ -22,7 +22,7 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const setTeam = useAuthStore((s) => s.setTeam);
   const logout = useAuthStore((s) => s.logout);
-  const { totalCertCount, ecoImpact, selectedTeam, setSelectedTeam } = useApp();
+  const { selectedTeam, setSelectedTeam } = useApp();
   const reopenTutorial = useTutorialStore((s) => s.reopen);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
 
@@ -94,39 +94,6 @@ export function ProfileScreen() {
           </div>
           <ChevronRight size={18} color="#8C6B73" />
         </button>
-
-        {/* 누적 통계 (포인트 없음) */}
-        <div style={cardStyle}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>나의 기여</p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-              gap: 8,
-              marginTop: 12,
-            }}
-          >
-            {[
-              { label: '누적 인증', value: `${totalCertCount}건` },
-              { label: '줄인 용기', value: `${ecoImpact.containers}개` },
-              { label: '폐기물 감량', value: `${ecoImpact.wasteKg}kg` },
-            ].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  borderRadius: 'var(--cb-radius-md)',
-                  background: '#F8FAFC',
-                  border: '2px solid #430A21',
-                  padding: '10px 8px',
-                  boxShadow: '0 2px 0 0 #430A21',
-                }}
-              >
-                <p style={{ fontSize: 10, color: '#64748B' }}>{item.label}</p>
-                <p style={{ marginTop: 4, fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* 튜토리얼 다시 보기 */}
         <button

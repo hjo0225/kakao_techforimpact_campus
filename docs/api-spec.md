@@ -262,73 +262,6 @@ KBO 경기 일정 조회. 인증 불필요.
 
 ---
 
-## Stats
-
-### `GET /stats/me`
-
-본인 누적 통계 조회. JWT 필수.
-
-**Response 200**
-```json
-{
-  "points": 850,
-  "useCount": 7,
-  "returnCount": 5,
-  "totalCount": 5
-}
-```
-
-- `points`: `usages.score` 누적 합계 (USE=50, RETURN=100 기준)
-- `useCount`: `kind = USE` 인증 횟수
-- `returnCount`: `kind = RETURN` 인증 횟수
-- `totalCount`: **라벨 확정된 인증 샘플 전체 수** (`verification_samples.status = CONFIRMED`,
-  일회용기 + 다회용기 포함) — 프로필 '누적 인증'.
-  (변경 2026-06-12: 기존 `min(useCount, returnCount)`는 반납 인증 UI 제거 후 항상 0이 되는 잔재)
-  `useCount`는 다회용기로 라벨링되어 점수가 부여된 건수(usage rows)만 — 환경 지표 계산에 사용
-
-**Errors**
-- `401 Unauthorized` — JWT 누락/무효/만료
-
-> 구현은 Prisma `usage.groupBy({ by: ['kind'], _sum: { score }, _count })` 1쿼리. 신규 사용자(인증 0건)는 모두 0 반환.
-
-### `GET /stats/me/logs`
-
-본인 인증 로그 타임라인(최근순) 조회. JWT 필수.
-
-**Query**
-- `limit` (optional, int) — 반환 개수. 기본 `20`, 1~100으로 클램프.
-
-**Response 200**
-```json
-[
-  {
-    "id": "2",
-    "kind": "RETURN",
-    "score": 100,
-    "gameLabel": "LG 트윈스 vs 두산 베어스",
-    "scannedAt": "2026-05-22T11:18:00.000Z"
-  },
-  {
-    "id": "1",
-    "kind": "USE",
-    "score": 50,
-    "gameLabel": null,
-    "scannedAt": "2026-05-22T09:42:00.000Z"
-  }
-]
-```
-
-- `kind`: `USE` | `RETURN`
-- `gameLabel`: 연결된 경기의 `"{홈팀} vs {원정팀}"`. `gameId` 없으면 `null`
-- `scannedAt`: ISO 8601 UTC
-
-**Errors**
-- `401 Unauthorized` — JWT 누락/무효/만료
-
-> 구현은 `usage.findMany({ where: { userId }, orderBy: { scannedAt: 'desc' }, take, include: { game } })`. 별도 테이블 없이 `usages`에서 직접 조회.
-
----
-
 ## Attendance (경기 선택 / 직관)
 
 경기를 선택해두면 **경기 날짜가 지나도록 취소하지 않을 경우 직관 방문으로 확정**됩니다. 확정은 별도 상태 없이 읽는 시점에 `game.date < 오늘(KST)` 로 계산합니다.
@@ -432,12 +365,14 @@ KBO 팀별 누적 친환경 포인트 조회. **인증 불필요**.
 
 구현 시 plan에서 이 섹션 갱신:
 
-- `GET /usages/me` — 본인 인증 히스토리 (날짜/타임라인용) — 현재 `GET /stats/me/logs`로 부분 제공 중
+- `GET /usages/me` — 본인 인증 히스토리 (날짜/타임라인용)
 - `GET /rankings/users` — 개인 전체 랭킹 (페이지네이션 필수)
 - `POST /auth/refresh` — 토큰 갱신
 - `POST /auth/logout` — 서버 측 invalidate (현재 클라이언트만 토큰 폐기)
 
 > QR 기반 인증(`POST /qr/scan`)은 Vision API 피벗으로 폐기됨 — `POST /verify/use`·`POST /verify/return` 참고.
+
+> `GET /stats/me`·`GET /stats/me/logs`는 유일 소비처였던 프로필 "나의 기여" 카드 제거(2026-06-12)와 함께 폐기됨.
 
 ---
 

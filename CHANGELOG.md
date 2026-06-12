@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### feat(api): 프로필 "나의 기여" 카드 제거 + `/stats/*` 폐기 (Breaking)
+
+- **제거된 엔드포인트**: `GET /stats/me`, `GET /stats/me/logs` — 유일 소비처였던 프로필 탭
+  "나의 기여" 카드(누적 인증/줄인 용기/폐기물 감량)를 삭제하면서 백엔드 `stats/` 모듈 전체 제거
+- 프론트: `AppContext`의 stats 파이프라인(`certificationLogs`/`todayMission`/`ecoImpact`/
+  `addCertification` 등)과 `lib/statsApi.ts` 삭제. 캘린더의 인증 이력(`/verify/history`)은 영향 없음
+
 ### fix(api): `GET /stats/me`의 `totalCount` 의미 변경
 
 - `min(useCount, returnCount)` → **라벨 확정 샘플 전체 수(일회+다회)**. 반납 인증 UI 제거 후
