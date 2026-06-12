@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Camera, Download, SwitchCamera, Frame, RotateCcw, Video, X, ScanLine, CheckCircle,
+  Camera, Download, SwitchCamera, Frame, RotateCcw, X, ScanLine, CheckCircle,
   ArrowLeftRight, FlipHorizontal, Move, RefreshCcw, RotateCw, Trash2, ZoomIn,
   Image as ImageIcon,
 } from 'lucide-react';
@@ -1539,9 +1539,6 @@ export function VisitCard() {
                     <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--cb-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <ImageIcon size={14} strokeWidth={2.4} /> 사진 {cardPhotoCount}/{currentFrame ? currentFrame.slots.length : '-'}
                     </span>
-                    <button type="button" onClick={() => showToast('2초 비디오는 준비 중이에요')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#B59CA3', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Video size={14} strokeWidth={2.4} /> 비디오
-                    </button>
                     {cardPhotoCount > 0 && (
                       <button type="button" onClick={() => { clearCard(); showToast('전체 초기화했어요'); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 700, color: '#8C6B73', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Trash2 size={14} strokeWidth={2.4} /> 초기화
