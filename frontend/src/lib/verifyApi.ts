@@ -3,7 +3,6 @@ import { useAuthStore } from '../store/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export type CertificationMode = 'use' | 'return'
 export type ContainerLabel = 'REUSABLE' | 'SINGLE_USE'
 
 export interface AiPrediction {
@@ -23,15 +22,15 @@ export interface AnalyzeApiResponse {
 export interface ConfirmApiResponse {
   sample: {
     id: string
-    kind: 'USE' | 'RETURN'
+    kind: 'USE'
     userLabel: ContainerLabel
     status: 'CONFIRMED'
   }
   scored: boolean
-  reason?: 'SINGLE_USE_LABEL' | 'NO_RECENT_USE'
+  reason?: 'SINGLE_USE_LABEL'
   usage?: {
     id: string
-    kind: 'USE' | 'RETURN'
+    kind: 'USE'
     score: number
     scannedAt: string
   }
@@ -43,18 +42,13 @@ interface VerifyOptions {
   lng?: number
 }
 
-function modeToKind(mode: CertificationMode): 'USE' | 'RETURN' {
-  return mode === 'return' ? 'RETURN' : 'USE'
-}
-
 export async function analyzeImage(
-  mode: CertificationMode,
   image: File,
   options: VerifyOptions = {},
 ): Promise<AnalyzeApiResponse> {
   const form = new FormData()
   form.append('image', image)
-  form.append('kind', modeToKind(mode))
+  form.append('kind', 'USE')
   if (options.gameId) form.append('gameId', options.gameId)
   if (options.lat !== undefined) form.append('lat', options.lat.toString())
   if (options.lng !== undefined) form.append('lng', options.lng.toString())
@@ -78,7 +72,7 @@ export async function confirmLabel(
 // --- 캘린더용 인증 이력 ---
 export interface VerificationHistoryItem {
   id: string
-  kind: 'USE' | 'RETURN'
+  kind: 'USE'
   userLabel: ContainerLabel | null
   status: 'PENDING' | 'CONFIRMED'
   confidence: number | null

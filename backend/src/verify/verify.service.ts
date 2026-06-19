@@ -8,14 +8,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import FormData from 'form-data';
+import type { UsageKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-
-const UsageKind = {
-  USE: 'USE',
-  RETURN: 'RETURN',
-} as const;
-type UsageKind = (typeof UsageKind)[keyof typeof UsageKind];
 
 const ContainerLabel = {
   REUSABLE: 'REUSABLE',
@@ -57,7 +52,7 @@ export interface ConfirmOutcome {
     status: 'CONFIRMED';
   };
   scored: boolean;
-  reason?: 'SINGLE_USE_LABEL' | 'NO_RECENT_USE';
+  reason?: 'SINGLE_USE_LABEL';
   usage?: {
     id: string;
     kind: UsageKind;
@@ -67,8 +62,6 @@ export interface ConfirmOutcome {
 }
 
 const SCORE_USE = 50;
-const SCORE_RETURN = 100;
-const RETURN_WINDOW_HOURS = 12;
 
 @Injectable()
 export class VerifyService {
@@ -167,20 +160,7 @@ export class VerifyService {
       };
     }
 
-    // RETURN 점수는 직전 12시간 내 USE가 있어야 부여 (위반 시 샘플은 확정하되 미점수)
-    if (kind === UsageKind.RETURN && !(await this.hasRecentUse(userId))) {
-      await this.prisma.verificationSample.update({
-        where: { id: sample.id },
-        data: { userLabel, status: 'CONFIRMED', confirmedAt: new Date() },
-      });
-      return {
-        sample: { id: sampleId, kind, userLabel, status: 'CONFIRMED' },
-        scored: false,
-        reason: 'NO_RECENT_USE',
-      };
-    }
-
-    const score = kind === UsageKind.RETURN ? SCORE_RETURN : SCORE_USE;
+    const score = SCORE_USE;
     const usage = await this.prisma.usage.create({
       data: {
         userId: BigInt(userId),
@@ -261,19 +241,6 @@ export class VerifyService {
       });
     }
     return this.storage.downloadImage(sample.imagePath);
-  }
-
-  private async hasRecentUse(userId: string): Promise<boolean> {
-    const cutoff = new Date(Date.now() - RETURN_WINDOW_HOURS * 60 * 60 * 1000);
-    const recentUse = await this.prisma.usage.findFirst({
-      where: {
-        userId: BigInt(userId),
-        kind: UsageKind.USE,
-        scannedAt: { gte: cutoff },
-      },
-      orderBy: { scannedAt: 'desc' },
-    });
-    return recentUse !== null;
   }
 
   /**

@@ -102,7 +102,6 @@ JWT 검증 후 본인 프로필 조회.
   "nickname": "홍길동",
   "profileImage": "https://..." | null,
   "teamCode": "LG" | null,
-  "avatarConfig": { /* 자유 형식 */ } | null,
   "createdAt": "2026-05-11T12:00:00.000Z"
 }
 ```
@@ -129,33 +128,18 @@ JWT 검증 후 본인 프로필 조회.
 - `401` — JWT 무효
 - `500` — 존재하지 않는 teamCode (FK 위반) ⚠️ TODO: 입력 검증 추가 후 400으로 변경
 
-### `PATCH /me/avatar`
-
-아바타 설정 저장 (JSON 자유 형식).
-
-**Request body**
-```json
-{ "avatarConfig": { /* 자유 형식 */ } }
-```
-
-**Response 200**
-```json
-{ "id": "1", "avatarConfig": { /* 저장된 값 */ } }
-```
-
 ---
 
 ## Verify (휴먼인더루프 인증 + 학습데이터 적재)
 
-다회용기 사용/반납 인증을 **2단계**로 처리한다. 어떤 판별 결과든 모든 시도를 학습용으로
+다회용기 사용(USE) 인증을 **2단계**로 처리한다. 어떤 판별 결과든 모든 시도를 학습용으로
 `verification_samples` 테이블 + GCS(원본 이미지)에 영구 저장한다. AI(Vision Cloud Run,
 `cleanballtrio-vision`, MobileNetV2)가 먼저 예측하고, **유저가 정답 라벨을 확정**한다.
 유저 라벨이 `REUSABLE`일 때만 `usages`에 점수 행을 만든다.
 
 공통 규칙:
 - JWT 필수
-- 점수: USE = 50점, RETURN = 100점 (`usages.score`)
-- RETURN은 직전 12시간 내 USE가 있어야 점수 부여 (없으면 샘플은 기록하되 미점수)
+- 점수: USE = 50점 (`usages.score`) — 사용자에게 노출되지 않는 내부 값
 
 ### `POST /verify/analyze` (1단계)
 
@@ -167,7 +151,7 @@ JWT 검증 후 본인 프로필 조회.
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `image` | file | ✅ | JPEG/PNG/WebP. 최대 10MB. |
-| `kind` | string | ✅ | `USE` 또는 `RETURN` |
+| `kind` | string | ✅ | `USE` (고정 — 반납 인증은 제거됨) |
 | `gameId` | string | 선택 | 관람 중인 경기 id |
 | `lat` | number | 선택 | 위도 |
 | `lng` | number | 선택 | 경도 |
@@ -206,13 +190,13 @@ JWT 검증 후 본인 프로필 조회.
 **Response 200 — 미점수(기록만)**
 ```json
 {
-  "sample": { "id": "31", "kind": "RETURN", "userLabel": "REUSABLE", "status": "CONFIRMED" },
+  "sample": { "id": "31", "kind": "USE", "userLabel": "SINGLE_USE", "status": "CONFIRMED" },
   "scored": false,
-  "reason": "NO_RECENT_USE"
+  "reason": "SINGLE_USE_LABEL"
 }
 ```
-- `reason`: `SINGLE_USE_LABEL`(일회용기 라벨 → 음성 샘플) / `NO_RECENT_USE`(RETURN 직전 USE 없음)
-- 두 경우 모두 샘플은 `CONFIRMED`로 저장된다 (학습 데이터 유지)
+- `reason`: `SINGLE_USE_LABEL`(일회용기 라벨 → 음성 샘플로만 확정)
+- 점수 미부여여도 샘플은 `CONFIRMED`로 저장된다 (학습 데이터 유지)
 
 ### 공통 에러
 
