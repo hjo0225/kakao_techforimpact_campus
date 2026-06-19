@@ -9,7 +9,6 @@ import {
 
 export enum VerifyKind {
   USE = 'USE',
-  RETURN = 'RETURN',
 }
 
 export enum UserLabel {
