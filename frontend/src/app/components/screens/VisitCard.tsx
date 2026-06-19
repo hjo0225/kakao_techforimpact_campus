@@ -17,7 +17,7 @@ import guideMascot from '../../../assets/tutorial/mascot-guide.png';
 import { FocusBrackets } from '../tutorial/TutorialDemos';
 import {
   analyzeImage, confirmLabel, getVerificationHistory, ApiError,
-  type AiPrediction, type ContainerLabel, type CertificationMode,
+  type AiPrediction, type ContainerLabel,
 } from '../../../lib/verifyApi';
 import lotteFrame from '../../../assets/card-frames/2cutlotte.png';
 import doosan2Frame from '../../../assets/card-frames/2cutdoosan.png';
@@ -307,8 +307,7 @@ export function VisitCard() {
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [savedCard, setSavedCard] = useState<{ id: string; shareToken: string } | null>(null);
 
-  // 인증(verify) — 반납 인증 제거, 사용(use) 인증만
-  const vMode: CertificationMode = 'use';
+  // 인증(verify) — USE(사용) 인증만
   const [vStep, setVStep] = useState<VStep>('idle');
   const [sampleId, setSampleId] = useState<string | null>(null);
   const [ai, setAi] = useState<AiPrediction | null>(null);
@@ -977,7 +976,7 @@ export function VisitCard() {
     setView('result'); // AI 인증을 누르면 결과(라벨 선택) 화면으로 이동
     setVStep('analyzing');
     try {
-      const res = await analyzeImage(vMode, photo.file);
+      const res = await analyzeImage(photo.file);
       setSampleId(res.sampleId);
       setAi(res.ai);
       setLabel(res.suggestedLabel);

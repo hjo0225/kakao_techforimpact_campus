@@ -5,8 +5,6 @@
 <div align="center">
 
 <img src="docs/readme-assets/screen-landing.png" width="240" alt="용기낼깡 랜딩" />
-<img src="docs/readme-assets/screen-map.png" width="240" alt="구장 다회용기 매장 지도" />
-<img src="docs/readme-assets/screen-profile.png" width="240" alt="프로필" />
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React_+_Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)

@@ -16,7 +16,6 @@ export class UsersService {
       profileImage: user.profileImage,
       teamCode: user.teamCode,
       role: user.role,
-      avatarConfig: user.avatarConfig,
       createdAt: user.createdAt,
     };
   }
@@ -27,13 +26,5 @@ export class UsersService {
       data: { teamCode },
     });
     return { id: user.id.toString(), teamCode: user.teamCode };
-  }
-
-  async updateAvatar(id: string, avatarConfig: object) {
-    const user = await this.prisma.user.update({
-      where: { id: BigInt(id) },
-      data: { avatarConfig },
-    });
-    return { id: user.id.toString(), avatarConfig: user.avatarConfig };
   }
 }
