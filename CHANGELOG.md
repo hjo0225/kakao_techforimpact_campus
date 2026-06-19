@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+### chore(api): 미사용 코드 제거 — RETURN(반납) 인증 · `PATCH /me/avatar` (Breaking)
+
+- **RETURN 인증 제거**: 앱이 USE 인증만 수행하므로 RETURN 분기를 전 계층에서 삭제.
+  - 백엔드: `verify.service`의 RETURN 점수(100)·12시간 USE 가드·`hasRecentUse` 제거,
+    `VerifyKind` enum을 `USE`만 남김. `confirm` 응답 `reason`에서 `NO_RECENT_USE` 제거
+  - 프론트: `verifyApi`의 `CertificationMode`/`modeToKind`/`'RETURN'` 유니온 제거 (`analyzeImage(image, options)`)
+  - `POST /verify/analyze`의 `kind`는 `USE` 고정
+- **`PATCH /me/avatar` 제거**: 프론트 소비처가 없는 죽은 엔드포인트. `GET /me` 응답에서 `avatarConfig` 제거
+  - DB 컬럼(`users.avatarConfig`)·Prisma enum은 유지 (마이그레이션 없음 — 향후 재도입 여지)
+
 ### feat(api): 프로필 "나의 기여" 카드 제거 + `/stats/*` 폐기 (Breaking)
 
 - **제거된 엔드포인트**: `GET /stats/me`, `GET /stats/me/logs` — 유일 소비처였던 프로필 탭

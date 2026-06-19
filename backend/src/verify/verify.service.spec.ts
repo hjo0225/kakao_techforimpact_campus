@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { VerifyService } from './verify.service';
 
-const UsageKind = { USE: 'USE', RETURN: 'RETURN' } as const;
+const UsageKind = { USE: 'USE' } as const;
 const ContainerLabel = {
   REUSABLE: 'REUSABLE',
   SINGLE_USE: 'SINGLE_USE',
@@ -21,7 +21,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 type AnyFn = jest.Mock<unknown, unknown[]>;
 interface PrismaStub {
-  usage: { create: AnyFn; findFirst: AnyFn };
+  usage: { create: AnyFn };
   verificationSample: { create: AnyFn; findUnique: AnyFn; update: AnyFn };
 }
 
@@ -40,7 +40,7 @@ describe('VerifyService', () => {
 
   beforeEach(async () => {
     prisma = {
-      usage: { create: jest.fn(), findFirst: jest.fn() },
+      usage: { create: jest.fn() },
       verificationSample: {
         create: jest.fn(),
         findUnique: jest.fn(),
@@ -186,43 +186,6 @@ describe('VerifyService', () => {
       expect(out.scored).toBe(false);
       expect(out.reason).toBe('SINGLE_USE_LABEL');
       expect(prisma.usage.create).not.toHaveBeenCalled();
-    });
-
-    it('REUSABLE(RETURN) + 직전 USE 있음 — 점수 100', async () => {
-      prisma.verificationSample.findUnique.mockResolvedValue(
-        pendingSample({ kind: UsageKind.RETURN }),
-      );
-      prisma.usage.findFirst.mockResolvedValue({ id: 1n });
-      prisma.usage.create.mockResolvedValue({
-        id: 6n,
-        kind: UsageKind.RETURN,
-        score: 100,
-        scannedAt: new Date(),
-      });
-      prisma.verificationSample.update.mockResolvedValue({});
-
-      const out = await service.confirm('1', '10', ContainerLabel.REUSABLE);
-
-      expect(out.scored).toBe(true);
-      expect(out.usage?.score).toBe(100);
-    });
-
-    it('REUSABLE(RETURN) + 직전 USE 없음 — 샘플은 확정, 점수 미부여', async () => {
-      prisma.verificationSample.findUnique.mockResolvedValue(
-        pendingSample({ kind: UsageKind.RETURN }),
-      );
-      prisma.usage.findFirst.mockResolvedValue(null);
-      prisma.verificationSample.update.mockResolvedValue({});
-
-      const out = await service.confirm('1', '10', ContainerLabel.REUSABLE);
-
-      expect(out.scored).toBe(false);
-      expect(out.reason).toBe('NO_RECENT_USE');
-      expect(prisma.usage.create).not.toHaveBeenCalled();
-      expect(prisma.verificationSample.update).toHaveBeenCalledWith({
-        where: { id: 10n },
-        data: expect.objectContaining({ status: 'CONFIRMED' }),
-      });
     });
 
     it('타인 샘플 — Forbidden', async () => {
