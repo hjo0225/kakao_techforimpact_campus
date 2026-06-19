@@ -155,7 +155,7 @@ Python FastAPI · MobileNetV2 (PyTorch). `vision/best_model.pth` 가중치로 2-
 - **CORS**: backend `CORS_ORIGIN` env로 제어. 콤마 구분 다중 origin. Cloud Run에서 dev(`localhost:5173`) + prod(`cleanballtrio.web.app`) 둘 다 허용 중.
 - **JWT 검증**: `JwtStrategy` + `JwtAuthGuard` 구현됨. `@UseGuards(JwtAuthGuard)` 데코레이터로 보호 — 현재 `/me/*` 적용. `payload.sub`가 DB user.id (BigInt → string).
 - **CSRF**: Bearer 토큰 + CORS allowlist 조합. 쿠키 기반 인증으로 전환 시 SameSite + CSRF token 패턴 필요.
-- **WIF attribute condition**: `assertion.repository=='hjo0225/kakao_techforimpact_campus'` — 이 repo에서만 SA 가장 가능. 추가 보강(브랜치 제한)은 plan 참고.
+- **WIF attribute condition**: `assertion.repository=='hjo0225/yonggi-nael-kkang'` — 이 repo에서만 SA 가장 가능. 추가 보강(브랜치 제한)은 plan 참고.
 
 ## 변경 이력
 
