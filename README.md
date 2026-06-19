@@ -1,15 +1,18 @@
-# 용기낼깡 (Clean Ball Trio)
+# 용기낼깡 ([한양대] 환경많이된다 팀)
 
-> **야구장 일회용기 쓰레기 문제를, "직관 기념 카드"라는 보상으로 푼다.**
+> **야구장 일회용기 쓰레기 문제를, "직관 기념 카드"라는 재미요소로 푼다.**
 
 <div align="center">
 
-<img src="docs/readme-assets/screen-landing.png" width="280" alt="용기낼깡 랜딩" />
+<img src="docs/readme-assets/screen-landing.png" width="240" alt="용기낼깡 랜딩" />
+<img src="docs/readme-assets/screen-map.png" width="240" alt="구장 다회용기 매장 지도" />
+<img src="docs/readme-assets/screen-profile.png" width="240" alt="프로필" />
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React_+_Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/MobileNetV2-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase_Hosting-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![GCP](https://img.shields.io/badge/Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
@@ -31,15 +34,11 @@ KBO 한 시즌 약 **800만 명**이 직관하고 경기마다 수만 개의 일
 
 | 문제                | 해결                                                                                   |
 | ------------------- | -------------------------------------------------------------------------------------- |
-| 반납 동기 부재      | 다회용기 인증 시 **그날 24시까지 '야구네컷' 직관 카드 제작이 잠금 해제** (인증 게이트) |
+| 사용 동기 부재      | 다회용기 인증 시 **그날 24시까지 '야구네컷' 직관 카드 제작이 잠금 해제** (인증 게이트) |
 | 기여 인증 수단 부재 | **사진 1장 → Vision AI 자동 인증** (QR·운영사 협의 불필요)                             |
-| 어뷰징 위험         | RETURN은 같은 사용자의 **12시간 내 USE 기록**이 있어야만 점수 적재                     |
-
-> 점수(`usages.score`)와 경기·구단 데이터는 적재되지만, 현재 사용자에게 노출되는 것은 **순위·점수가 아니라 "오늘 카드 해제 여부"** 다. 누적 랭킹/팀 경쟁은 데이터가 모인 뒤 검토할 백로그.
+| 어뷰징 위험         | 카드 해제 기준은 **서버의 "오늘 CONFIRMED 인증" 기록** — 로컬 값 조작으로는 못 연다    |
 
 ## 3. 주요 기능 (유저 플로우)
-
-사용자가 앱에서 거치는 순서 그대로다.
 
 ### 1️⃣ 카카오로 시작
 
@@ -89,7 +88,7 @@ flowchart TB
 
 ## 5. ERD
 
-`users`는 응원 팀(`teams`)에 소속되고, 인증 행위는 `usages`(USE/RETURN, 점수)로 경기(`games`)와 함께 적재된다. `verification_samples`는 AI 판정 + 사용자 라벨을 모으는 휴먼-인-더-루프 학습 테이블, `visit_cards`는 생성된 야구네컷 카드를 담는다. (매장·구장 관련 테이블은 지도 서브시스템으로 별도.)
+`users`는 응원 팀(`teams`)에 소속되고, 인증 행위는 `usages`로 경기(`games`)와 함께 적재된다(스키마는 USE/RETURN·점수를 갖지만 현재 앱은 **USE 인증만** 기록). `verification_samples`는 AI 판정 + 사용자 라벨을 모으는 휴먼-인-더-루프 학습 테이블, `visit_cards`는 생성된 야구네컷 카드를 담는다. (매장·구장 관련 테이블은 지도 서브시스템으로 별도.)
 
 ![ERD](docs/readme-assets/erd.png)
 
