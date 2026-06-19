@@ -11,7 +11,7 @@ $POOL_ID       = 'github-actions-pool'
 $PROVIDER_ID   = 'github-actions-provider'
 $SA_NAME       = 'github-actions-deployer'
 $SA_EMAIL      = "$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
-$GH_REPO       = 'hjo0225/kakao_techforimpact_campus'
+$GH_REPO       = 'hjo0225/yonggi-nael-kkang'
 
 function Test-GcloudResource {
     param([scriptblock]$DescribeCmd)
